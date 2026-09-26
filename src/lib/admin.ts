@@ -165,8 +165,6 @@ export const admin = {
     request<unknown>(`${at(login)}/modules/${encodeURIComponent(module)}`, json('PUT', { enabled })),
 
   publications: (login: string) => request<{ publications: Publication[] }>(`${at(login)}/publications`),
-  setPublication: (login: string, name: string, enabled: boolean) =>
-    request<unknown>(`${at(login)}/publications/${encodeURIComponent(name)}`, json('PATCH', { enabled })),
 
   triggers: (login: string) => request<{ triggers: Trigger[] }>(`${at(login)}/triggers`),
   setTrigger: (login: string, id: number, enabled: boolean) =>

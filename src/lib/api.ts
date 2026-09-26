@@ -12,6 +12,20 @@ export class ApiError extends Error {
   }
 }
 
+/** The text to show for a caught error. */
+export const errorMessage = (e: unknown): string => (e instanceof Error ? e.message : String(e))
+
+/** A request whose answer doesn't change while the page is open (the bot's built-in catalogues): made once, and
+ *  again only after a failure. */
+function once<T>(load: () => Promise<T>): () => Promise<T> {
+  let pending: Promise<T> | undefined
+  return () =>
+    (pending ??= load().catch((e: unknown) => {
+      pending = undefined
+      throw e
+    }))
+}
+
 // Writes made with the admin cookie need the session's CSRF token (lib/session.ts sets it), and a 401 means
 // the session is gone, which the session module hears about through `onUnauthorized`.
 export const auth = {
@@ -48,8 +62,6 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
 }
 
 const get = <T>(path: string) => request<T>(path)
-const post = <T>(path: string, body: unknown) =>
-  request<T>(path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
 
 // ── site ──────────────────────────────────────────────────────────────────
 export interface SiteChannel {
@@ -174,15 +186,14 @@ export interface ExplainReport {
 export const api = {
   site: () => get<Site>('/site'),
   channel: (login: string) => get<ChannelSummary>(`/site/channels/${encodeURIComponent(login)}`),
-  roles: () => get<{ roles: Role[]; custom_rank_range: [number, number] }>('/roles'),
-  commands: () => get<{ syntax_version: string; commands: Builtin[] }>('/commands'),
-  language: () => get<Language>('/language'),
-  grammar: () => get<Grammar>('/grammar'),
+  roles: once(() => get<{ roles: Role[]; custom_rank_range: [number, number] }>('/roles')),
+  commands: once(() => get<{ syntax_version: string; commands: Builtin[] }>('/commands')),
+  language: once(() => get<Language>('/language')),
+  grammar: once(() => get<Grammar>('/grammar')),
   packs: () => get<{ packs: Pack[] }>('/packs'),
   channelPacks: (login: string) => get<{ packs: Pack[] }>(`/channels/${encodeURIComponent(login)}/packs`),
   globalCommands: () => get<{ commands: (CustomCommand & { published_as: string })[] }>('/custom-commands'),
   publications: (login: string) =>
     get<{ publications: Publication[] }>(`/channels/${encodeURIComponent(login)}/publications`),
   explainReport: (token: string) => get<ExplainReport>(`/explain/${encodeURIComponent(token)}`),
-  explain: (text: string, context = 'line') => post<ExplainReport>('/explain', { text, context }),
 }

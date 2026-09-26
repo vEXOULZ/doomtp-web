@@ -12,7 +12,7 @@ import ChannelSettings from '@/components/ChannelSettings.vue'
 import ChatLine from '@/components/ChatLine.vue'
 import { can, isMe, manages } from '@/lib/access'
 import { admin, ago, readIgnored, type Channel, type Ignored } from '@/lib/admin'
-import { api } from '@/lib/api'
+import { api, errorMessage } from '@/lib/api'
 import { commandRows, LOG_LEVELS, moduleRows, publishedRows, type CommandRow, type CommandRulePatch } from '@/lib/modules'
 import { useLoad } from '@/lib/useLoad'
 
@@ -85,7 +85,7 @@ async function act(key: string, run: () => Promise<unknown>, done: string): Prom
     await reload()
     return true
   } catch (e) {
-    toast.show(e instanceof Error ? e.message : String(e), { kind: 'error', duration: 5000 })
+    toast.show(errorMessage(e), { kind: 'error', duration: 5000 })
     return false
   } finally {
     busy.delete(key)
@@ -176,7 +176,7 @@ async function part() {
     partOpen.value = false
     router.push('/admin')
   } catch (e) {
-    toast.show(e instanceof Error ? e.message : String(e), { kind: 'error', duration: 5000 })
+    toast.show(errorMessage(e), { kind: 'error', duration: 5000 })
   } finally {
     busy.delete('part')
   }
@@ -587,11 +587,9 @@ const lift = (u: Ignored) =>
 .mod .vx-chip { margin-left: 6px; }
 .modules .cmds :deep(code) { display: inline-block; margin: 2px 10px 2px 0; white-space: nowrap; }
 .grow { flex: 1 1 14rem; }
-.grow :deep(.vx-input-wrap), .grow :deep(input) { width: 100%; }
 .add :deep(.vx-checkbox) { align-self: center; }
 .unknown { display: inline-flex; align-items: center; gap: 6px; }
 .search { margin-bottom: 10px; max-width: 22rem; }
-.search :deep(input) { width: 100%; }
 .rules td .vx-chip { margin-top: 4px; }
 .rule { display: grid; gap: 14px; margin-top: 4px; }
 .rule :deep(.vx-segmented) { flex-wrap: wrap; }

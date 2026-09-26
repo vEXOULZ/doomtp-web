@@ -5,7 +5,7 @@ import AdminShell from '@/components/AdminShell.vue'
 import AuditTable from '@/components/AuditTable.vue'
 import { can } from '@/lib/access'
 import { admin, ago, health, type ApiKey } from '@/lib/admin'
-import { ApiError } from '@/lib/api'
+import { ApiError, errorMessage } from '@/lib/api'
 import { useLoad } from '@/lib/useLoad'
 
 const toast = useToast()
@@ -19,7 +19,7 @@ const { data, error, reload } = useLoad(async () => {
   ])
   return { ready, channels: channels.channels, keys: keys?.keys ?? [], audit: audit.entries }
 })
-const message = (e: unknown) => (e instanceof Error ? e.message : String(e))
+const message = (e: unknown) => (errorMessage(e))
 
 // ── health ──
 const components = computed(() =>
@@ -43,7 +43,7 @@ async function join() {
     toast.show(`Joined #${login}`)
     await reload()
   } catch (e) {
-    toast.show(`Couldn't join #${login}: ${message(e)}`, { kind: 'error', duration: 5000 })
+    toast.show(`Couldn't join #${login}: ${errorMessage(e)}`, { kind: 'error', duration: 5000 })
   } finally {
     joining.value = false
   }
@@ -68,7 +68,7 @@ async function createKey() {
     keyWrite.value = false
     await reload()
   } catch (e) {
-    keyError.value = e instanceof ApiError && e.status === 400 ? e.message : message(e)
+    keyError.value = e instanceof ApiError && e.status === 400 ? e.message : errorMessage(e)
   } finally {
     keyBusy.value = false
   }
@@ -94,7 +94,7 @@ async function revoke() {
     revoking.value = null
     await reload()
   } catch (e) {
-    toast.show(`Couldn't revoke: ${message(e)}`, { kind: 'error', duration: 5000 })
+    toast.show(`Couldn't revoke: ${errorMessage(e)}`, { kind: 'error', duration: 5000 })
   } finally {
     revokeBusy.value = false
   }
@@ -227,6 +227,5 @@ section { margin-bottom: 28px; }
 .end { text-align: right; }
 .vx-chip + .vx-chip { margin-left: 4px; }
 .dialog-form { display: grid; gap: 12px; margin-top: 12px; }
-.dialog-form :deep(input) { width: 100%; }
 .secret { margin: 12px 0 0; white-space: pre-wrap; word-break: break-all; user-select: all; color: var(--vx-ink); }
 </style>
