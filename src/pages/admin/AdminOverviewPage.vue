@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { VxButton, VxCallout, VxCheckbox, VxChip, VxDialog, VxField, VxInput, VxSkeleton, VxStatusDot, useToast } from '@vexoulz/ui'
+import { VxButton, VxCallout, VxCheckbox, VxChip, VxDialog, VxField, VxInput, VxSkeleton, VxStatusDot, timeAgo, useToast } from '@vexoulz/ui'
 import { computed, ref } from 'vue'
 import AdminShell from '@/components/AdminShell.vue'
 import AuditTable from '@/components/AuditTable.vue'
 import { can } from '@/lib/access'
-import { admin, ago, health, type ApiKey } from '@/lib/admin'
+import { admin, health, type ApiKey } from '@/lib/admin'
 import { ApiError, errorMessage } from '@/lib/api'
 import { useLoad } from '@/lib/useLoad'
 
@@ -164,8 +164,8 @@ async function revoke() {
               <tr v-for="k in data.keys" :key="k.id">
                 <td>{{ k.name }}</td>
                 <td><VxChip v-for="s in k.scopes" :key="s" :tone="s === 'write' ? 'warn' : 'default'">{{ s }}</VxChip></td>
-                <td class="vx-muted">{{ ago(k.created_at) }}</td>
-                <td class="vx-muted">{{ ago(k.last_used_at) }}</td>
+                <td class="vx-muted">{{ timeAgo(k.created_at) }}</td>
+                <td class="vx-muted">{{ timeAgo(k.last_used_at) }}</td>
                 <td class="end"><VxButton size="sm" variant="danger" @click="revoking = k">Revoke</VxButton></td>
               </tr>
               <tr v-if="!data.keys.length"><td colspan="5" class="vx-muted">No keys yet.</td></tr>
