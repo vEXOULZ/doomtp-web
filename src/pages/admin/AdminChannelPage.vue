@@ -308,7 +308,7 @@ const deletingFilter = ref<number | null>(null)
         <h2 class="vx-eyebrow sub">Bot-wide</h2>
         <p class="vx-muted intro">
           The bot's own list applies in every channel and can't be changed from one. An <code>allow</code> entry
-          above lets a word through here.
+          above keeps a longer word that merely contains a banned one from being caught.
         </p>
         <div class="table-scroll vx-panel">
           <table class="vx-table">
