@@ -4,7 +4,6 @@ import { computed } from 'vue'
 import ChatLine from '@/components/ChatLine.vue'
 import Cmd from '@/components/Cmd.vue'
 import DtpShell from '@/components/DtpShell.vue'
-import Emoji from '@/components/Emoji.vue'
 import { api } from '@/lib/api'
 import { defaultSign } from '@/lib/site'
 import { useLoad } from '@/lib/useLoad'
@@ -87,7 +86,7 @@ function roleSource(name: string): string {
       <h1 class="vx-display">Features</h1>
       <p class="vx-muted">
         What the bot does, how each part behaves, and where the limits are. Examples use
-        <code><Emoji :text="p" /></code> as the command sign; your channel may use another.
+        <code>{{ p }}</code> as the command sign; your channel may use another.
       </p>
 
       <nav class="toc vx-panel" aria-label="On this page">
@@ -280,7 +279,7 @@ function roleSource(name: string): string {
         denied, with the command to allow the first one; <Cmd t="explain" /> says the same about any expression you're
         about to run:
       </p>
-      <pre class="vx-code"><Emoji :text="publishReply" /></pre>
+      <pre class="vx-code">{{ publishReply }}</pre>
       <p class="vx-muted">All variables are readable by anyone. Don't store anything private in them.</p>
 
       <h2 id="triggers" class="vx-display">Triggers, listeners and timers</h2>
@@ -455,7 +454,7 @@ function roleSource(name: string): string {
         </table>
       </div>
       <p>
-        The full list is in the <a href="/docs">API docs</a>. The admin side shows health, channels, and every channel's
+        The full list is in the <RouterLink to="/docs/api">API reference</RouterLink>. The admin side shows health, channels, and every channel's
         modules, triggers, filters, published commands and ignore list, with an audit trail of configuration changes. It
         needs the admin password.
       </p>

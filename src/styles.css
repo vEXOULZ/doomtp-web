@@ -1,4 +1,19 @@
 /* Site-level additions on top of @vexoulz/ui. Keep this small; shared styles belong in the library. */
+
+/* The bot's default command sign, 🏜, drawn as Twemoji everywhere text is: pages, inputs and the editor. Some
+   platforms draw it as a flat monochrome glyph, a poor thing to hand somebody as "the character you type".
+   A one-glyph cut of Mozilla's Twemoji font (public/fonts/ATTRIBUTION.md); unicode-range keeps it to that one
+   character, and since it is text, copying the sign still copies the sign. */
+@font-face {
+  font-family: 'Twemoji Sign';
+  src: url('/fonts/twemoji-sign.woff2') format('woff2');
+  unicode-range: U+1F3DC;
+  font-display: block;
+}
+:root {
+  --vx-font-sans: 'Twemoji Sign', 'Geist Variable', 'Geist', system-ui, sans-serif;
+  --vx-font-mono: 'Twemoji Sign', 'Geist Mono Variable', 'Geist Mono', ui-monospace, Consolas, monospace;
+}
 html,
 body {
   margin: 0;
@@ -9,6 +24,23 @@ body {
 #app > .vx-site {
   min-height: 100dvh;
 }
+
+/* ---------- Command text (components/ChatLine.vue) ----------
+   The bot's lexer token classes, in the colours its editor gives them (web-editor/src/theme.js), so a line
+   looks the same in the editor and on the page. */
+.dtb { font-family: var(--vx-font-mono); }
+.dtb-prefix, .dtb-command { color: var(--vx-accent); font-weight: 600; }
+.dtb-prefix { font-synthesis: none; }
+.dtb-personal { color: var(--vx-accent); }
+.dtb-string { color: var(--vx-ok); }
+.dtb-escape, .dtb-ph-open, .dtb-ph-close, .dtb-ph-fallback { color: var(--vx-muted); }
+.dtb-operator { color: var(--vx-bad); font-weight: 600; }
+.dtb-store-target { color: var(--vx-bad); }
+.dtb-ph-root { color: #8ab4f8; }
+.dtb-ph-path { color: #8ab4f8; opacity: 0.85; }
+.dtb-ph-type { color: var(--vx-muted); font-style: italic; }
+.dtb-raw { opacity: 0.8; }
+.dtb-error { text-decoration: underline wavy var(--vx-bad); }
 
 /* ---------- Documentation pages ---------- */
 .doc { max-width: 52rem; }

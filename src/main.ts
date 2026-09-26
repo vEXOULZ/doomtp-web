@@ -15,6 +15,7 @@ const router = createRouter({
     { path: '/docs/features', component: () => import('./pages/FeaturesPage.vue') },
     { path: '/docs/commands', component: () => import('./pages/CommandsPage.vue') },
     { path: '/docs/language', component: () => import('./pages/LanguagePage.vue') },
+    { path: '/docs/api', component: () => import('./pages/ApiPage.vue') },
     { path: '/channels/:login', component: () => import('./pages/ChannelPage.vue'), props: true },
     { path: '/explain/:token', component: () => import('./pages/ExplainPage.vue'), props: true },
     { path: '/:pathMatch(.*)*', component: () => import('./pages/NotFoundPage.vue') },

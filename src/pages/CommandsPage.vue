@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { VxButton, VxCallout, VxSkeleton } from '@vexoulz/ui'
 import { computed } from 'vue'
+import Cmd from '@/components/Cmd.vue'
 import CommandTable from '@/components/CommandTable.vue'
 import DtpShell from '@/components/DtpShell.vue'
-import Emoji from '@/components/Emoji.vue'
 import { api } from '@/lib/api'
 import { referenceRows } from '@/lib/commands'
 import { defaultSign, loadSite } from '@/lib/site'
@@ -22,7 +22,7 @@ const { data: rows, error, reload } = useLoad(async () => {
       <h1 class="vx-display">Command reference</h1>
       <p class="vx-muted">
         Generated from the specs the bot runs on, so this page and the bot can't disagree.
-        <code><Emoji :text="`${sign}help`" /></code> in chat lists only what you can run in that channel, with the command
+        <Cmd t="help" :sign="sign" /> in chat lists only what you can run in that channel, with the command
         sign that channel uses. Click a command for its arguments, cooldowns and examples.
       </p>
     </div>

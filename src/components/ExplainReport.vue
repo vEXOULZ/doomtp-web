@@ -2,10 +2,14 @@
 // The full explain report (spec §9): how a line parsed, what each command resolved to, whether the caller may run
 // it, and what it would do. Shared by the public report page and, later, the admin explain page.
 import { VxCallout, VxChip } from '@vexoulz/ui'
+import { computed } from 'vue'
 import type { ExplainInvocation, ExplainReport } from '@/lib/api'
-import Emoji from './Emoji.vue'
+import { leadingSign } from '@/lib/lexer'
+import ChatLine from './ChatLine.vue'
 
-defineProps<{ report: ExplainReport }>()
+const props = defineProps<{ report: ExplainReport }>()
+// A chat line is lexed as a line; any other context (a trigger, a body) has no sign.
+const lineContext = computed(() => (props.report.context === 'line' ? 'line' : 'body'))
 
 const wait = (inv: ExplainInvocation) => Math.max(inv.cooldown_tier_s, inv.cooldown_user_s)
 const from = (inv: ExplainInvocation) => (inv.owner ? `${inv.source} by ${inv.owner} v${inv.version}` : inv.source)
@@ -14,7 +18,7 @@ const from = (inv: ExplainInvocation) => (inv.owner ? `${inv.source} by ${inv.ow
 <template>
   <div class="report">
     <div class="line">
-      <code class="expr"><Emoji :text="report.expression" /></code>
+      <ChatLine class="expr" :lines="report.expression" :sign="leadingSign(report.expression)" :context="lineContext" />
       <VxChip k="context">{{ report.context }}</VxChip>
       <VxChip v-if="report.channel">#{{ report.channel }}</VxChip>
     </div>
@@ -75,7 +79,7 @@ const from = (inv: ExplainInvocation) => (inv.owner ? `${inv.source} by ${inv.ow
         </p>
         <p>
           Would send:
-          <code v-if="report.would_send"><Emoji :text="report.would_send" /></code>
+          <code v-if="report.would_send">{{ report.would_send }}</code>
           <span v-else class="vx-muted">nothing</span>
         </p>
       </template>

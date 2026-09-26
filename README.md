@@ -27,6 +27,7 @@ The same URLs as the bot's own pages, so links already out there keep working (c
 | `/docs/features` | every part of the bot, section by section |
 | `/docs/commands` | every built-in and everything published for every channel, in a searchable table |
 | `/docs/language` | the language reference, with the bot's own editor to try a line in, and the grammar |
+| `/docs/api` | every endpoint of the JSON API, read from the bot's `/openapi.json` |
 | `/channels/:login` | a channel's sign, tier and status, and the custom commands published there |
 | `/explain/:token` | the report behind a chat `explain` link |
 | anything else | 404 |
@@ -39,10 +40,12 @@ The site expects to share an origin with the bot. The bot keeps serving:
 
 - `/api/*`: the JSON API these pages read.
 - `/auth/*`: the bot's Twitch OAuth (bot account, broadcaster connect).
-- `/static/*`: the expression editor (`/static/editor/editor.js`, a `<dtb-editor>` web component), the railroad
-  diagrams and the Twemoji art for the command sign.
+- `/static/*`: the expression editor (`/static/editor/editor.js`, a `<dtb-editor>` web component), the bot's lexer
+  (`/static/editor/tokens.js`, which colours every command line on these pages the way the editor does) and the
+  railroad diagrams.
 - `/healthz`, `/readyz`: health.
-- Exactly `/docs` and `/openapi.json`: the bot's OpenAPI page. **`/docs/…` below it are this site's pages.**
+- Exactly `/docs` and `/openapi.json`: the bot's Swagger UI and OpenAPI document (`/docs/api` reads the latter).
+  **`/docs/…` below it are this site's pages.**
 
 Everything else is this site: a single-page app, so the server answers unknown paths with `index.html`. Because it
 is one origin, there is no CORS, and the admin session stays a plain same-origin cookie.
@@ -67,3 +70,8 @@ This repo is host-agnostic: it builds and publishes, nothing more. Details about
 (machines, addresses, proxy or tunnel config, server paths, deploy scripts) belong in the private `homelab-docs`
 repo and must never be committed here. `.gitignore` blocks `.env*` (except `.env.example`), `*.local.*` and
 `/deploy.local/` so local host files can't slip in.
+
+## Fonts
+
+`public/fonts/twemoji-sign.woff2` is one glyph (🏜, the default command sign) cut from Twemoji, so the sign looks
+the same in text, inputs and the editor on every system. Licences and how to rebuild it: `public/fonts/ATTRIBUTION.md`.

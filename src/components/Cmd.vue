@@ -1,13 +1,13 @@
 <script setup lang="ts">
-// Inline code for something typed in chat: the command sign (the bot's default unless given) and the rest.
+// Inline code for something typed in chat: the command sign (the bot's default unless given) and the rest, coloured.
 import { computed } from 'vue'
 import { defaultSign } from '@/lib/site'
-import Emoji from './Emoji.vue'
+import ChatLine from './ChatLine.vue'
 
 const props = defineProps<{ t: string; sign?: string }>()
-const text = computed(() => `${props.sign ?? defaultSign()}${props.t}`)
+const sign = computed(() => props.sign ?? defaultSign())
 </script>
 
 <template>
-  <code><Emoji :text="text" /></code>
+  <ChatLine :lines="`${sign}${t}`" :sign="sign" />
 </template>

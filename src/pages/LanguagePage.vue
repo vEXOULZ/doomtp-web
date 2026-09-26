@@ -2,8 +2,8 @@
 import { VxButton, VxCallout, VxSkeleton } from '@vexoulz/ui'
 import { computed, onMounted } from 'vue'
 import ChatLine from '@/components/ChatLine.vue'
+import Cmd from '@/components/Cmd.vue'
 import DtpShell from '@/components/DtpShell.vue'
-import Emoji from '@/components/Emoji.vue'
 import { api } from '@/lib/api'
 import { defaultSign, loadSite } from '@/lib/site'
 import { useLoad } from '@/lib/useLoad'
@@ -87,7 +87,7 @@ const limits = computed(() => {
       <h2 class="vx-display">Shape of a line</h2>
       <ChatLine :lines="shape" :sign="p" block />
       <ul>
-        <li>The command sign starts a line. After an emoji sign a space is allowed: <code><Emoji :text="`${p} ping`" /></code>.</li>
+        <li>The command sign starts a line. After an emoji sign a space is allowed: <Cmd t=" ping" :sign="p" />.</li>
         <li>
           Arguments are split on spaces. Use <code>"quotes"</code> to keep spaces, and <code>\</code> to escape a
           character literally (<code>\"</code>, <code>\{</code>).

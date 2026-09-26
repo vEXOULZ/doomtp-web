@@ -6,7 +6,6 @@ import { VxChip, VxInput } from '@vexoulz/ui'
 import { computed, ref } from 'vue'
 import { type CommandRow, filterRows } from '@/lib/commands'
 import ChatLine from './ChatLine.vue'
-import Emoji from './Emoji.vue'
 
 const props = withDefaults(defineProps<{ rows: CommandRow[]; sign: string; noun?: string }>(), { noun: 'commands' })
 
@@ -51,20 +50,20 @@ function toggle(key: string) {
           :aria-expanded="open.has(row.key)"
           @click="toggle(row.key)"
         >
-          <code class="name" role="cell"><span class="vx-tok-prefix"><Emoji :text="sign" /></span>{{ row.usage }}</code>
+          <ChatLine class="name" role="cell" :lines="`${sign}${row.usage}`" :sign="sign" />
           <span class="vx-muted module" role="cell">{{ row.module }}</span>
           <span role="cell"><VxChip :tone="row.role === 'everyone' ? 'default' : 'accent'">{{ row.role }}</VxChip></span>
-          <span class="summary" role="cell"><Emoji :text="row.summary" /></span>
+          <span class="summary" role="cell">{{ row.summary }}</span>
         </button>
 
         <div v-if="open.has(row.key)" class="detail">
-          <p v-if="row.description"><Emoji :text="row.description" /></p>
+          <p v-if="row.description">{{ row.description }}</p>
           <template v-if="row.kind !== 'built-in'">
             <p class="vx-muted">
               A custom command by <strong>@{{ row.owner }}</strong> (v{{ row.version }})<template v-if="row.kind === 'derived'">,
               published for every channel</template>. Its author can change it at any time.
             </p>
-            <ChatLine :lines="row.body" :sign="sign" block />
+            <ChatLine :lines="row.body" :sign="sign" context="body" block />
           </template>
           <div class="chips">
             <VxChip k="needs">{{ row.role }}</VxChip>
@@ -81,12 +80,12 @@ function toggle(key: string) {
                   <td><code>{{ p.name }}</code> <span class="vx-muted">({{ p.position }})</span></td>
                   <td>{{ p.type }}<template v-if="p.choices?.length">: {{ p.choices.join(', ') }}</template></td>
                   <td>{{ p.required ? 'yes' : 'no' }}</td>
-                  <td><Emoji :text="p.description" /></td>
+                  <td>{{ p.description }}</td>
                 </tr>
               </tbody>
             </table>
           </div>
-          <pre v-if="row.examples.length" class="vx-code"><template v-for="(e, i) in row.examples" :key="i"><template v-if="i">{{ '\n' }}</template><Emoji :text="e.invocation" /><template v-if="e.output">{{ '\n  → ' }}<Emoji :text="e.output" /></template></template></pre>
+          <pre v-if="row.examples.length" class="vx-code"><template v-for="(e, i) in row.examples" :key="i"><template v-if="i">{{ '\n' }}</template><ChatLine :lines="e.invocation" :sign="sign" /><template v-if="e.output">{{ '\n  → ' }}{{ e.output }}</template></template></pre>
         </div>
       </div>
       <p v-if="!shown.length" class="vx-muted empty">Nothing matches that.</p>

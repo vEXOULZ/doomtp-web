@@ -2,8 +2,8 @@
 import { VxButton, VxCallout, VxChip, VxSkeleton } from '@vexoulz/ui'
 import { computed } from 'vue'
 import ChatLine from '@/components/ChatLine.vue'
+import Cmd from '@/components/Cmd.vue'
 import DtpShell from '@/components/DtpShell.vue'
-import Emoji from '@/components/Emoji.vue'
 import { defaultSign, loadSite, site } from '@/lib/site'
 
 const sign = computed(defaultSign)
@@ -13,7 +13,7 @@ const START = [
   { to: '/docs/features', title: 'Features', text: 'Every part of the bot: permissions, cooldowns, custom commands, packs, variables, triggers, timers, the word filter, logging and the API.' },
   { to: '/docs/commands', title: 'Command reference', text: 'Every built-in command with its arguments, examples, required role and cooldowns, from the same specs the bot runs on.' },
   { to: '/docs/language', title: 'Language reference', text: 'Operators, placeholders, types and the grammar, with the limits that apply, and an editor to try a line in.' },
-  { href: '/docs', title: 'API', text: 'OpenAPI docs for /api/v1: parse, explain, language, commands and the rest.' },
+  { to: '/docs/api', title: 'API', text: 'Every endpoint of /api/v1: parse, explain, language, commands and the rest.' },
 ]
 </script>
 
@@ -32,19 +32,19 @@ const START = [
         <div class="vx-eyebrow">Try it in chat</div>
         <ChatLine :lines="tries" :sign="sign" block />
         <p class="vx-muted small">
-          The command sign is <code><Emoji :text="sign" /></code> by default, and a space after it is fine:
-          <code><Emoji :text="`${sign} ping`" /></code> works too. Each channel can pick its own with
-          <code><Emoji :text="`${sign}prefix`" /></code>.
+          The command sign is <code>{{ sign }}</code> by default, and a space after it is fine:
+          <Cmd t=" ping" :sign="sign" /> works too. Each channel can pick its own with
+          <Cmd t="prefix" :sign="sign" />.
         </p>
       </div>
     </div>
 
     <h2 class="vx-display sec">Where to start</h2>
     <div class="cards">
-      <component :is="c.to ? 'RouterLink' : 'a'" v-for="c in START" :key="c.title" :to="c.to" :href="c.href" class="card vx-panel">
+      <RouterLink v-for="c in START" :key="c.title" :to="c.to" class="card vx-panel">
         <b>{{ c.title }}</b>
         <span class="vx-muted small">{{ c.text }}</span>
-      </component>
+      </RouterLink>
     </div>
 
     <h2 class="vx-display sec">Channels</h2>
@@ -56,13 +56,13 @@ const START = [
       <VxSkeleton v-for="i in 3" :key="i" h="64px" />
     </div>
     <p v-else-if="!site.info.channels.length" class="vx-muted">
-      The bot hasn't joined any channels yet. A broadcaster can type <code><Emoji :text="`${sign}join`" /></code> in
+      The bot hasn't joined any channels yet. A broadcaster can type <Cmd t="join" :sign="sign" /> in
       the bot's own chat.
     </p>
     <div v-else class="cards">
       <RouterLink v-for="ch in site.info.channels" :key="ch.login" :to="`/channels/${ch.login}`" class="card chan vx-panel">
         <div class="chan-top"><b>#{{ ch.login }}</b><VxChip tone="ok">joined</VxChip></div>
-        <div class="vx-muted small vx-mono">sign <code><Emoji :text="ch.prefix" /></code> · {{ ch.tier }} tier</div>
+        <div class="vx-muted small vx-mono">sign <code>{{ ch.prefix }}</code> · {{ ch.tier }} tier</div>
       </RouterLink>
     </div>
   </DtpShell>
