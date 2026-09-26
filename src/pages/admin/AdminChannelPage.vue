@@ -1,8 +1,9 @@
 <script setup lang="ts">
-// One channel: its status, the ban callout with rejoin, and tabs for settings, modules, published commands,
+// One channel: its status, the ban callout with rejoin, and tabs for settings, modules, command rules, published commands,
 // triggers and timers, the word filter and ignored users. Every change goes through the same services as chat.
 import {
-  VxButton, VxCallout, VxCheckbox, VxChip, VxDialog, VxEmptyState, VxField, VxInput, VxSelect, VxSkeleton, VxSwitch, VxTabs, useToast,
+  VxButton, VxCallout, VxCheckbox, VxChip, VxDialog, VxEmptyState, VxField, VxInput, VxSegmented, VxSelect, VxSkeleton, VxSwitch, VxTabs,
+  useToast,
 } from '@vexoulz/ui'
 import { computed, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -12,7 +13,7 @@ import ChatLine from '@/components/ChatLine.vue'
 import { can, isMe, manages } from '@/lib/access'
 import { admin, ago, readIgnored, type Channel, type Ignored } from '@/lib/admin'
 import { api } from '@/lib/api'
-import { moduleRows, publishedRows } from '@/lib/modules'
+import { commandRows, LOG_LEVELS, moduleRows, publishedRows, type CommandRow, type CommandRulePatch } from '@/lib/modules'
 import { useLoad } from '@/lib/useLoad'
 
 const props = defineProps<{ login: string }>()
@@ -26,7 +27,7 @@ const notMine = computed(() => !manages(props.login))
 const { data, error, status, reload } = useLoad(
   async () => {
     if (notMine.value) return null
-    const [channel, modules, commands, packs, publications, triggers, filters, ignored, roles] = await Promise.all([
+    const [channel, modules, commands, packs, publications, triggers, filters, ignored, roles, builtins] = await Promise.all([
       admin.channel(props.login),
       admin.modules(props.login),
       admin.channelCommands(props.login),
@@ -36,11 +37,13 @@ const { data, error, status, reload } = useLoad(
       admin.filters(props.login),
       admin.ignored(props.login),
       api.roles(),
+      api.commands(),
     ])
     return {
       channel,
       modules: moduleRows(modules.modules, commands.commands, packs.packs, publications.publications),
       published: publishedRows(packs.packs, publications.publications),
+      commands: commandRows(commands.commands, builtins.commands),
       triggers: triggers.triggers,
       filters: filters.filters.filter((f) => !f.global),
       globalFilters: filters.filters.filter((f) => f.global),
@@ -60,6 +63,7 @@ const sign = computed(() => data.value?.channel.prefix ?? '!')
 const TABS = [
   { value: 'settings', label: 'Settings' },
   { value: 'modules', label: 'Modules' },
+  { value: 'rules', label: 'Commands' },
   { value: 'commands', label: 'Published' },
   { value: 'triggers', label: 'Triggers & timers' },
   { value: 'filter', label: 'Word filter' },
@@ -90,6 +94,60 @@ async function act(key: string, run: () => Promise<unknown>, done: string): Prom
 const onOff = (on: boolean) => (on ? 'on' : 'off')
 const setModule = (name: string, on: boolean) =>
   act(`m:${name}`, () => admin.setModule(props.login, name, on), `${name} turned ${onOff(on)}`)
+
+// ── command rules ──
+const cmdQuery = ref('')
+const shownCommands = computed(() => {
+  const q = cmdQuery.value.trim().toLowerCase().replace(/^[^\w]+/, '')
+  const all = data.value?.commands ?? []
+  return q ? all.filter((c) => c.name.includes(q) || c.module.includes(q) || c.summary?.toLowerCase().includes(q)) : all
+})
+const setCommand = (name: string, patch: CommandRulePatch, done: string) =>
+  act(`c:${name}`, () => admin.setCommand(props.login, name, patch), done)
+const who = (c: CommandRow) => (c.allowed_roles?.length ? c.allowed_roles.join(', ') : c.required_role ? `${c.required_role}+` : '—')
+const cooldown = (c: CommandRow) =>
+  Object.entries(c.cooldowns ?? {})
+    .map(([role, cd]) => [cd.user_s && `${cd.user_s}s each`, cd.tier_s && `${cd.tier_s}s shared`].filter(Boolean).join(', ') + ` (${role})`)
+    .join('; ')
+
+// The rule editor: each field starts at "leave as is", so saving sends only what was picked.
+const KEEP = 'keep'
+const DEFAULT = 'default'
+const editing = ref<CommandRow | null>(null)
+const rule = reactive({ enabled: KEEP, role: KEEP, log: KEEP })
+function editRule(c: CommandRow) {
+  Object.assign(rule, { enabled: KEEP, role: KEEP, log: KEEP })
+  editing.value = c
+}
+const ENABLED_OPTIONS = [
+  { value: KEEP, label: 'As is' },
+  { value: 'on', label: 'On' },
+  { value: 'off', label: 'Off' },
+  { value: DEFAULT, label: 'Default' },
+]
+const roleChoices = computed(() => {
+  const roles = data.value?.roles ?? []
+  const current = editing.value?.required_role
+  return [
+    { value: KEEP, label: 'As is' },
+    ...roles.map((r) => ({ value: r, label: `${r} and up` })),
+    ...(current && !roles.includes(current) ? [{ value: current, label: `${current} and up` }] : []),
+    { value: DEFAULT, label: 'Default (bot-wide or built-in)' },
+  ]
+})
+const LOG_OPTIONS = [{ value: KEEP, label: 'As is' }, ...LOG_LEVELS.map((l) => ({ value: l, label: l }))]
+const rulePatch = computed<CommandRulePatch>(() => {
+  const out: CommandRulePatch = {}
+  if (rule.enabled !== KEEP) out.enabled = rule.enabled === DEFAULT ? null : rule.enabled === 'on'
+  if (rule.role !== KEEP) out.required_role = rule.role === DEFAULT ? null : rule.role
+  if (rule.log !== KEEP) out.log_level = rule.log as CommandRulePatch['log_level']
+  return out
+})
+async function saveRule() {
+  const c = editing.value
+  if (!c || !Object.keys(rulePatch.value).length) return
+  if (await setCommand(c.name, rulePatch.value, `${sign.value}${c.name} updated`)) editing.value = null
+}
 
 const statusChips = computed(() => {
   const c = data.value?.channel
@@ -243,6 +301,43 @@ const lift = (u: Ignored) =>
                   </span>
                 </td>
               </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section v-else-if="tab === 'rules'">
+        <p class="vx-muted intro">
+          Every command chat can run here, and who may. The same as
+          <ChatLine :lines="`${sign}cmd disable <name>`" :sign="sign" /> in chat; a command whose module is off stays off
+          whatever it says here.
+        </p>
+        <VxInput v-model="cmdQuery" class="search" placeholder="Find a command or module" aria-label="Find a command" />
+        <div class="table-scroll vx-panel">
+          <table class="vx-table rules">
+            <thead><tr><th>Command</th><th>Module</th><th>Who may</th><th>Cooldown</th><th>On</th><th></th></tr></thead>
+            <tbody>
+              <tr v-for="c in shownCommands" :key="c.name">
+                <td>
+                  <ChatLine :lines="`${sign}${c.name}`" :sign="sign" />
+                  <div v-if="c.summary" class="vx-muted small">{{ c.summary }}</div>
+                  <VxChip v-if="c.missing?.length" tone="bad" :title="`The bot needs the ${c.missing.join(', ')} permission on Twitch here`">needs {{ c.missing.join(', ') }}</VxChip>
+                </td>
+                <td class="vx-mono vx-muted">{{ c.module }}</td>
+                <td class="nowrap">{{ who(c) }}</td>
+                <td class="vx-muted small">{{ cooldown(c) || '—' }}</td>
+                <td class="nowrap">
+                  <span v-if="!c.toggleable" class="vx-muted small">always on</span>
+                  <VxSwitch
+                    v-else
+                    :model-value="c.enabled"
+                    :disabled="!can('commands.edit') || busy.has(`c:${c.name}`)"
+                    @update:model-value="(on: boolean) => setCommand(c.name, { enabled: on }, `${sign}${c.name} turned ${onOff(on)}`)"
+                  ><span class="sr-only">Command {{ c.name }}</span></VxSwitch>
+                </td>
+                <td class="end"><VxButton v-if="can('commands.edit')" size="sm" variant="ghost" @click="editRule(c)">Edit</VxButton></td>
+              </tr>
+              <tr v-if="!shownCommands.length"><td colspan="6" class="vx-muted">No command matches “{{ cmdQuery }}”.</td></tr>
             </tbody>
           </table>
         </div>
@@ -408,6 +503,29 @@ const lift = (u: Ignored) =>
       </section>
     </template>
 
+    <VxDialog :open="editing !== null" :title="editing ? `${sign}${editing.name} here` : ''" @update:open="(v: boolean) => { if (!v) editing = null }">
+      <form v-if="editing" id="rule-form" class="rule" @submit.prevent="saveRule">
+        <VxField v-if="editing.toggleable" :label="`On (now ${onOff(editing.enabled)})`" help="Default follows the module and the bot-wide setting.">
+          <template #default><VxSegmented v-model="rule.enabled" :options="ENABLED_OPTIONS" label="Command on or off" /></template>
+        </VxField>
+        <VxField v-if="!editing.fixedPolicy" :label="`Who may run it (now ${who(editing)})`" :help="editing.allowed_roles?.length ? 'Picking a role replaces the list of roles above.' : undefined">
+          <template #default="{ id }"><VxSelect :id="id" v-model="rule.role" :options="roleChoices" width="100%" /></template>
+        </VxField>
+        <VxField label="Log level" help="What the bot logs when it runs here. The bot doesn't report the current level yet.">
+          <template #default><VxSegmented v-model="rule.log" :options="LOG_OPTIONS" label="Log level" /></template>
+        </VxField>
+      </form>
+      <template #actions="{ close }">
+        <VxButton @click="close">Cancel</VxButton>
+        <VxButton
+          type="submit"
+          form="rule-form"
+          variant="primary"
+          :loading="!!editing && busy.has(`c:${editing.name}`)"
+          :disabled="!Object.keys(rulePatch).length"
+        >Save</VxButton>
+      </template>
+    </VxDialog>
     <VxDialog v-model:open="partOpen" :title="`Leave #${login}?`">
       The bot parts the channel and stops answering there. Its settings, commands and logs stay, and joining again
       brings everything back.
@@ -472,5 +590,10 @@ const lift = (u: Ignored) =>
 .grow :deep(.vx-input-wrap), .grow :deep(input) { width: 100%; }
 .add :deep(.vx-checkbox) { align-self: center; }
 .unknown { display: inline-flex; align-items: center; gap: 6px; }
+.search { margin-bottom: 10px; max-width: 22rem; }
+.search :deep(input) { width: 100%; }
+.rules td .vx-chip { margin-top: 4px; }
+.rule { display: grid; gap: 14px; margin-top: 4px; }
+.rule :deep(.vx-segmented) { flex-wrap: wrap; }
 .add { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; padding: 14px; margin-top: 12px; }
 </style>

@@ -1,6 +1,6 @@
 // The admin half of the bot's JSON API (ADR-0016): the session, API keys, and a channel's settings. Every call
 // needs the admin session cookie; writes also send its CSRF token (see `auth` in api.ts).
-import type { ChannelCommand } from './modules'
+import type { ChannelCommand, CommandRulePatch } from './modules'
 import { request, type ExplainReport, type Publication } from './api'
 
 const json = (method: string, body?: unknown): RequestInit => ({
@@ -188,6 +188,11 @@ export const admin = {
   unignore: (login: string, userId: string, everywhere = false) =>
     request<unknown>(`${at(login)}/ignored/${encodeURIComponent(userId)}${everywhere ? '?everywhere=true' : ''}`, json('DELETE')),
   channelCommands: (login: string) => request<{ commands: ChannelCommand[] }>(`${at(login)}/commands`),
+  setCommand: (login: string, name: string, patch: CommandRulePatch) =>
+    request<Pick<ChannelCommand, 'name' | 'enabled' | 'required_role' | 'allowed_roles'>>(
+      `${at(login)}/commands/${encodeURIComponent(name)}`,
+      json('PATCH', patch),
+    ),
   audit: (limit = 50) => request<{ entries: AuditEntry[] }>(`/audit?limit=${limit}`),
 
   explainAs: (body: { text: string; channel: string; as_user?: string; badges: string[]; run: boolean; context?: string }) =>

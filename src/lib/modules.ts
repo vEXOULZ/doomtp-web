@@ -2,13 +2,52 @@
 // (a pack's name doubles as its module name, so `module disable <pack>` turns the whole pack off). Custom commands
 // published one by one share the `custom` module.
 import type { Module } from './admin'
-import type { Pack, Publication } from './api'
+import type { Builtin, Pack, Publication } from './api'
 
 export interface ChannelCommand {
   name: string
   module: string
   summary: string | null
   enabled: boolean
+  /** The least role that may run it here: this channel's rule, else the bot-wide one, else the command's own. */
+  required_role?: string
+  /** When set, exactly these roles may run it instead. */
+  allowed_roles?: string[] | null
+  cooldowns?: Record<string, { tier_s: number; user_s: number }>
+  /** Twitch permissions it needs, and those the bot doesn't have here. */
+  requires?: string[]
+  missing?: string[]
+}
+
+export interface CommandRow extends ChannelCommand {
+  /** False: always on, no channel can turn it off. */
+  toggleable: boolean
+  /** No role and no cooldown to configure (the sentinel commands). */
+  fixedPolicy: boolean
+}
+
+/**
+ * A channel's commands with what the bot's reference says can be changed about each, by name. A command the
+ * reference doesn't list counts as changeable: the bot refuses what it must.
+ */
+export function commandRows(commands: ChannelCommand[], builtins: Pick<Builtin, 'name' | 'toggleable' | 'fixed_policy'>[]): CommandRow[] {
+  const byName = new Map(builtins.map((b) => [b.name, b]))
+  return commands
+    .map((c) => ({ ...c, toggleable: byName.get(c.name)?.toggleable ?? true, fixedPolicy: byName.get(c.name)?.fixed_policy ?? false }))
+    .sort((a, b) => a.name.localeCompare(b.name))
+}
+
+export const LOG_LEVELS = ['off', 'errors', 'output', 'invocations', 'all'] as const
+export type LogLevel = (typeof LOG_LEVELS)[number]
+
+/**
+ * A change to one command's rules here. `null` drops this channel's own setting, so the bot-wide one (or the
+ * command's default) applies again; a field left out stays as it is.
+ */
+export interface CommandRulePatch {
+  enabled?: boolean | null
+  required_role?: string | null
+  log_level?: LogLevel
 }
 
 export interface ModuleRow {
