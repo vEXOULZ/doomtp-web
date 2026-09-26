@@ -17,8 +17,11 @@ export interface Session {
   expires_at: number | null
   /** False when the bot has no admin password: nobody can sign in. */
   admin_enabled: boolean
-  /** Not sent yet: arrives with Twitch sign-in. Missing means the admin password, so admin. */
-  role?: 'moderator' | 'admin'
+  /** Who is behind the session (bot ADR-0017): the password is an admin with no user; a Twitch sign-in names the
+   *  user, and a moderator's `channels` are the logins they may manage (null: every channel). */
+  role?: 'moderator' | 'admin' | null
+  user?: { id: string; login: string } | null
+  channels?: string[] | null
 }
 
 export interface ApiKey {
@@ -80,7 +83,7 @@ export interface FilterEntry {
   /** Bot-wide entries show in every channel and can't be changed from one. */
   global: boolean
 }
-/** The bot sends bare user ids today; the richer shape is what it's been asked for (who, when, why). */
+/** Older bots send bare user ids; newer ones say who ignored them, when and why. */
 export type IgnoredRaw =
   | string
   | { user_id: string; login?: string | null; reason?: string | null; added_by?: string | null; added_by_login?: string | null; added_at?: number | null }
@@ -176,6 +179,12 @@ export const admin = {
   deleteFilter: (login: string, id: number) => request<unknown>(`${at(login)}/filters/${id}`, json('DELETE')),
 
   ignored: (login: string) => request<{ ignored: IgnoredRaw[]; ignored_everywhere: IgnoredRaw[] }>(`${at(login)}/ignored`),
+  /** Ignore a user here, or in every channel. */
+  ignore: (login: string, body: { login: string; everywhere?: boolean; reason?: string }) =>
+    request<{ user_id: string; login: string; everywhere: boolean }>(`${at(login)}/ignored`, json('POST', body)),
+  /** Stop ignoring a user here (or everywhere). A signed-in user may lift an ignore they set on themselves. */
+  unignore: (login: string, userId: string, everywhere = false) =>
+    request<unknown>(`${at(login)}/ignored/${encodeURIComponent(userId)}${everywhere ? '?everywhere=true' : ''}`, json('DELETE')),
   channelCommands: (login: string) => request<{ commands: ChannelCommand[] }>(`${at(login)}/commands`),
   audit: (limit = 50) => request<{ entries: AuditEntry[] }>(`/audit?limit=${limit}`),
 

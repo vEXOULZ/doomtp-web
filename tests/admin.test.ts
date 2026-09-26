@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ago } from '../src/lib/admin'
+import { ago, readIgnored } from '../src/lib/admin'
 import { ApiError, auth, request } from '../src/lib/api'
 
 describe('ago', () => {
@@ -50,5 +50,16 @@ describe('request', () => {
   it('keeps Retry-After on a 429', async () => {
     stub(new Response('{}', { status: 429, headers: { 'retry-after': '30' } }))
     await expect(request('/session', { method: 'POST' })).rejects.toMatchObject({ status: 429, retryAfter: 30 })
+  })
+})
+
+describe('readIgnored', () => {
+  it('reads bare ids from older bots', () => {
+    expect(readIgnored('2002', false)).toMatchObject({ userId: '2002', login: null, addedBy: null, self: false })
+  })
+  it('marks an ignore someone set on themselves', () => {
+    const entry = { user_id: '2001', login: 'alice', reason: null, added_by: '2001', added_by_login: 'alice', added_at: 1 }
+    expect(readIgnored(entry, true)).toMatchObject({ login: 'alice', self: true, everywhere: true })
+    expect(readIgnored({ ...entry, added_by: '1001' }, false).self).toBe(false)
   })
 })

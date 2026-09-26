@@ -1,6 +1,7 @@
-// Who may do what on the admin pages. Today the only way in is the bot's admin password, so everyone signed in is
-// an admin. Once the bot signs people in with Twitch (and says so in the session's `role`), a channel's moderators
-// get the moderator view: the day-to-day parts of their own channel, without the bot-wide controls.
+// Who may do what on the admin pages, as the bot decides it (ADR-0017). The admin password and bot admins signed in
+// with Twitch are admins; everyone else signed in with Twitch is a moderator of the channels in their session: the
+// day-to-day parts of those channels, without the bot-wide controls. The bot enforces all of this; the pages only
+// avoid offering what it would refuse.
 import { computed } from 'vue'
 import { session } from './session'
 
@@ -13,6 +14,7 @@ const NEEDS = {
   'triggers.edit': 'moderator',
   'filter.edit': 'moderator',
   'ignored.edit': 'moderator',
+  'ignored.everywhere': 'admin',
   'settings.chat': 'moderator',
   explain: 'moderator',
   audit: 'moderator',
@@ -30,3 +32,9 @@ const RANK: Record<Access, number> = { moderator: 1, admin: 2 }
 
 export const access = computed<Access>(() => session.role ?? 'admin')
 export const can = (action: Action) => RANK[access.value] >= RANK[NEEDS[action]]
+
+/** Whether this session manages a channel (a moderator only their own; an admin every one). */
+export const manages = (login: string) => session.channels === null || session.channels.includes(login.toLowerCase())
+
+/** Whether this is the signed-in user: they may lift an ignore they set on themselves. */
+export const isMe = (userId: string) => session.user?.id === userId

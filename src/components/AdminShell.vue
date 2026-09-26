@@ -3,7 +3,7 @@
 import { VxButton, VxSiteFooter, VxSiteShell, type NavItem } from '@vexoulz/ui'
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { logout } from '@/lib/session'
+import { logout, session } from '@/lib/session'
 
 defineProps<{ title: string; eyebrow?: string }>()
 const route = useRoute()
@@ -33,6 +33,7 @@ async function signOut() {
 <template>
   <VxSiteShell site="dtp" :nav="nav" sky="dim">
     <template #account>
+      <span v-if="session.user" class="who vx-muted">@{{ session.user.login }}<template v-if="session.role === 'moderator'"> · moderator</template></span>
       <VxButton variant="ghost" :loading="leaving" @click="signOut">Sign out</VxButton>
     </template>
     <div class="head">
@@ -46,6 +47,7 @@ async function signOut() {
 </template>
 
 <style scoped>
+.who { font-size: 12px; margin-right: 4px; white-space: nowrap; }
 .head { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 4px 16px; margin-bottom: 20px; }
 .head .vx-eyebrow { flex-basis: 100%; }
 .head h1 { font-size: 28px; margin: 0; flex: 1 1 auto; overflow-wrap: anywhere; }

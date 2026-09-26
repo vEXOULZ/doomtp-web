@@ -2,15 +2,15 @@
 // One channel: its status, the ban callout with rejoin, and tabs for settings, modules, published commands,
 // triggers and timers, the word filter and ignored users. Every change goes through the same services as chat.
 import {
-  VxButton, VxCallout, VxChip, VxDialog, VxEmptyState, VxField, VxInput, VxSelect, VxSkeleton, VxSwitch, VxTabs, useToast,
+  VxButton, VxCallout, VxCheckbox, VxChip, VxDialog, VxEmptyState, VxField, VxInput, VxSelect, VxSkeleton, VxSwitch, VxTabs, useToast,
 } from '@vexoulz/ui'
 import { computed, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AdminShell from '@/components/AdminShell.vue'
 import ChannelSettings from '@/components/ChannelSettings.vue'
 import ChatLine from '@/components/ChatLine.vue'
-import { can } from '@/lib/access'
-import { admin, ago, readIgnored, type Channel } from '@/lib/admin'
+import { can, isMe } from '@/lib/access'
+import { admin, ago, readIgnored, type Channel, type Ignored } from '@/lib/admin'
 import { api } from '@/lib/api'
 import { moduleRows, publishedRows } from '@/lib/modules'
 import { useLoad } from '@/lib/useLoad'
@@ -68,14 +68,17 @@ const tab = computed({
 
 // ── one helper for every change: run it, say so, refresh ──
 const busy = reactive(new Set<string>())
-async function act(key: string, run: () => Promise<unknown>, done: string) {
+/** Whether it worked: a failure is shown as a toast, and a form keeps what was typed. */
+async function act(key: string, run: () => Promise<unknown>, done: string): Promise<boolean> {
   busy.add(key)
   try {
     await run()
     toast.show(done)
     await reload()
+    return true
   } catch (e) {
     toast.show(e instanceof Error ? e.message : String(e), { kind: 'error', duration: 5000 })
+    return false
   } finally {
     busy.delete(key)
   }
@@ -132,11 +135,34 @@ const ACTIONS = ['mask', 'replace', 'tag', 'block'].map((v) => ({ value: v, labe
 const entry = reactive({ pattern: '', kind: 'word', action: 'mask', replacement: '' })
 async function addFilter() {
   if (!entry.pattern.trim()) return
-  await act('filter-add', () => admin.addFilter(props.login, { ...entry, pattern: entry.pattern.trim() }), `Added ${entry.pattern.trim()}`)
+  if (!(await act('filter-add', () => admin.addFilter(props.login, { ...entry, pattern: entry.pattern.trim() }), `Added ${entry.pattern.trim()}`))) return
   entry.pattern = ''
   entry.replacement = ''
 }
 const deletingFilter = ref<number | null>(null)
+
+// ── ignored users ──
+const ignoring = reactive({ login: '', reason: '', everywhere: false })
+async function ignore() {
+  const who = ignoring.login.trim().replace(/^@/, '')
+  if (!who) return
+  const ok = await act(
+    'ignore',
+    () => admin.ignore(props.login, { login: who, everywhere: ignoring.everywhere, reason: ignoring.reason.trim() || undefined }),
+    `Ignoring @${who}${ignoring.everywhere ? ' everywhere' : ''}`,
+  )
+  if (!ok) return
+  ignoring.login = ''
+  ignoring.reason = ''
+}
+const name = (u: Ignored) => (u.login ? `@${u.login}` : u.userId)
+/** A moderator lifts ignores in this channel, an admin also bot-wide ones; anyone may lift their own self-ignore. */
+const mayLift = (u: Ignored) => (u.self && isMe(u.userId)) || (can('ignored.edit') && (!u.everywhere || can('ignored.everywhere')))
+const lifting = ref<Ignored | null>(null)
+const lift = (u: Ignored) =>
+  act('unignore', () => admin.unignore(props.login, u.userId, u.everywhere), `${name(u)} isn't ignored ${u.everywhere ? 'anywhere' : 'here'} any more`).then(
+    (ok) => ok && (lifting.value = null),
+  )
 </script>
 
 <template>
@@ -329,11 +355,13 @@ const deletingFilter = ref<number | null>(null)
       <section v-else-if="tab === 'ignored'">
         <p class="vx-muted intro">
           Their messages are still logged but never run commands. Changed from chat with
-          <ChatLine :lines="`${sign}ignore add <user>`" :sign="sign" />.
+          <ChatLine :lines="`${sign}ignore add <user>`" :sign="sign" />; chatters can opt out with
+          <ChatLine :lines="`${sign}ignore me`" :sign="sign" /> and take it back with
+          <ChatLine :lines="`${sign}unignore me`" :sign="sign" />.
         </p>
         <div class="table-scroll vx-panel">
           <table class="vx-table">
-            <thead><tr><th>User</th><th>Where</th><th>Ignored by</th><th>When</th><th>Reason</th></tr></thead>
+            <thead><tr><th>User</th><th>Where</th><th>Ignored by</th><th>When</th><th>Reason</th><th></th></tr></thead>
             <tbody>
               <tr v-for="u in data.ignored" :key="`${u.everywhere}${u.userId}`">
                 <td>
@@ -345,15 +373,29 @@ const deletingFilter = ref<number | null>(null)
                   <VxChip v-if="u.self" tone="accent" title="They asked for it, so they can undo it themselves">themselves</VxChip>
                   <span v-else-if="u.addedByLogin">@{{ u.addedByLogin }}</span>
                   <span v-else-if="u.addedBy" class="vx-mono">{{ u.addedBy }}</span>
-                  <span v-else class="vx-muted">not reported</span>
+                  <span v-else class="vx-muted" title="Set with the admin password or an API key">admin</span>
                 </td>
                 <td class="vx-muted nowrap" :title="u.addedAt ? new Date(u.addedAt).toLocaleString() : undefined">{{ u.addedAt ? ago(u.addedAt) : '—' }}</td>
                 <td class="vx-muted wrap">{{ u.reason ?? '' }}</td>
+                <td class="end">
+                  <VxButton v-if="u.self && isMe(u.userId)" size="sm" @click="lifting = u">Stop ignoring me</VxButton>
+                  <VxButton v-else-if="mayLift(u)" size="sm" variant="ghost" @click="lifting = u">Unignore</VxButton>
+                </td>
               </tr>
-              <tr v-if="!data.ignored.length"><td colspan="5" class="vx-muted">Nobody is ignored here.</td></tr>
+              <tr v-if="!data.ignored.length"><td colspan="6" class="vx-muted">Nobody is ignored here.</td></tr>
             </tbody>
           </table>
         </div>
+        <form v-if="can('ignored.edit')" class="add vx-panel" @submit.prevent="ignore">
+          <VxField label="User">
+            <template #default="{ id }"><VxInput :id="id" v-model="ignoring.login" mono placeholder="twitch login" /></template>
+          </VxField>
+          <VxField label="Reason" class="grow">
+            <template #default="{ id }"><VxInput :id="id" v-model="ignoring.reason" placeholder="optional" /></template>
+          </VxField>
+          <VxCheckbox v-if="can('ignored.everywhere')" v-model="ignoring.everywhere" label="In every channel" />
+          <VxButton type="submit" variant="primary" :loading="busy.has('ignore')" :disabled="!ignoring.login.trim()">Ignore</VxButton>
+        </form>
       </section>
     </template>
 
@@ -374,6 +416,18 @@ const deletingFilter = ref<number | null>(null)
           :loading="busy.has('t-del')"
           @click="act('t-del', () => admin.deleteTrigger(login, deletingTrigger!), 'Trigger deleted').then(() => (deletingTrigger = null))"
         >Delete</VxButton>
+      </template>
+    </VxDialog>
+    <VxDialog
+      :open="lifting !== null"
+      :title="lifting && isMe(lifting.userId) ? 'Stop ignoring you?' : `Unignore ${lifting ? name(lifting) : ''}?`"
+      @update:open="(v: boolean) => { if (!v) lifting = null }"
+    >
+      <template v-if="lifting && isMe(lifting.userId)">The bot answers your commands here again.</template>
+      <template v-else>The bot answers their commands {{ lifting?.everywhere ? 'in every channel' : 'here' }} again.</template>
+      <template #actions="{ close }">
+        <VxButton @click="close">Cancel</VxButton>
+        <VxButton variant="primary" :loading="busy.has('unignore')" @click="lift(lifting!)">Unignore</VxButton>
       </template>
     </VxDialog>
     <VxDialog :open="deletingFilter !== null" title="Delete this filter entry?" @update:open="(v: boolean) => { if (!v) deletingFilter = null }">
@@ -405,6 +459,9 @@ const deletingFilter = ref<number | null>(null)
 .sub:first-child { margin-top: 0; }
 .mod .vx-chip { margin-left: 6px; }
 .modules .cmds :deep(code) { display: inline-block; margin: 2px 10px 2px 0; white-space: nowrap; }
+.grow { flex: 1 1 14rem; }
+.grow :deep(.vx-input-wrap), .grow :deep(input) { width: 100%; }
+.add :deep(.vx-checkbox) { align-self: center; }
 .unknown { display: inline-flex; align-items: center; gap: 6px; }
 .add { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; padding: 14px; margin-top: 12px; }
 </style>

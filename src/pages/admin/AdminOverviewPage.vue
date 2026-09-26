@@ -10,14 +10,20 @@ import { useLoad } from '@/lib/useLoad'
 
 const toast = useToast()
 const { data, error, reload } = useLoad(async () => {
-  const [ready, channels, keys, audit] = await Promise.all([health(), admin.channels(), admin.keys(), admin.audit(8)])
-  return { ready, channels: channels.channels, keys: keys.keys, audit: audit.entries }
+  // A moderator gets neither health nor API keys from the bot, so those aren't asked for.
+  const [ready, channels, keys, audit] = await Promise.all([
+    can('health') ? health() : null,
+    admin.channels(),
+    can('keys') ? admin.keys() : null,
+    admin.audit(8),
+  ])
+  return { ready, channels: channels.channels, keys: keys?.keys ?? [], audit: audit.entries }
 })
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e))
 
 // ── health ──
 const components = computed(() =>
-  Object.entries(data.value?.ready.components ?? {}).map(([name, c]) => {
+  Object.entries(data.value?.ready?.components ?? {}).map(([name, c]) => {
     const { status, ...detail } = c
     return { name, status, detail: Object.entries(detail).map(([k, v]) => `${k}=${typeof v === 'object' ? JSON.stringify(v) : v}`).join(' ') }
   }),
