@@ -5,15 +5,27 @@ export class ApiError extends Error {
   constructor(
     readonly status: number,
     message: string,
+    /** Seconds, from Retry-After (a rate-limited login). */
+    readonly retryAfter: number | null = null,
   ) {
     super(message)
   }
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+// Writes made with the admin cookie need the session's CSRF token (lib/session.ts sets it), and a 401 means
+// the session is gone, which the session module hears about through `onUnauthorized`.
+export const auth = {
+  csrf: null as string | null,
+  onUnauthorized: null as (() => void) | null,
+}
+
+export async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const headers = new Headers(init.headers)
+  const method = (init.method ?? 'GET').toUpperCase()
+  if (method !== 'GET' && auth.csrf) headers.set('X-CSRF-Token', auth.csrf)
   let response: Response
   try {
-    response = await fetch(`/api/v1${path}`, { credentials: 'same-origin', ...init })
+    response = await fetch(`/api/v1${path}`, { credentials: 'same-origin', ...init, headers })
   } catch {
     throw new ApiError(0, "Couldn't reach the bot.")
   }
@@ -22,12 +34,17 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     try {
       const body = (await response.json()) as { detail?: unknown }
       if (typeof body.detail === 'string') detail = body.detail
+      else if (Array.isArray(body.detail)) detail = body.detail.map((d: { msg?: string }) => d.msg).filter(Boolean).join('; ') || detail
     } catch {
       /* not JSON: keep the status line */
     }
-    throw new ApiError(response.status, detail)
+    if (response.status === 401) auth.onUnauthorized?.()
+    const retry = Number(response.headers.get('retry-after'))
+    throw new ApiError(response.status, detail, Number.isFinite(retry) && retry > 0 ? retry : null)
   }
-  return (await response.json()) as T
+  if (response.status === 204) return undefined as T
+  const text = await response.text()
+  return (text ? JSON.parse(text) : undefined) as T
 }
 
 const get = <T>(path: string) => request<T>(path)

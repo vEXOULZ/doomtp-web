@@ -32,7 +32,21 @@ The same URLs as the bot's own pages, so links already out there keep working (c
 | `/explain/:token` | the report behind a chat `explain` link |
 | anything else | 404 |
 
-Admin pages (sign-in, channels, API keys, a channel's modules, triggers and filters) come next.
+### Admin
+
+Not linked from the public pages. Everything under `/admin` except the sign-in page needs the bot's admin session
+(its one shared password, `ADMIN_PASSWORD` or `ADMIN_PASSWORD_FILE`); without it you are sent to `/admin/login` and back afterwards.
+
+| path | what |
+|---|---|
+| `/admin/login` | sign in with the admin password |
+| `/admin` | health, the channels (join one), API keys (create, revoke), recent changes |
+| `/admin/channels/:login` | one channel: settings, modules, published packs, triggers and timers, word filter, ignored users; leave or rejoin |
+| `/admin/explain` | explain an expression as a chatter you name, with the badges you pick, and optionally run it |
+| `/admin/audit` | the latest 200 configuration changes, from chat, here or an API key |
+
+The session is the bot's cookie (`/api/v1/session`); every write sends the CSRF token it returns as
+`X-CSRF-Token`. When the session runs out, the next request sends you to sign in again.
 
 ## The bot, same origin
 
