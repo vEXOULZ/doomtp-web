@@ -147,7 +147,7 @@ async function revoke() {
           <VxInput id="join-login" v-model="joinLogin" placeholder="channel login" mono />
           <VxButton type="submit" :loading="joining" :disabled="!joinLogin.trim()">Join channel</VxButton>
         </form>
-        <p class="vx-muted small">The same as <code>join</code> in chat: the bot joins and subscribes to the channel's events.</p>
+        <p v-if="can('channel.join')" class="vx-muted small">The same as <code>join</code> in chat: the bot joins and subscribes to the channel's events.</p>
       </section>
 
       <section v-if="can('keys')">

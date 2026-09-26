@@ -9,7 +9,7 @@ import { useRoute, useRouter } from 'vue-router'
 import AdminShell from '@/components/AdminShell.vue'
 import ChannelSettings from '@/components/ChannelSettings.vue'
 import ChatLine from '@/components/ChatLine.vue'
-import { can, isMe } from '@/lib/access'
+import { can, isMe, manages } from '@/lib/access'
 import { admin, ago, readIgnored, type Channel, type Ignored } from '@/lib/admin'
 import { api } from '@/lib/api'
 import { moduleRows, publishedRows } from '@/lib/modules'
@@ -20,8 +20,12 @@ const route = useRoute()
 const router = useRouter()
 const toast = useToast()
 
+// A moderator's session lists their channels: another channel's page would only be refused, so it isn't loaded.
+const notMine = computed(() => !manages(props.login))
+
 const { data, error, status, reload } = useLoad(
   async () => {
+    if (notMine.value) return null
     const [channel, modules, commands, packs, publications, triggers, filters, ignored, roles] = await Promise.all([
       admin.channel(props.login),
       admin.modules(props.login),
@@ -172,7 +176,12 @@ const lift = (u: Ignored) =>
       <VxButton v-if="data && can('channel.part')" variant="danger" @click="partOpen = true">Leave channel</VxButton>
     </template>
 
-    <VxCallout v-if="error" tone="error" :title="status === 404 ? `The bot doesn't know #${login}` : `Couldn't load #${login}`">
+    <VxCallout v-if="notMine || status === 403" tone="warn" :title="`#${login} isn't one of your channels`">
+      You can manage the channels you own or moderate on Twitch. The bot checks that every few minutes, so if you became
+      a moderator there just now, reload this page in a little while.
+      <template #actions><RouterLink to="/admin" class="vx-btn is-sm">Your channels</RouterLink></template>
+    </VxCallout>
+    <VxCallout v-else-if="error" tone="error" :title="status === 404 ? `The bot doesn't know #${login}` : `Couldn't load #${login}`">
       {{ error }}
       <template #actions>
         <RouterLink v-if="status === 404" to="/admin" class="vx-btn is-sm">All channels</RouterLink>

@@ -9,6 +9,8 @@ const state = reactive({
   authenticated: false,
   /** False when the bot has no admin password set. */
   enabled: true,
+  /** Whether the bot offers signing in with Twitch. */
+  twitchLogin: false,
   expiresAt: null as number | null,
   /** What the session may do (see access.ts); an older bot doesn't say, which means admin. */
   role: null as 'moderator' | 'admin' | null,
@@ -25,6 +27,7 @@ function apply(s: Session) {
   state.checked = true
   state.authenticated = s.authenticated
   state.enabled = s.admin_enabled
+  state.twitchLogin = !!s.twitch_login
   state.expiresAt = s.expires_at
   state.role = s.role ?? null
   state.user = s.user ?? null
@@ -60,6 +63,23 @@ export function ensure(): Promise<void> {
     })
     .finally(() => (pending = null))
   return pending
+}
+
+/**
+ * Where the Twitch sign-in starts: the bot sends the person to Twitch and back to its own callback, which sets the
+ * session cookie and lands on `next` (a path on this site), or on /admin/login?error=<reason> when it fails.
+ */
+export function twitchLoginUrl(next: string): string {
+  return `/auth/admin/login?${new URLSearchParams({ next })}`
+}
+
+/** Why a Twitch sign-in came back to the sign-in page (`?error=` from the bot's callback). */
+export const SIGNIN_ERRORS: Record<string, string> = {
+  denied: 'The sign-in was cancelled on Twitch.',
+  expired: 'The sign-in took too long, or was finished in another browser. Try again.',
+  twitch: "Twitch didn't answer. Try again in a moment.",
+  no_channels: "That Twitch account doesn't own or moderate any channel the bot is in.",
+  not_configured: "Signing in with Twitch isn't set up on this bot.",
 }
 
 export async function login(password: string): Promise<void> {

@@ -34,12 +34,19 @@ The same URLs as the bot's own pages, so links already out there keep working (c
 
 ### Admin
 
-Not linked from the public pages. Everything under `/admin` except the sign-in page needs the bot's admin session
-(its one shared password, `ADMIN_PASSWORD` or `ADMIN_PASSWORD_FILE`); without it you are sent to `/admin/login` and back afterwards.
+Not linked from the public pages. Everything under `/admin` except the sign-in page needs a session with the bot;
+without one you are sent to `/admin/login` and back afterwards. There are two ways in (the bot's ADR-0017):
+
+- **Sign in with Twitch** (`/auth/admin/login` on the bot, offered when the bot's `/api/v1/session` says
+  `twitch_login`). The bot's owners and admins get the admin view; anyone else who owns or moderates a channel the
+  bot is in gets the **moderator** view of those channels only: settings, modules, triggers, filters and ignored
+  users, but not joining or leaving channels, the logging and "who may" settings, API keys or health. The bot
+  refuses those itself; the pages just don't offer them. Failures come back as `/admin/login?error=<reason>`.
+- **The admin password** (`ADMIN_PASSWORD` or `ADMIN_PASSWORD_FILE`): the admin view.
 
 | path | what |
 |---|---|
-| `/admin/login` | sign in with the admin password |
+| `/admin/login` | sign in with Twitch, or with the admin password |
 | `/admin` | health, the channels (join one), API keys (create, revoke), recent changes |
 | `/admin/channels/:login` | one channel: settings, modules, published packs, triggers and timers, word filter, ignored users; leave or rejoin |
 | `/admin/explain` | explain an expression as a chatter you name, with the badges you pick, and optionally run it |
@@ -72,6 +79,10 @@ In `npm run dev`, Vite forwards those paths to `VITE_DEV_BOT_TARGET` (see `.env.
 docker compose --profile test up -d postgres-test
 python scripts/dev_api.py
 ```
+
+It has no Twitch sign-in; for the moderator view, open `http://127.0.0.1:8080/dev/login-as?user=alice` (a
+moderator of `vexoulz`), then this site at `http://127.0.0.1:5176/admin`: the session cookie belongs to the host,
+so use `127.0.0.1` for both, not `localhost`.
 
 ## Publishing
 
