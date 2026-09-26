@@ -15,17 +15,6 @@
   --vx-font-sans: 'Twemoji Sign', 'Geist Variable', 'Geist', 'Vx Twemoji', system-ui, sans-serif;
   --vx-font-mono: 'Twemoji Sign', 'Geist Mono Variable', 'Geist Mono', 'Vx Twemoji', ui-monospace, Consolas, monospace;
 }
-html,
-body {
-  margin: 0;
-  background: var(--vx-bg);
-}
-
-/* The shell's min-height: 100% needs a sized parent. */
-#app > .vx-site {
-  min-height: 100dvh;
-}
-
 /* ---------- Command text (components/ChatLine.vue) ----------
    The bot's lexer token classes, in the colours its editor gives them (web-editor/src/theme.js), so a line
    looks the same in the editor and on the page. */

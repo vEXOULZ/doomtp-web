@@ -1,20 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ago, readIgnored } from '../src/lib/admin'
+import { readIgnored } from '../src/lib/admin'
 import { ApiError, auth, request } from '../src/lib/api'
-
-describe('ago', () => {
-  const now = Date.UTC(2026, 8, 26, 12)
-  it('counts seconds, minutes and hours, then gives the date', () => {
-    expect(ago(now - 12_000, now)).toBe('12s ago')
-    expect(ago(now - 5 * 60_000, now)).toBe('5 min ago')
-    expect(ago(now - 3 * 3_600_000, now)).toBe('3 h ago')
-    expect(ago(now - 3 * 86_400_000, now)).toBe('2026-09-23')
-  })
-  it('shows a dash for nothing and never a negative age', () => {
-    expect(ago(null, now)).toBe('—')
-    expect(ago(now + 5_000, now)).toBe('0s ago')
-  })
-})
 
 describe('request', () => {
   afterEach(() => {

@@ -203,12 +203,3 @@ export async function health(): Promise<Health> {
   return (await response.json()) as Health
 }
 
-/** "12s ago", "5 min ago", "3 h ago", then the date. */
-export function ago(ms: number | null | undefined, now = Date.now()): string {
-  if (!ms) return '—'
-  const s = Math.round((now - ms) / 1000)
-  if (s < 60) return `${Math.max(s, 0)}s ago`
-  if (s < 3600) return `${Math.floor(s / 60)} min ago`
-  if (s < 86400) return `${Math.floor(s / 3600)} h ago`
-  return new Date(ms).toISOString().slice(0, 10)
-}

@@ -3,7 +3,7 @@
 // triggers and timers, the word filter and ignored users. Every change goes through the same services as chat.
 import {
   VxButton, VxCallout, VxCheckbox, VxChip, VxDialog, VxEmptyState, VxField, VxInput, VxSegmented, VxSelect, VxSkeleton, VxSwitch, VxTabs,
-  useToast,
+  timeAgo, useToast,
 } from '@vexoulz/ui'
 import { computed, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -11,7 +11,7 @@ import AdminShell from '@/components/AdminShell.vue'
 import ChannelSettings from '@/components/ChannelSettings.vue'
 import ChatLine from '@/components/ChatLine.vue'
 import { can, isMe, manages } from '@/lib/access'
-import { admin, ago, readIgnored, type Channel, type Ignored } from '@/lib/admin'
+import { admin, readIgnored, type Channel, type Ignored } from '@/lib/admin'
 import { api, errorMessage } from '@/lib/api'
 import { commandRows, LOG_LEVELS, moduleRows, publishedRows, type CommandRow, type CommandRulePatch } from '@/lib/modules'
 import { useLoad } from '@/lib/useLoad'
@@ -479,7 +479,7 @@ const lift = (u: Ignored) =>
                   <span v-else-if="u.addedBy" class="vx-mono">{{ u.addedBy }}</span>
                   <span v-else class="vx-muted" title="Set with the admin password or an API key">admin</span>
                 </td>
-                <td class="vx-muted nowrap" :title="u.addedAt ? new Date(u.addedAt).toLocaleString() : undefined">{{ u.addedAt ? ago(u.addedAt) : '—' }}</td>
+                <td class="vx-muted nowrap" :title="u.addedAt ? new Date(u.addedAt).toLocaleString() : undefined">{{ timeAgo(u.addedAt) }}</td>
                 <td class="vx-muted wrap">{{ u.reason ?? '' }}</td>
                 <td class="end">
                   <VxButton v-if="u.self && isMe(u.userId)" size="sm" @click="lifting = u">Stop ignoring me</VxButton>
