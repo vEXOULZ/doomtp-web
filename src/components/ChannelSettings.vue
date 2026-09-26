@@ -2,6 +2,7 @@
 // A channel's settings as a form: only what changed is sent, as one PATCH, the same change `config` makes in chat.
 import { VxButton, VxField, VxInput, VxSegmented, VxSelect, VxStepper, VxSwitch, useToast } from '@vexoulz/ui'
 import { computed, reactive, shallowRef, watch } from 'vue'
+import { can } from '@/lib/access'
 import { admin, type Channel, type ChannelPatch } from '@/lib/admin'
 
 const props = defineProps<{ channel: Channel; roles: string[] }>()
@@ -106,8 +107,8 @@ const ROLE_FIELDS: [keyof Form, string, string][] = [
 
     <div class="group vx-panel">
       <h3 class="vx-eyebrow">Logging</h3>
-      <VxSwitch v-model="form.log_enabled" label="Keep a chat log (for search and logsearch)" />
-      <VxSwitch v-model="form.history_backfill" label="Backfill: fill gaps from a history service" />
+      <VxSwitch v-model="form.log_enabled" :disabled="!can('settings.logging')" label="Keep a chat log (for search and logsearch)" />
+      <VxSwitch v-model="form.history_backfill" :disabled="!can('settings.logging')" label="Backfill: fill gaps from a history service" />
       <h3 class="vx-eyebrow">Automod</h3>
       <VxField label="Messages the word filter blocks">
         <template #default><VxSegmented v-model="form.automod_action" :options="AUTOMOD" label="Automod action" /></template>
@@ -124,6 +125,7 @@ const ROLE_FIELDS: [keyof Form, string, string][] = [
         <VxSelect
           :model-value="String(form[key])"
           :options="roleOptions"
+          :disabled="!can('settings.roles')"
           size="sm"
           width="180px"
           align="right"

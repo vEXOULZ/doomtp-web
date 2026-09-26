@@ -1,5 +1,6 @@
 // The admin half of the bot's JSON API (ADR-0016): the session, API keys, and a channel's settings. Every call
 // needs the admin session cookie; writes also send its CSRF token (see `auth` in api.ts).
+import type { ChannelCommand } from './modules'
 import { request, type ExplainReport, type Publication } from './api'
 
 const json = (method: string, body?: unknown): RequestInit => ({
@@ -16,6 +17,8 @@ export interface Session {
   expires_at: number | null
   /** False when the bot has no admin password: nobody can sign in. */
   admin_enabled: boolean
+  /** Not sent yet: arrives with Twitch sign-in. Missing means the admin password, so admin. */
+  role?: 'moderator' | 'admin'
 }
 
 export interface ApiKey {
@@ -77,6 +80,36 @@ export interface FilterEntry {
   /** Bot-wide entries show in every channel and can't be changed from one. */
   global: boolean
 }
+/** The bot sends bare user ids today; the richer shape is what it's been asked for (who, when, why). */
+export type IgnoredRaw =
+  | string
+  | { user_id: string; login?: string | null; reason?: string | null; added_by?: string | null; added_by_login?: string | null; added_at?: number | null }
+export interface Ignored {
+  userId: string
+  login: string | null
+  reason: string | null
+  addedBy: string | null
+  addedByLogin: string | null
+  addedAt: number | null
+  /** They asked to be ignored themselves, so they may take it back. */
+  self: boolean
+  everywhere: boolean
+}
+export function readIgnored(raw: IgnoredRaw, everywhere: boolean): Ignored {
+  const e = typeof raw === 'string' ? { user_id: raw } : raw
+  const addedBy = e.added_by ?? null
+  return {
+    userId: e.user_id,
+    login: e.login ?? null,
+    reason: e.reason ?? null,
+    addedBy,
+    addedByLogin: e.added_by_login ?? null,
+    addedAt: e.added_at ?? null,
+    self: addedBy !== null && addedBy === e.user_id,
+    everywhere,
+  }
+}
+
 export interface Trigger {
   id: number
   type: string
@@ -142,7 +175,8 @@ export const admin = {
     request<unknown>(`${at(login)}/filters/${id}`, json('PATCH', { enabled })),
   deleteFilter: (login: string, id: number) => request<unknown>(`${at(login)}/filters/${id}`, json('DELETE')),
 
-  ignored: (login: string) => request<{ ignored: string[]; ignored_everywhere: string[] }>(`${at(login)}/ignored`),
+  ignored: (login: string) => request<{ ignored: IgnoredRaw[]; ignored_everywhere: IgnoredRaw[] }>(`${at(login)}/ignored`),
+  channelCommands: (login: string) => request<{ commands: ChannelCommand[] }>(`${at(login)}/commands`),
   audit: (limit = 50) => request<{ entries: AuditEntry[] }>(`/audit?limit=${limit}`),
 
   explainAs: (body: { text: string; channel: string; as_user?: string; badges: string[]; run: boolean; context?: string }) =>

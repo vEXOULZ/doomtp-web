@@ -10,6 +10,8 @@ const state = reactive({
   /** False when the bot has no admin password set. */
   enabled: true,
   expiresAt: null as number | null,
+  /** What the session may do (see access.ts); the bot doesn't send it yet, which means admin. */
+  role: null as 'moderator' | 'admin' | null,
   /** Why the admin was sent to the sign-in page (an expired session). */
   notice: null as string | null,
 })
@@ -20,6 +22,7 @@ function apply(s: Session) {
   state.authenticated = s.authenticated
   state.enabled = s.admin_enabled
   state.expiresAt = s.expires_at
+  state.role = s.role ?? null
   auth.csrf = s.csrf
 }
 

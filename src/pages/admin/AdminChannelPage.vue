@@ -9,8 +9,10 @@ import { useRoute, useRouter } from 'vue-router'
 import AdminShell from '@/components/AdminShell.vue'
 import ChannelSettings from '@/components/ChannelSettings.vue'
 import ChatLine from '@/components/ChatLine.vue'
-import { admin, type Channel } from '@/lib/admin'
+import { can } from '@/lib/access'
+import { admin, ago, readIgnored, type Channel } from '@/lib/admin'
 import { api } from '@/lib/api'
+import { moduleRows, publishedRows } from '@/lib/modules'
 import { useLoad } from '@/lib/useLoad'
 
 const props = defineProps<{ login: string }>()
@@ -20,9 +22,11 @@ const toast = useToast()
 
 const { data, error, status, reload } = useLoad(
   async () => {
-    const [channel, modules, publications, triggers, filters, ignored, roles] = await Promise.all([
+    const [channel, modules, commands, packs, publications, triggers, filters, ignored, roles] = await Promise.all([
       admin.channel(props.login),
       admin.modules(props.login),
+      admin.channelCommands(props.login),
+      api.channelPacks(props.login),
       admin.publications(props.login),
       admin.triggers(props.login),
       admin.filters(props.login),
@@ -31,11 +35,15 @@ const { data, error, status, reload } = useLoad(
     ])
     return {
       channel,
-      modules: modules.modules,
-      publications: publications.publications,
+      modules: moduleRows(modules.modules, commands.commands, packs.packs, publications.publications),
+      published: publishedRows(packs.packs, publications.publications),
       triggers: triggers.triggers,
-      filters: filters.filters,
-      ignored,
+      filters: filters.filters.filter((f) => !f.global),
+      globalFilters: filters.filters.filter((f) => f.global),
+      ignored: [
+        ...ignored.ignored.map((e) => readIgnored(e, false)),
+        ...ignored.ignored_everywhere.map((e) => readIgnored(e, true)),
+      ],
       // A channel setting can require any built-in role up to the broadcaster.
       roles: roles.roles.filter((r) => r.rank <= 100).map((r) => r.name),
     }
@@ -73,6 +81,8 @@ async function act(key: string, run: () => Promise<unknown>, done: string) {
   }
 }
 const onOff = (on: boolean) => (on ? 'on' : 'off')
+const setModule = (name: string, on: boolean) =>
+  act(`m:${name}`, () => admin.setModule(props.login, name, on), `${name} turned ${onOff(on)}`)
 
 const statusChips = computed(() => {
   const c = data.value?.channel
@@ -133,7 +143,7 @@ const deletingFilter = ref<number | null>(null)
   <AdminShell :title="`#${login}`" eyebrow="Admin · channel">
     <template #actions>
       <RouterLink :to="`/channels/${login}`" class="vx-btn">Public page</RouterLink>
-      <VxButton v-if="data" variant="danger" @click="partOpen = true">Leave channel</VxButton>
+      <VxButton v-if="data && can('channel.part')" variant="danger" @click="partOpen = true">Leave channel</VxButton>
     </template>
 
     <VxCallout v-if="error" tone="error" :title="status === 404 ? `The bot doesn't know #${login}` : `Couldn't load #${login}`">
@@ -153,28 +163,49 @@ const deletingFilter = ref<number | null>(null)
       <VxCallout v-if="data.channel.banned" tone="error" title="The bot left because it was banned here">
         Twitch refused one of its messages with 403. It stays out until someone brings it back on purpose. Unban it
         first: if it's still banned, the next message it sends makes it leave again.
-        <template #actions><VxButton size="sm" :loading="busy.has('rejoin')" @click="rejoin">Rejoin #{{ login }}</VxButton></template>
+        <template v-if="can('channel.join')" #actions><VxButton size="sm" :loading="busy.has('rejoin')" @click="rejoin">Rejoin #{{ login }}</VxButton></template>
       </VxCallout>
 
       <VxTabs v-model="tab" :options="TABS" label="Channel sections" class="tabs" />
 
       <ChannelSettings v-if="tab === 'settings'" :channel="data.channel" :roles="data.roles" @saved="saved" />
 
-      <section v-else-if="tab === 'modules'" class="narrow">
-        <p class="vx-muted intro">Turning a module off here is the same as <ChatLine :lines="`${sign}module disable <name>`" :sign="sign" /> in chat.</p>
+      <section v-else-if="tab === 'modules'">
+        <p class="vx-muted intro">
+          Built-in modules and the packs published here. Turning one off is the same as
+          <ChatLine :lines="`${sign}module disable <name>`" :sign="sign" /> in chat, and turns off every command it
+          covers.
+        </p>
         <div class="table-scroll vx-panel">
-          <table class="vx-table">
+          <table class="vx-table modules">
+            <thead><tr><th>Module</th><th>Commands</th><th class="end">On</th></tr></thead>
             <tbody>
-              <tr v-for="m in data.modules" :key="m.module">
-                <td class="vx-mono">{{ m.module }}</td>
+              <tr v-for="m in data.modules" :key="m.name">
+                <td class="mod">
+                  <span class="vx-mono">{{ m.name }}</span>
+                  <VxChip v-if="m.kind === 'pack'" :tone="m.scope === 'global' ? 'default' : 'accent'">{{ m.scope === 'global' ? 'pack · everywhere' : 'pack' }}</VxChip>
+                  <VxChip v-else-if="m.kind === 'custom'">custom</VxChip>
+                  <div v-if="m.summary || m.owners.length" class="vx-muted small">
+                    {{ m.summary }}<template v-if="m.owners.length"> · by {{ m.owners.map((o) => `@${o}`).join(', ') }}</template>
+                  </div>
+                </td>
+                <td class="cmds">
+                  <ChatLine v-for="c in m.commands" :key="c" :lines="`${sign}${c}`" :sign="sign" />
+                  <span v-if="!m.commands.length" class="vx-muted small">none</span>
+                </td>
                 <td class="end">
                   <span v-if="!m.toggleable" class="vx-muted small">always on</span>
                   <VxSwitch
-                    v-else
+                    v-else-if="m.enabled !== null"
                     :model-value="m.enabled"
-                    :disabled="busy.has(`m:${m.module}`)"
-                    @update:model-value="(on: boolean) => act(`m:${m.module}`, () => admin.setModule(login, m.module, on), `${m.module} turned ${onOff(on)}`)"
-                  ><span class="sr-only">Module {{ m.module }}</span></VxSwitch>
+                    :disabled="!can('modules.toggle') || busy.has(`m:${m.name}`)"
+                    @update:model-value="(on: boolean) => setModule(m.name, on)"
+                  ><span class="sr-only">Module {{ m.name }}</span></VxSwitch>
+                  <span v-else class="unknown">
+                    <span class="vx-muted small" title="The bot doesn't report whether this one is on yet">state not reported</span>
+                    <VxButton size="sm" :disabled="!can('modules.toggle') || busy.has(`m:${m.name}`)" @click="setModule(m.name, true)">On</VxButton>
+                    <VxButton size="sm" :disabled="!can('modules.toggle') || busy.has(`m:${m.name}`)" @click="setModule(m.name, false)">Off</VxButton>
+                  </span>
                 </td>
               </tr>
             </tbody>
@@ -183,30 +214,30 @@ const deletingFilter = ref<number | null>(null)
       </section>
 
       <section v-else-if="tab === 'commands'">
-        <VxEmptyState v-if="!data.publications.length" title="Nothing published here" text="Custom commands published to this channel show up here." />
-        <div v-else class="table-scroll vx-panel">
-          <table class="vx-table">
-            <thead><tr><th>Command</th><th>By</th><th>Version</th><th>State</th><th></th></tr></thead>
-            <tbody>
-              <tr v-for="p in data.publications" :key="p.id">
-                <td><ChatLine :lines="`${sign}${p.published_as}`" :sign="sign" /></td>
-                <td class="vx-muted">@{{ p.owner }}</td>
-                <td class="vx-mono vx-muted">v{{ p.version }}</td>
-                <td><VxChip :tone="p.status === 'active' ? 'ok' : 'default'">{{ p.status }}</VxChip></td>
-                <td class="end">
-                  <span v-if="p.status === 'orphaned'" class="vx-muted small">its owner deleted it</span>
-                  <VxButton
-                    v-else
-                    size="sm"
-                    :variant="p.status === 'active' ? 'danger' : 'default'"
-                    :loading="busy.has(`p:${p.published_as}`)"
-                    @click="act(`p:${p.published_as}`, () => admin.setPublication(login, p.published_as, p.status !== 'active'), `${p.published_as} ${p.status === 'active' ? 'disabled' : 'enabled'}`)"
-                  >{{ p.status === 'active' ? 'Disable' : 'Enable' }}</VxButton>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <VxEmptyState v-if="!data.published.length" title="Nothing published here" text="Custom commands and packs published to this channel show up here." />
+        <template v-else>
+          <p class="vx-muted intro">Custom commands chat can run here. They turn on and off with their module, on the Modules tab.</p>
+          <div class="table-scroll vx-panel">
+            <table class="vx-table">
+              <thead><tr><th>Command</th><th>Module</th><th>By</th><th>Version</th><th>State</th></tr></thead>
+              <tbody>
+                <tr v-for="p in data.published" :key="`${p.module}/${p.name}`">
+                  <td>
+                    <ChatLine :lines="`${sign}${p.name}`" :sign="sign" />
+                    <div v-if="p.summary" class="vx-muted small">{{ p.summary }}</div>
+                  </td>
+                  <td><RouterLink :to="{ query: { ...route.query, tab: 'modules' } }" class="vx-mono">{{ p.module }}</RouterLink></td>
+                  <td class="vx-muted">@{{ p.owner }}</td>
+                  <td class="vx-mono vx-muted">v{{ p.version }}</td>
+                  <td>
+                    <VxChip :tone="p.status === 'active' ? 'ok' : 'default'">{{ p.status }}</VxChip>
+                    <div v-if="p.status === 'orphaned'" class="vx-muted small">its owner deleted it</div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </template>
       </section>
 
       <section v-else-if="tab === 'triggers'">
@@ -228,11 +259,11 @@ const deletingFilter = ref<number | null>(null)
                 <td>
                   <VxSwitch
                     :model-value="t.enabled"
-                    :disabled="busy.has(`t:${t.id}`)"
+                    :disabled="!can('triggers.edit') || busy.has(`t:${t.id}`)"
                     @update:model-value="(on: boolean) => act(`t:${t.id}`, () => admin.setTrigger(login, t.id, on), `${t.type} turned ${onOff(on)}`)"
                   ><span class="sr-only">{{ t.type }} {{ t.id }}</span></VxSwitch>
                 </td>
-                <td class="end"><VxButton size="sm" variant="ghost" label="Delete" @click="deletingTrigger = t.id">Delete</VxButton></td>
+                <td class="end"><VxButton v-if="can('triggers.edit')" size="sm" variant="ghost" @click="deletingTrigger = t.id">Delete</VxButton></td>
               </tr>
             </tbody>
           </table>
@@ -240,31 +271,29 @@ const deletingFilter = ref<number | null>(null)
       </section>
 
       <section v-else-if="tab === 'filter'">
+        <h2 class="vx-eyebrow sub">This channel</h2>
         <div v-if="data.filters.length" class="table-scroll vx-panel">
           <table class="vx-table">
-            <thead><tr><th>Pattern</th><th>Kind</th><th>Action</th><th>Scope</th><th>On</th><th></th></tr></thead>
+            <thead><tr><th>Pattern</th><th>Kind</th><th>Action</th><th>On</th><th></th></tr></thead>
             <tbody>
               <tr v-for="f in data.filters" :key="f.id">
                 <td class="vx-mono wrap">{{ f.pattern }}</td>
                 <td>{{ f.kind }}</td>
                 <td>{{ f.action }}<span v-if="f.replacement" class="vx-muted"> → {{ f.replacement }}</span></td>
-                <td>{{ f.global ? 'bot-wide' : 'this channel' }}</td>
                 <td>
-                  <span v-if="f.global" class="vx-muted small">{{ onOff(f.enabled) }}</span>
                   <VxSwitch
-                    v-else
                     :model-value="f.enabled"
-                    :disabled="busy.has(`f:${f.id}`)"
+                    :disabled="!can('filter.edit') || busy.has(`f:${f.id}`)"
                     @update:model-value="(on: boolean) => act(`f:${f.id}`, () => admin.setFilter(login, f.id, on), `${f.pattern} turned ${onOff(on)}`)"
                   ><span class="sr-only">Filter {{ f.pattern }}</span></VxSwitch>
                 </td>
-                <td class="end"><VxButton v-if="!f.global" size="sm" variant="ghost" @click="deletingFilter = f.id">Delete</VxButton></td>
+                <td class="end"><VxButton v-if="can('filter.edit')" size="sm" variant="ghost" @click="deletingFilter = f.id">Delete</VxButton></td>
               </tr>
             </tbody>
           </table>
         </div>
-        <VxEmptyState v-else title="No filter entries" text="Add a word or pattern below." />
-        <form class="add vx-panel" @submit.prevent="addFilter">
+        <VxEmptyState v-else title="No entries for this channel" text="Add a word or pattern below." />
+        <form v-if="can('filter.edit')" class="add vx-panel" @submit.prevent="addFilter">
           <VxField label="Pattern">
             <template #default="{ id }"><VxInput :id="id" v-model="entry.pattern" mono placeholder="badword" /></template>
           </VxField>
@@ -275,22 +304,53 @@ const deletingFilter = ref<number | null>(null)
           </VxField>
           <VxButton type="submit" variant="primary" :loading="busy.has('filter-add')" :disabled="!entry.pattern.trim()">Add</VxButton>
         </form>
-      </section>
 
-      <section v-else-if="tab === 'ignored'" class="narrow">
+        <h2 class="vx-eyebrow sub">Bot-wide</h2>
         <p class="vx-muted intro">
-          Their messages are still logged but never run commands. Changed from chat with
-          <ChatLine :lines="`${sign}ignore <user>`" :sign="sign" />.
+          The bot's own list applies in every channel and can't be changed from one. An <code>allow</code> entry
+          above lets a word through here.
         </p>
         <div class="table-scroll vx-panel">
           <table class="vx-table">
-            <thead><tr><th>User id</th><th>Where</th></tr></thead>
+            <thead><tr><th>Pattern</th><th>Kind</th><th>Action</th><th>State</th></tr></thead>
             <tbody>
-              <tr v-for="id in data.ignored.ignored" :key="`c${id}`"><td class="vx-mono">{{ id }}</td><td>this channel</td></tr>
-              <tr v-for="id in data.ignored.ignored_everywhere" :key="`g${id}`"><td class="vx-mono">{{ id }}</td><td>every channel</td></tr>
-              <tr v-if="!data.ignored.ignored.length && !data.ignored.ignored_everywhere.length">
-                <td colspan="2" class="vx-muted">Nobody is ignored here.</td>
+              <tr v-for="f in data.globalFilters" :key="f.id">
+                <td class="vx-mono wrap">{{ f.pattern }}</td>
+                <td>{{ f.kind }}</td>
+                <td>{{ f.action }}<span v-if="f.replacement" class="vx-muted"> → {{ f.replacement }}</span></td>
+                <td><VxChip :tone="f.enabled ? 'ok' : 'default'">{{ onOff(f.enabled) }}</VxChip></td>
               </tr>
+              <tr v-if="!data.globalFilters.length"><td colspan="4" class="vx-muted">The bot-wide list is empty.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section v-else-if="tab === 'ignored'">
+        <p class="vx-muted intro">
+          Their messages are still logged but never run commands. Changed from chat with
+          <ChatLine :lines="`${sign}ignore add <user>`" :sign="sign" />.
+        </p>
+        <div class="table-scroll vx-panel">
+          <table class="vx-table">
+            <thead><tr><th>User</th><th>Where</th><th>Ignored by</th><th>When</th><th>Reason</th></tr></thead>
+            <tbody>
+              <tr v-for="u in data.ignored" :key="`${u.everywhere}${u.userId}`">
+                <td>
+                  <span v-if="u.login">@{{ u.login }}</span>
+                  <span v-else class="vx-mono">{{ u.userId }}</span>
+                </td>
+                <td>{{ u.everywhere ? 'every channel' : 'this channel' }}</td>
+                <td>
+                  <VxChip v-if="u.self" tone="accent" title="They asked for it, so they can undo it themselves">themselves</VxChip>
+                  <span v-else-if="u.addedByLogin">@{{ u.addedByLogin }}</span>
+                  <span v-else-if="u.addedBy" class="vx-mono">{{ u.addedBy }}</span>
+                  <span v-else class="vx-muted">not reported</span>
+                </td>
+                <td class="vx-muted nowrap" :title="u.addedAt ? new Date(u.addedAt).toLocaleString() : undefined">{{ u.addedAt ? ago(u.addedAt) : '—' }}</td>
+                <td class="vx-muted wrap">{{ u.reason ?? '' }}</td>
+              </tr>
+              <tr v-if="!data.ignored.length"><td colspan="5" class="vx-muted">Nobody is ignored here.</td></tr>
             </tbody>
           </table>
         </div>
@@ -340,7 +400,11 @@ const deletingFilter = ref<number | null>(null)
 .end { text-align: right; white-space: nowrap; }
 .wrap { overflow-wrap: anywhere; }
 .table-scroll > table { min-width: 30rem; }
-.narrow { max-width: 36rem; }
-.narrow .table-scroll > table { min-width: 0; }
+.nowrap { white-space: nowrap; }
+.sub { margin: 18px 0 8px; }
+.sub:first-child { margin-top: 0; }
+.mod .vx-chip { margin-left: 6px; }
+.modules .cmds :deep(code) { display: inline-block; margin: 2px 10px 2px 0; white-space: nowrap; }
+.unknown { display: inline-flex; align-items: center; gap: 6px; }
 .add { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; padding: 14px; margin-top: 12px; }
 </style>

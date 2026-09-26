@@ -3,6 +3,7 @@ import { VxButton, VxCallout, VxCheckbox, VxChip, VxDialog, VxField, VxInput, Vx
 import { computed, ref } from 'vue'
 import AdminShell from '@/components/AdminShell.vue'
 import AuditTable from '@/components/AuditTable.vue'
+import { can } from '@/lib/access'
 import { admin, ago, health, type ApiKey } from '@/lib/admin'
 import { ApiError } from '@/lib/api'
 import { useLoad } from '@/lib/useLoad'
@@ -102,7 +103,7 @@ async function revoke() {
     </VxCallout>
     <div v-else-if="!data" class="loading" aria-busy="true"><VxSkeleton v-for="i in 8" :key="i" h="38px" /></div>
     <template v-else>
-      <section>
+      <section v-if="can('health')">
         <h2 class="vx-eyebrow sec">Health</h2>
         <div class="table-scroll vx-panel">
           <table class="vx-table">
@@ -135,7 +136,7 @@ async function revoke() {
             </tbody>
           </table>
         </div>
-        <form class="row" @submit.prevent="join">
+        <form v-if="can('channel.join')" class="row" @submit.prevent="join">
           <label class="sr-only" for="join-login">Channel to join</label>
           <VxInput id="join-login" v-model="joinLogin" placeholder="channel login" mono />
           <VxButton type="submit" :loading="joining" :disabled="!joinLogin.trim()">Join channel</VxButton>
@@ -143,7 +144,7 @@ async function revoke() {
         <p class="vx-muted small">The same as <code>join</code> in chat: the bot joins and subscribes to the channel's events.</p>
       </section>
 
-      <section>
+      <section v-if="can('keys')">
         <h2 class="vx-eyebrow sec">API keys</h2>
         <p class="vx-muted small">
           Keys for <code>/api/v1</code>. A <code>read</code> key sees configuration and logs; a <code>write</code> key

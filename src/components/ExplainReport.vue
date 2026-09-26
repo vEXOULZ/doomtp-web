@@ -92,5 +92,4 @@ const from = (inv: ExplainInvocation) => (inv.owner ? `${inv.source} by ${inv.ow
 .line { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 8px; }
 .expr { font-size: 15px; }
 .bad { color: var(--vx-bad); }
-.report :deep(.vx-table) td { vertical-align: top; }
 </style>
