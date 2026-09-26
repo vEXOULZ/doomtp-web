@@ -3,7 +3,8 @@
 /* The bot's default command sign, 🏜, drawn as Twemoji everywhere text is: pages, inputs and the editor. Some
    platforms draw it as a flat monochrome glyph, a poor thing to hand somebody as "the character you type".
    A one-glyph cut of Mozilla's Twemoji font (public/fonts/ATTRIBUTION.md); unicode-range keeps it to that one
-   character, and since it is text, copying the sign still copies the sign. */
+   character, and since it is text, copying the sign still copies the sign. The library's own Twemoji face
+   ('Vx Twemoji') covers the other emoji but leaves text-default ones like 🏜 alone, hence this one. */
 @font-face {
   font-family: 'Twemoji Sign';
   src: url('/fonts/twemoji-sign.woff2') format('woff2');
@@ -11,8 +12,8 @@
   font-display: block;
 }
 :root {
-  --vx-font-sans: 'Twemoji Sign', 'Geist Variable', 'Geist', system-ui, sans-serif;
-  --vx-font-mono: 'Twemoji Sign', 'Geist Mono Variable', 'Geist Mono', ui-monospace, Consolas, monospace;
+  --vx-font-sans: 'Twemoji Sign', 'Geist Variable', 'Geist', 'Vx Twemoji', system-ui, sans-serif;
+  --vx-font-mono: 'Twemoji Sign', 'Geist Mono Variable', 'Geist Mono', 'Vx Twemoji', ui-monospace, Consolas, monospace;
 }
 html,
 body {
