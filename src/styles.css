@@ -29,14 +29,14 @@ body {
 /* ---------- Command text (components/ChatLine.vue) ----------
    The bot's lexer token classes, in the colours its editor gives them (web-editor/src/theme.js), so a line
    looks the same in the editor and on the page. */
-:root { --dtb-op: #ff7ab2; --dtb-var: #8ab4f8; --dtb-path: #b7cffb; --dtb-soft: #e8c35a; }
+:root { --dtb-op: #ff7ab2; --dtb-var: #8ab4f8; --dtb-path: #b7cffb; }
 .dtb { font-family: var(--vx-font-mono); }
 .dtb-prefix, .dtb-command { color: var(--vx-accent); font-weight: 600; }
 .dtb-prefix { font-synthesis: none; }
 .dtb-personal { color: var(--vx-accent); }
 .dtb-string { color: var(--vx-ok); }
 .dtb-ph-open, .dtb-ph-close { color: var(--vx-muted); }
-.dtb-escape, .dtb-ph-fallback { color: var(--dtb-soft); }
+.dtb-escape, .dtb-ph-fallback { color: var(--vx-warn); }
 .dtb-operator { color: var(--dtb-op); font-weight: 600; }
 .dtb-ph-root { color: var(--dtb-var); }
 .dtb-store-target { color: var(--dtb-var); font-style: italic; }

@@ -8,6 +8,7 @@ import ExplainReport from '@/components/ExplainReport.vue'
 import { admin, EXPLAIN_BADGES } from '@/lib/admin'
 import type { ExplainReport as Report } from '@/lib/api'
 import { useLoad } from '@/lib/useLoad'
+import { errorMessage } from '@/lib/api'
 
 const route = useRoute()
 const router = useRouter()
@@ -51,7 +52,7 @@ async function submit() {
     checkedAs.value = form.as_user.trim()
     router.replace({ query: { channel: form.channel } })
   } catch (e) {
-    error.value = e instanceof Error ? e.message : String(e)
+    error.value = errorMessage(e)
   } finally {
     busy.value = false
   }
@@ -112,7 +113,6 @@ async function submit() {
 .line { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: flex-start; }
 .line.end { align-items: center; }
 .grow { flex: 1 1 20rem; }
-.grow :deep(.vx-input-wrap), .grow :deep(input) { width: 100%; }
 .badges { display: flex; flex-wrap: wrap; gap: 6px 14px; border: 0; padding: 0; margin: 0; }
 .badges legend { padding: 0; margin-bottom: 6px; width: 100%; }
 .spacer { flex: 1; }
