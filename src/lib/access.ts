@@ -11,6 +11,7 @@ export type Access = 'moderator' | 'admin'
 const NEEDS = {
   // day-to-day moderation of a channel
   'modules.toggle': 'moderator',
+  'commands.edit': 'moderator',
   'triggers.edit': 'moderator',
   'filter.edit': 'moderator',
   'ignored.edit': 'moderator',

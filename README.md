@@ -39,7 +39,7 @@ without one you are sent to `/admin/login` and back afterwards. There are two wa
 
 - **Sign in with Twitch** (`/auth/admin/login` on the bot, offered when the bot's `/api/v1/session` says
   `twitch_login`). The bot's owners and admins get the admin view; anyone else who owns or moderates a channel the
-  bot is in gets the **moderator** view of those channels only: settings, modules, triggers, filters and ignored
+  bot is in gets the **moderator** view of those channels only: settings, modules, command rules, triggers, filters and ignored
   users, but not joining or leaving channels, the logging and "who may" settings, API keys or health. The bot
   refuses those itself; the pages just don't offer them. Failures come back as `/admin/login?error=<reason>`.
 - **The admin password** (`ADMIN_PASSWORD` or `ADMIN_PASSWORD_FILE`): the admin view.
@@ -48,7 +48,7 @@ without one you are sent to `/admin/login` and back afterwards. There are two wa
 |---|---|
 | `/admin/login` | sign in with Twitch, or with the admin password |
 | `/admin` | health, the channels (join one), API keys (create, revoke), recent changes |
-| `/admin/channels/:login` | one channel: settings, modules, published packs, triggers and timers, word filter, ignored users; leave or rejoin |
+| `/admin/channels/:login` | one channel: settings, modules, command rules (on or off, who may run it, log level), published packs, triggers and timers, word filter, ignored users; leave or rejoin |
 | `/admin/explain` | explain an expression as a chatter you name, with the badges you pick, and optionally run it |
 | `/admin/audit` | the latest 200 configuration changes, from chat, here or an API key |
 

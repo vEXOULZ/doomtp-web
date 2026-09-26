@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Pack, Publication } from '../src/lib/api'
-import { moduleRows, publishedRows } from '../src/lib/modules'
+import { commandRows, moduleRows, publishedRows } from '../src/lib/modules'
 
 const cmd = (id: string, name: string) => ({ id, name, owner: 'alice', summary: null, body: '', version: 1, shareable: false })
 const packs: Pack[] = [
@@ -41,6 +41,21 @@ describe('publishedRows', () => {
       ['coin', 'games'],
       ['dice', 'games'],
       ['hype', 'custom'],
+    ])
+  })
+})
+
+describe('commandRows', () => {
+  const c = (name: string) => ({ name, module: 'm', summary: null, enabled: true })
+  it('says which commands can be turned off or given a role, by name, sorted', () => {
+    const rows = commandRows([c('ping'), c('echo'), c('dice')], [
+      { name: 'echo', toggleable: false, fixed_policy: true },
+      { name: 'ping', toggleable: true, fixed_policy: false },
+    ])
+    expect(rows.map((r) => [r.name, r.toggleable, r.fixedPolicy])).toEqual([
+      ['dice', true, false],
+      ['echo', false, true],
+      ['ping', true, false],
     ])
   })
 })
