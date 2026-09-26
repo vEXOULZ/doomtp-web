@@ -22,6 +22,8 @@ export interface Session {
   role?: 'moderator' | 'admin' | null
   user?: { id: string; login: string } | null
   channels?: string[] | null
+  /** Whether the bot offers signing in with Twitch (`/auth/admin/login`); older bots don't say, which means no. */
+  twitch_login?: boolean
 }
 
 export interface ApiKey {
