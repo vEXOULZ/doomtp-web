@@ -1,0 +1,39 @@
+/* Site-level additions on top of @vexoulz/ui. Keep this small; shared styles belong in the library. */
+html,
+body {
+  margin: 0;
+  background: var(--vx-bg);
+}
+
+/* The shell's min-height: 100% needs a sized parent. */
+#app > .vx-site {
+  min-height: 100dvh;
+}
+
+/* ---------- Documentation pages ---------- */
+.doc { max-width: 52rem; }
+.doc h1.vx-display { font-size: 30px; margin: 0 0 10px; }
+.doc h2.vx-display { font-size: 22px; margin: 36px 0 12px; scroll-margin-top: calc(var(--vx-head-h) + 16px); }
+.doc h3 { font-family: var(--vx-font-mono); font-weight: 500; font-size: 15px; margin: 22px 0 8px; }
+.doc p, .doc ul { margin: 0 0 12px; }
+.doc ul { padding-left: 1.2em; }
+.doc li { margin-bottom: 4px; }
+.doc .vx-code { margin: 0 0 12px; }
+.doc .vx-table-wrap, .doc .table-scroll { margin: 0 0 14px; }
+.doc :not(pre) > code {
+  font-family: var(--vx-font-mono);
+  font-size: 0.88em;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--vx-surface-2);
+  border: 1px solid var(--vx-line);
+  overflow-wrap: anywhere;
+}
+.doc a:not(.vx-btn) { color: var(--vx-accent); }
+.doc a:not(.vx-btn):hover { text-decoration: underline; }
+.lead { font-size: 16px; }
+
+/* A plain table in running text: every column stays, and it scrolls sideways when narrow. */
+.table-scroll { overflow-x: auto; scrollbar-width: thin; scrollbar-color: var(--vx-line) transparent; }
+.table-scroll > table { width: 100%; min-width: 30rem; }
+.table-scroll td { vertical-align: top; }
