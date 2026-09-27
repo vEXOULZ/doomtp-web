@@ -7,7 +7,7 @@ import { auth } from './api'
 const state = reactive({
   checked: false,
   authenticated: false,
-  /** False when the bot has no admin password set. */
+  /** False when the password login isn't offered here: none is set, or this visitor is off its networks. */
   enabled: true,
   /** Whether the bot offers signing in with Twitch. */
   twitchLogin: false,

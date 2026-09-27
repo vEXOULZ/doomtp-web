@@ -15,7 +15,7 @@ export interface Session {
   csrf: string | null
   /** Epoch ms. */
   expires_at: number | null
-  /** False when the bot has no admin password: nobody can sign in. */
+  /** False when the bot has no admin password, or takes it only from networks this visitor isn't on. */
   admin_enabled: boolean
   /** Who is behind the session (bot ADR-0017): the password is an admin with no user; a Twitch sign-in names the
    *  user, and a moderator's `channels` are the logins they may manage (null: every channel). */
