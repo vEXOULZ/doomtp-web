@@ -69,6 +69,8 @@ export interface PublishedRow {
   owner: string
   summary: string | null
   version: number
+  /** Set when the author edited the command after this channel last ran it: the version it ran then. */
+  changedSince: number | null
   /** A publication's own state (active, disabled, orphaned); commands in a pack follow the pack. */
   status: string
 }
@@ -129,11 +131,13 @@ export function publishedRows(packs: Pack[], publications: Publication[]): Publi
   const rows: PublishedRow[] = []
   for (const p of packs) {
     for (const c of p.commands) {
-      rows.push({ name: c.name, module: p.name, owner: c.owner, summary: c.summary, version: c.version, status: 'active' })
+      rows.push({ name: c.name, module: p.name, owner: c.owner, summary: c.summary, version: c.version, changedSince: null, status: 'active' })
     }
   }
   for (const p of looseOnes(packs, publications)) {
-    rows.push({ name: p.published_as, module: CUSTOM_MODULE, owner: p.owner, summary: p.summary, version: p.version, status: p.status })
+    const ran = p.last_run_version ?? null
+    const changedSince = ran !== null && ran !== p.version ? ran : null
+    rows.push({ name: p.published_as, module: CUSTOM_MODULE, owner: p.owner, summary: p.summary, version: p.version, changedSince, status: p.status })
   }
   return rows.sort((a, b) => a.name.localeCompare(b.name))
 }

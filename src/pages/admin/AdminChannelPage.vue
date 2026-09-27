@@ -358,7 +358,10 @@ const lift = (u: Ignored) =>
                   </td>
                   <td><RouterLink :to="{ query: { ...route.query, tab: 'modules' } }" class="vx-mono">{{ p.module }}</RouterLink></td>
                   <td class="vx-muted">@{{ p.owner }}</td>
-                  <td class="vx-mono vx-muted">v{{ p.version }}</td>
+                  <td class="vx-mono vx-muted">
+                    v{{ p.version }}
+                    <div v-if="p.changedSince !== null" class="small">changed since v{{ p.changedSince }}</div>
+                  </td>
                   <td>
                     <VxChip :tone="p.status === 'active' ? 'ok' : 'default'">{{ p.status }}</VxChip>
                     <div v-if="p.status === 'orphaned'" class="vx-muted small">its owner deleted it</div>

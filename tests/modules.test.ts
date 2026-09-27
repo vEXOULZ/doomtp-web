@@ -43,6 +43,14 @@ describe('publishedRows', () => {
       ['hype', 'custom'],
     ])
   })
+  it('says a command changed since the channel last ran it', () => {
+    const ran = (version: number, last: number | null) => ({ ...publications[0], version, last_run_version: last })
+    const since = (p: Publication) => publishedRows([], [p])[0].changedSince
+    expect(since(ran(3, 2))).toBe(2)
+    expect(since(ran(3, 3))).toBeNull()
+    expect(since(ran(3, null))).toBeNull()
+    expect(since(publications[0])).toBeNull() // an older bot doesn't send the field
+  })
 })
 
 describe('commandRows', () => {
