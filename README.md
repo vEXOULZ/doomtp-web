@@ -42,7 +42,8 @@ without one you are sent to `/admin/login` and back afterwards. There are two wa
   bot is in gets the **moderator** view of those channels only: settings, modules, command rules, triggers, filters and ignored
   users, but not joining or leaving channels, the logging and "who may" settings, API keys or health. The bot
   refuses those itself; the pages just don't offer them. Failures come back as `/admin/login?error=<reason>`.
-- **The admin password** (`ADMIN_PASSWORD` or `ADMIN_PASSWORD_FILE`): the admin view.
+- **The admin password** (`ADMIN_PASSWORD`): the admin view, and the way in when Twitch is down. The bot takes it
+  only from its local network by default (`ADMIN_PASSWORD_NETWORKS`), so from outside the page offers Twitch alone.
 
 | path | what |
 |---|---|

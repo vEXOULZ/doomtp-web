@@ -46,6 +46,8 @@ async function submit() {
     else if (e instanceof ApiError && e.status === 429)
       error.value = `Too many attempts. Try again in ${e.retryAfter ? `${Math.ceil(e.retryAfter / 60)} min` : 'a few minutes'}.`
     else if (e instanceof ApiError && e.status === 404) error.value = 'The bot has no admin password set.'
+    else if (e instanceof ApiError && e.status === 403)
+      error.value = "The admin password only works from the bot's local network. Sign in with Twitch instead."
     else error.value = `Couldn't reach the bot${e instanceof Error ? ` (${e.message})` : ''}.`
   } finally {
     busy.value = false
@@ -61,7 +63,9 @@ async function submit() {
       <VxCallout v-if="signinError" tone="error">{{ signinError }}</VxCallout>
       <VxCallout v-else-if="session.notice && !error" tone="warn">{{ session.notice }}</VxCallout>
       <VxCallout v-if="session.checked && !offered" tone="warn" title="Sign-in is off">
-        The bot has no admin password set (<code>ADMIN_PASSWORD_FILE</code> or <code>ADMIN_PASSWORD</code>).
+        Twitch sign-in isn't set up on the bot, and the admin password isn't offered here: either none is set
+        (<code>ADMIN_PASSWORD</code>), or this address is outside the networks it works from
+        (<code>ADMIN_PASSWORD_NETWORKS</code>, the bot's local network by default).
       </VxCallout>
       <template v-if="session.twitchLogin">
         <VxButton :href="twitchLoginUrl(next)" variant="primary" class="twitch">Sign in with Twitch</VxButton>
