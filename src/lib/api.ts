@@ -129,6 +129,8 @@ export interface Publication extends CustomCommand {
   published_as: string
   status: string
   required_role: string | null
+  /** The version this channel last ran (null: never ran here). Absent from bots older than doomtp-bot#31. */
+  last_run_version?: number | null
 }
 
 // ── language ──────────────────────────────────────────────────────────────
