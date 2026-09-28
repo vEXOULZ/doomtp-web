@@ -16,7 +16,7 @@ const { data, error, reload } = useLoad(async () => {
 
 const TAGS: Record<string, string> = {
   site: 'Public: what the site pages print.',
-  language: 'Parse and explain expressions, and the language and command specs the editor uses.',
+  language: 'Parse and explain expressions, and the language and command reference the editor uses.',
   data: 'Channels and everything in them. Mostly admin; a few listings are public and say so.',
   session: 'Admin sign-in and API keys.',
   health: 'Liveness, readiness and metrics.',
@@ -32,8 +32,8 @@ const idOf = (key: string) => key.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g,
       <h1 class="vx-display">API</h1>
       <p class="vx-muted">
         <template v-if="data?.version">doomtp-bot {{ data.version }}. </template>Everything here is JSON over HTTP on
-        this host. This page reads the bot's own <a href="/openapi.json">OpenAPI document</a>; to send requests from
-        the browser, use <a href="/docs">Swagger UI</a>.
+        this host, also described as an <a href="/openapi.json">OpenAPI document</a>. To send requests from the
+        browser, use <a href="/docs">Swagger UI</a>.
       </p>
 
       <h2 id="access" class="vx-display">Access</h2>

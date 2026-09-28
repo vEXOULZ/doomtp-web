@@ -64,8 +64,8 @@ const limits = computed(() => {
     <article class="doc">
       <h1 class="vx-display">Language reference</h1>
       <p class="vx-muted">
-        <template v-if="data">Version {{ data.language.syntax_version }}. </template>The bot's parser is the only
-        authority on what is valid; this page and <code>/api/v1/language</code> come from it.
+        <template v-if="data">Version {{ data.language.syntax_version }}. </template>What a chat line can hold and how
+        the bot reads it.
       </p>
 
       <h2 id="try" class="vx-display">Try one</h2>
@@ -80,8 +80,7 @@ const limits = computed(() => {
         </dtb-editor>
       </div>
       <p class="vx-muted small">
-        Without JavaScript this is an ordinary text box: the answers come from the bot either way, through
-        <code>/api/v1/parse</code> and <code>/api/v1/explain</code>.
+        Without JavaScript this is an ordinary text box.
       </p>
 
       <h2 class="vx-display">Shape of a line</h2>
@@ -178,8 +177,8 @@ const limits = computed(() => {
         <template v-if="data.grammar.text">
           <h2 id="grammar" class="vx-display">Grammar</h2>
           <p class="vx-muted">
-            The documentation grammar (spec Appendix D), one picture per rule. The normative one is the PEG in Appendix
-            C, which the parser mirrors rule for rule.
+            One picture per rule. They're drawn to be read, so a few details are simplified; the editor above checks a
+            line exactly.
           </p>
           <figure v-for="rule in data.grammar.rules" :key="rule.name" class="railroad">
             <figcaption class="vx-eyebrow">{{ rule.name }}</figcaption>
