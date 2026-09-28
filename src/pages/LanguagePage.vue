@@ -13,8 +13,8 @@ const { data, error, reload } = useLoad(async () => {
   return { language, grammar }
 })
 const p = computed(defaultSign)
-const example = computed(() => `${p.value}random 1-6 | echo you rolled {1}`)
-const shape = computed(() => `${p.value}command argument "an argument with spaces" | other {1} && third > channel.saved`)
+const example = computed(() => `${p.value}random 1-6 | echo you rolled {_1}`)
+const shape = computed(() => `${p.value}command argument "an argument with spaces" | other {_1} && third -> channel.saved`)
 
 // The bot's own editor (a web component in /static/editor/editor.js, served by the bot on this origin). It upgrades
 // the <textarea> it wraps once the script loads; until then, or without it, the textarea is an ordinary text box.
@@ -28,13 +28,15 @@ onMounted(() => {
 })
 
 const REFERENCES = [
-  ['{1}, {2}', 'the result of an earlier command in the same line'],
+  ['{_1}, {_2}', 'the result of an earlier command in the same line'],
   ['{_}', 'the previous result'],
-  ['{1.celsius}', "a field of that result's data"],
+  ['{_1[celsius]}', "a key of that result's data"],
   ['{arg.1}, {arg.2+}, {arg.name}', 'arguments, inside a custom command or trigger'],
-  ['{chatter.display}, {channel.name}', 'who and where'],
+  ['{$chatter.display}, {$channel.name}', "who and where: the bot's own fields start with $"],
+  ['{channel.deaths}, {channel.stats[kills]}', 'variables; brackets go into a stored list or map'],
   ['{event.*}, {match.*}', 'trigger payload, listener captures'],
-  ['{now.*}, {bot.*}, {run.*}', 'time, bot info, this run'],
+  ['{$now.*}, {$bot.*}, {run.*}', 'time, bot info, this run'],
+  ['{channel.deaths * 2}, {!random 1-6}', 'an expression, and a command whose result becomes text'],
 ]
 const EXIT_CODES = [
   ['0', 'success', 'the message, if there is one'],
@@ -105,7 +107,7 @@ const limits = computed(() => {
         <h2 class="vx-display">Operators</h2>
         <p>
           These count as operators only when they stand alone between spaces, so ordinary chat like
-          <code>(lol)</code> or <code>-></code> is never mistaken for one.
+          <code>(lol)</code> or <code>a->b</code> is never mistaken for one.
         </p>
         <p class="list">
           <template v-for="(op, i) in data.language.operators.filter((o) => o !== ';')" :key="op"><template v-if="i"> · </template><code>{{ op }}</code></template>
@@ -114,7 +116,8 @@ const limits = computed(() => {
 
         <h2 class="vx-display">Placeholders</h2>
         <p>
-          <code>{reference}</code>, <code>{reference:type}</code>, <code>{reference ?? fallback}</code>. A reference
+          <code>{reference}</code>, <code>{reference:type}</code>, <code>{reference ?? fallback}</code>, or an
+          expression such as <code>{channel.deaths + 1 > 10}</code>. A reference
           that isn't available in the current context is an error before anything runs, and a missing value without a
           <code>??</code> fallback stops the command.
         </p>
