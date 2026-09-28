@@ -11,7 +11,7 @@ const tries = computed(() => [`${sign.value}ping`, `${sign.value}random 1-100 | 
 
 const START = [
   { to: '/docs/features', title: 'Features', text: 'Every part of the bot: permissions, cooldowns, custom commands, packs, variables, triggers, timers, the word filter, logging and the API.' },
-  { to: '/docs/commands', title: 'Command reference', text: 'Every built-in command with its arguments, examples, required role and cooldowns, from the same specs the bot runs on.' },
+  { to: '/docs/commands', title: 'Command reference', text: 'Every built-in command with its arguments, examples, required role and cooldowns.' },
   { to: '/docs/language', title: 'Language reference', text: 'Operators, placeholders, types and the grammar, with the limits that apply, and an editor to try a line in.' },
   { to: '/docs/api', title: 'API', text: 'Every endpoint of /api/v1: parse, explain, language, commands and the rest.' },
 ]

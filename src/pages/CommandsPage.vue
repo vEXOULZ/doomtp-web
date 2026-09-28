@@ -21,7 +21,7 @@ const { data: rows, error, reload } = useLoad(async () => {
     <div class="doc">
       <h1 class="vx-display">Command reference</h1>
       <p class="vx-muted">
-        Generated from the specs the bot runs on, so this page and the bot can't disagree.
+        Every built-in command the bot has.
         <Cmd t="help" :sign="sign" /> in chat lists only what you can run in that channel, with the command
         sign that channel uses. Click a command for its arguments, cooldowns and examples.
       </p>
