@@ -79,7 +79,7 @@ async function submit() {
         </VxField>
         <VxField label="Expression" class="grow">
           <template #default="{ id }">
-            <VxInput :id="id" v-model="form.text" mono :placeholder="`${sign}random 1-6 | echo you rolled {1}`" />
+            <VxInput :id="id" v-model="form.text" mono :placeholder="`${sign}random 1-6 | echo you rolled {_1}`" />
           </template>
         </VxField>
       </div>

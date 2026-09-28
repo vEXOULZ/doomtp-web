@@ -16,7 +16,7 @@ const lines = (...rest: string[]) => rest.map((l) => `${p.value}${l}`)
 // Blocks with quotes and backslashes in them, kept out of the template.
 const customBlock = computed(() =>
   lines(
-    'cc add hype echo {chatter.display} is hyped!',
+    'cc add hype echo {$chatter.display} is hyped!',
     'cc param hype 1 name=target type=user "who to hype"',
     'cc describe hype gets the chat hyped',
     'cc publish hype          # a moderator offers it to the channel',
@@ -33,9 +33,9 @@ const publishReply = computed(() =>
 const triggerBlock = computed(() =>
   lines(
     'trigger add raid echo welcome {event.user.name} and {event.viewers} raiders!',
-    String.raw`trigger listen \bhello\b => echo hi {chatter.display}`,
+    String.raw`trigger listen \bhello\b echo hi {$chatter.display}`,
     'timer add 15m min_lines=10 jitter=2m echo remember to hydrate',
-    'timer cron 0 18 * * fri => echo the stream starts now',
+    'timer cron "0 18 * * fri" echo the stream starts now',
   ),
 )
 const filterBlock = computed(() =>
@@ -99,17 +99,17 @@ function roleSource(name: string): string {
         <table class="vx-table">
           <thead><tr><th>Operator</th><th>Meaning</th><th>Example</th></tr></thead>
           <tbody>
-            <tr><td><code>|</code></td><td>Pipe: the left result becomes the right command's input. Stops if the left fails.</td><td><ChatLine :lines="`${p}random 1-6 | echo you rolled {1}`" :sign="p" /></td></tr>
+            <tr><td><code>|</code></td><td>Pipe: the left result becomes the right command's input. Stops if the left fails.</td><td><ChatLine :lines="`${p}random 1-6 | echo you rolled {_1}`" :sign="p" /></td></tr>
             <tr><td><code>&amp;&amp;</code></td><td>Run the right side only if the left succeeded.</td><td><ChatLine :lines="`${p}var incr channel.deaths && echo oof`" :sign="p" /></td></tr>
             <tr><td><code>||</code></td><td>Run the right side only if the left failed. This is how you handle errors.</td><td><ChatLine :lines="`${p}quote {arg.1} || echo no such quote`" :sign="p" /></td></tr>
-            <tr><td><code>( )</code></td><td>Grouping, so an operator applies to a whole section.</td><td><ChatLine :lines="`( ${p}a || default 5 ) > channel.x`" :sign="p" /></td></tr>
-            <tr><td><code>&gt;</code> and <code>&gt;&gt;</code></td><td>Store the result in a variable; <code>&gt;&gt;</code> appends. Only on success.</td><td><ChatLine :lines="`${p}random 1-100 > chatter.luck`" :sign="p" /></td></tr>
+            <tr><td><code>( )</code></td><td>Grouping, so an operator applies to a whole section.</td><td><ChatLine :lines="`( ${p}a || default 5 ) -> channel.x`" :sign="p" /></td></tr>
+            <tr><td><code>-&gt;</code> and <code>--&gt;</code></td><td>Store the result in a variable; <code>--&gt;</code> appends to a list. Only on success.</td><td><ChatLine :lines="`${p}random 1-100 -> chatter.luck`" :sign="p" /></td></tr>
           </tbody>
         </table>
       </div>
       <p>
         <strong>Results carry three things:</strong> an exit code, a message (what chat sees) and data (structured values
-        other commands can read as <code>{1}</code>, <code>{1.celsius}</code>). Failure codes are documented in the
+        other commands can read as <code>{_1}</code>, <code>{_1[celsius]}</code>). Failure codes are documented in the
         <RouterLink to="/docs/language">language reference</RouterLink>.
       </p>
       <p>
@@ -263,7 +263,7 @@ function roleSource(name: string): string {
           </tbody>
         </table>
       </div>
-      <ChatLine :lines="lines('var set chatter.location Lisbon', 'var incr channel.deaths', 'var top channel.chatter.points', 'echo 1 > channel.deaths')" :sign="p" block />
+      <ChatLine :lines="lines('var set chatter.location Lisbon', 'var incr channel.deaths', 'var top channel.chatter.points', 'echo 1 -> channel.deaths')" :sign="p" block />
       <p>
         <strong>Who may write what</strong> is the safety boundary for shared commands. Your own commands may write your
         spaces; a published command written by someone else may write <em>their</em> spaces, and may only touch the
@@ -427,7 +427,7 @@ function roleSource(name: string): string {
       <p><Cmd t="part" /> removes the bot; it stops listening and sending immediately.</p>
 
       <h2 id="explain" class="vx-display">Explaining an expression</h2>
-      <ChatLine :lines="[`${p}explain ${p}random 1-6 | echo you rolled {1}`, `${p}explain --run ${p}ping`]" :sign="p" block />
+      <ChatLine :lines="[`${p}explain ${p}random 1-6 | echo you rolled {_1}`, `${p}explain --run ${p}ping`]" :sign="p" block />
       <p>
         The same report is on the <RouterLink to="/docs/language#try">language page</RouterLink>, in an editor that
         colours what you type, underlines the exact error a chat user would get, and completes command names,

@@ -14,10 +14,10 @@ const fake: Tokenize = (text) => {
 
 describe('spans', () => {
   it('keeps every character, colouring tokens and leaving spaces plain', () => {
-    const out = spans('echo a | {1}', fake, { prefix: '!', context: 'body' })
-    expect(out.map((s) => s.text).join('')).toBe('echo a | {1}')
+    const out = spans('echo a | {_1}', fake, { prefix: '!', context: 'body' })
+    expect(out.map((s) => s.text).join('')).toBe('echo a | {_1}')
     expect(out.filter((s) => s.cls).map((s) => `${s.cls}:${s.text}`)).toEqual([
-      'dtb-command:echo', 'dtb-word:a', 'dtb-operator:|', 'dtb-ph-root:{1}',
+      'dtb-command:echo', 'dtb-word:a', 'dtb-operator:|', 'dtb-ph-root:{_1}',
     ])
   })
   it('is plain text until the lexer has loaded', () => {

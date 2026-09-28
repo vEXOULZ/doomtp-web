@@ -84,7 +84,7 @@ const ROLE_FIELDS: [keyof Form, string, string][] = [
   ['create_min_role', 'Create custom commands', 'cc add'],
   ['publish_min_role', 'Publish custom commands', 'cc publish'],
   ['grant_min_role', 'Grant roles', 'role grant'],
-  ['channel_var_write_role', 'Write channel variables', '> channel.x'],
+  ['channel_var_write_role', 'Write channel variables', '-> channel.x'],
   ['var_admin_role', 'Manage variables', 'var'],
 ]
 </script>
@@ -101,7 +101,7 @@ const ROLE_FIELDS: [keyof Form, string, string][] = [
       <VxField label="Reply hold" help="Wait this long before replying, so the reply lands after the message it answers.">
         <template #default="{ id }"><VxStepper :id="id" v-model="form.reply_hold_ms" :min="0" :max="5000" :step="100" unit="ms" /></template>
       </VxField>
-      <VxField label="Time zone" help="For {now.*} and timers, as an IANA name like Europe/Lisbon.">
+      <VxField label="Time zone" help="For {$now.*} and timers, as an IANA name like Europe/Lisbon.">
         <template #default="{ id }"><VxInput :id="id" v-model="form.timezone" mono /></template>
       </VxField>
     </div>

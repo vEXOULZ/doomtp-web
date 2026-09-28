@@ -31,6 +31,8 @@
 .dtb-store-target { color: var(--dtb-var); font-style: italic; }
 .dtb-ph-path { color: var(--dtb-path); }
 .dtb-ph-type { color: var(--vx-muted); font-style: italic; }
+.dtb-ph-op { color: var(--dtb-op); }
+.dtb-ph-num { color: var(--vx-ok); }
 .dtb-raw { opacity: 0.8; }
 .dtb-error { text-decoration: underline wavy var(--vx-bad); }
 

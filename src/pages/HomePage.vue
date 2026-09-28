@@ -7,7 +7,7 @@ import DtpShell from '@/components/DtpShell.vue'
 import { defaultSign, loadSite, site } from '@/lib/site'
 
 const sign = computed(defaultSign)
-const tries = computed(() => [`${sign.value}ping`, `${sign.value}random 1-100 | echo you rolled {1}!`, `${sign.value}help`])
+const tries = computed(() => [`${sign.value}ping`, `${sign.value}random 1-100 | echo you rolled {_1}!`, `${sign.value}help`])
 
 const START = [
   { to: '/docs/features', title: 'Features', text: 'Every part of the bot: permissions, cooldowns, custom commands, packs, variables, triggers, timers, the word filter, logging and the API.' },
