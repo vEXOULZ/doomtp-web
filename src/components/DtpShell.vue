@@ -1,5 +1,6 @@
 <script setup lang="ts">
-// Every page's frame: the shared shell with dtp's nav, the Manage bar once someone is signed in, and the bot's
+// Every page's frame: the shared shell with dtp's nav, the Manage bar once someone is signed in (under an admin's
+// "View as" banner while previewing), and the bot's
 // version and default sign in the footer.
 import { VxSiteFooter, VxSiteShell } from '@vexoulz/ui'
 import type { NavItem } from '@vexoulz/ui'
@@ -10,6 +11,7 @@ import { bounceOnce, ensure, session } from '@/lib/session'
 import { loadSite, site } from '@/lib/site'
 import AccountMenu from './AccountMenu.vue'
 import ManageBar from './ManageBar.vue'
+import ViewAsBar from './ViewAsBar.vue'
 
 withDefaults(defineProps<{ sky?: 'full' | 'dim' | 'off' }>(), { sky: 'full' })
 
@@ -40,6 +42,7 @@ watch(
 <template>
   <VxSiteShell site="dtp" :nav="NAV" :sky="sky">
     <template #account><AccountMenu /></template>
+    <ViewAsBar />
     <ManageBar v-if="session.authenticated" />
     <slot></slot>
     <template #footer>

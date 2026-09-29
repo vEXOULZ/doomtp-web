@@ -2,8 +2,9 @@
 // shows as soon as someone is signed in; the router guard awaits it on /manage pages. A 401 from any call made with
 // the session drops it, and the next step lands on the sign-in page.
 import { reactive, readonly } from 'vue'
-import { admin, type OwnChannel, type Session, type SessionRole } from './admin'
+import { admin, type AuditEntry, type Channel, type ChannelRoles, type OwnChannel, type Session, type SessionRole } from './admin'
 import { auth } from './api'
+import { describe, loadPreview, savePreview, type Preview } from './viewAs'
 
 const state = reactive({
   checked: false,
@@ -27,7 +28,88 @@ const state = reactive({
   /** Why the visitor was sent to the sign-in page (an expired session). */
   notice: null as string | null,
 })
-export const session = readonly(state)
+/** The session as the bot gave it. Signing in and out, the router guard and the account menu go by this one. */
+export const realSession = readonly(state)
+
+// ── view as (admins) ──
+// An admin can preview the site as another role (lib/viewAs.ts). The pages read `session`, which then reports that
+// role; the bot still treats the admin as an admin, so every change is refused here while previewing.
+const preview = reactive({ as: loadPreview() })
+const realAdmin = () => state.authenticated && (state.role === 'admin' || state.role === null)
+/** Whether the real session may preview other roles. */
+export const mayViewAs = realAdmin
+/** What the site is previewed as, or null (never for anyone but an admin). */
+export const previewing = (): Preview | null => (realAdmin() ? preview.as : null)
+/** Changes with every preview, so the pages can load again as the new role (App.vue keys the page on it). */
+export const previewKey = () => JSON.stringify(previewing())
+export function viewAs(p: Preview | null) {
+  preview.as = p
+  savePreview(p)
+}
+auth.blocks = () => {
+  const p = previewing()
+  return p ? `Read-only while viewing as ${describe(p)}. Exit the preview to change anything.` : null
+}
+
+// The bot answers some reads by who asks: every channel, and every change, for an admin. While previewing, those are
+// narrowed to what the previewed role would get: its channels, and the changes in them (or its own, elsewhere).
+auth.scope = (path, body) => {
+  const p = previewing()
+  if (!p) return body
+  const mine = new Set(projected(p).channels ?? [])
+  if (path === '/channels') {
+    const b = body as { channels?: Channel[] }
+    if (!Array.isArray(b?.channels)) return body
+    return { ...b, channels: b.channels.filter((c) => mine.has(c.login.toLowerCase())) }
+  }
+  if (path === '/audit' || path.startsWith('/audit?')) {
+    const b = body as { entries?: AuditEntry[] }
+    if (!Array.isArray(b?.entries)) return body
+    const own = (e: AuditEntry) => !!state.user && e.actor_user_id === state.user.id
+    return {
+      ...b,
+      entries: b.entries.filter((e) => (e.channel_login ? mine.has(e.channel_login.toLowerCase()) : own(e))),
+    }
+  }
+  const roles = /^\/channels\/([^/?]+)\/roles$/.exec(path)
+  if (roles) return { ...(body as ChannelRoles), your_rank: projected(p).channelRanks?.[decodeURIComponent(roles[1]!).toLowerCase()] ?? 0 }
+  return body
+}
+
+/** The session a preview stands for: what that role's own session would say. */
+function projected(p: Preview) {
+  const channel = p.channel
+  const listed = channel !== null && p.rank >= 80 // the bot lists a channel for its moderators and broadcaster
+  const broadcaster = p.role === 'broadcaster' && channel !== null
+  return {
+    authenticated: p.role !== 'signed-out',
+    role: (p.role === 'signed-out' ? null : listed ? 'moderator' : 'user') as SessionRole | null,
+    channels: p.role === 'signed-out' ? null : listed ? [channel] : [],
+    channelRoles:
+      p.role === 'signed-out' ? null : listed ? { [channel]: broadcaster ? ('broadcaster' as const) : ('moderator' as const) } : {},
+    channelRanks: p.role === 'signed-out' ? null : channel !== null ? { [channel]: p.rank } : {},
+    ownChannel: broadcaster ? { login: channel, joined: true, status: 'joined', tier: p.tier ?? 'full' } : null,
+  }
+}
+
+/** The session the pages see: the real one, or the one a preview stands for. */
+export const session = {
+  get checked() { return state.checked },
+  get enabled() { return state.enabled },
+  get twitchLogin() { return state.twitchLogin },
+  get expiresAt() { return state.expiresAt },
+  get notice() { return state.notice },
+  get authenticated() { const p = previewing(); return p ? projected(p).authenticated : state.authenticated },
+  get role() { const p = previewing(); return p ? projected(p).role : state.role },
+  get user() { const p = previewing(); return p && p.role === 'signed-out' ? null : state.user },
+  get channels(): readonly string[] | null { const p = previewing(); return p ? projected(p).channels : state.channels },
+  get channelRoles(): Readonly<Record<string, 'broadcaster' | 'moderator'>> | null {
+    const p = previewing()
+    return p ? projected(p).channelRoles : state.channelRoles
+  },
+  get channelRanks(): Readonly<Record<string, number>> | null { const p = previewing(); return p ? projected(p).channelRanks : state.channelRanks },
+  get ownChannel(): Readonly<OwnChannel> | null { const p = previewing(); return p ? projected(p).ownChannel : state.ownChannel },
+}
 
 function apply(s: Session) {
   state.checked = true
@@ -135,6 +217,7 @@ export async function login(password: string): Promise<void> {
 }
 
 export async function logout(): Promise<void> {
+  viewAs(null)
   try {
     await admin.logout()
   } finally {

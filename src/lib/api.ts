@@ -31,11 +31,26 @@ function once<T>(load: () => Promise<T>): () => Promise<T> {
 export const auth = {
   csrf: null as string | null,
   onUnauthorized: null as (() => void) | null,
+  /** Why changes are refused right now (an admin viewing the site as someone else), or null. */
+  blocks: null as (() => string | null) | null,
+  /** Narrows a read the bot scoped to the caller to what a previewed role would get back (lib/session.ts). */
+  scope: null as ((path: string, body: unknown) => unknown) | null,
 }
 
-export async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+/** Writes that change nothing (explain, and the trigger, filter and automod test boxes) or only end the session, and so
+ *  still go through while changes are refused. */
+const HARMLESS = (method: string, path: string) =>
+  (method === 'POST' && (path === '/parse' || path.startsWith('/explain') || path.endsWith('/test'))) ||
+  (method === 'DELETE' && path === '/session')
+
+/** `unscoped`: the answer as the bot gave it, even while previewing (the "View as" picker's own reads). */
+export async function request<T>(path: string, init: RequestInit = {}, { unscoped = false } = {}): Promise<T> {
   const headers = new Headers(init.headers)
   const method = (init.method ?? 'GET').toUpperCase()
+  if (method !== 'GET' && method !== 'HEAD' && !HARMLESS(method, path)) {
+    const blocked = auth.blocks?.()
+    if (blocked) throw new ApiError(403, blocked)
+  }
   if (method !== 'GET' && auth.csrf) headers.set('X-CSRF-Token', auth.csrf)
   let response: Response
   try {
@@ -58,7 +73,8 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
   }
   if (response.status === 204) return undefined as T
   const text = await response.text()
-  return (text ? JSON.parse(text) : undefined) as T
+  const body: unknown = text ? JSON.parse(text) : undefined
+  return (method === 'GET' && !unscoped && auth.scope ? auth.scope(path, body) : body) as T
 }
 
 const get = <T>(path: string) => request<T>(path)
