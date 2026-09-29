@@ -33,9 +33,12 @@ const NEEDS = {
   'ignored.edit': channel(RANK.moderator),
   'settings.chat': channel(RANK.moderator),
   'settings.backfill': channel(RANK.moderator),
+  'settings.public-log': channel(RANK.moderator),
   'explain.as': channel(RANK.moderator),
   runs: channel(RANK.moderator),
   messages: channel(RANK.moderator),
+  variables: channel(RANK.moderator),
+  'channel.audit': channel(RANK.moderator),
   // what chat keeps for the broadcaster
   'settings.logging': channel(RANK.broadcaster),
   'settings.roles': channel(RANK.broadcaster),
@@ -76,6 +79,14 @@ function bestRank(): number {
 
 /** Whether the session reaches `rank` in `login`: for the settings a channel sets itself (`publish_min_role`...). */
 export const reaches = (login: string, rank: number) => rankIn(login) >= rank
+
+/** Whether the session reaches a role a channel setting names (`publish_min_role`...), given the bot's roles (GET
+ *  /roles). A custom role the list doesn't rank counts as a moderator's: the bot decides either way. */
+export function reachesRole(login: string, role: string | null | undefined, roles: { name: string; rank: number }[]): boolean {
+  if (!role) return can('channel.view', login)
+  const rank = roles.find((r) => r.name === role)?.rank ?? RANK.moderator
+  return rankIn(login) >= rank
+}
 
 /** Whether the session may do `action`, in channel `login` for a channel action (without one: in any channel). */
 export function can(action: Action, login?: string): boolean {

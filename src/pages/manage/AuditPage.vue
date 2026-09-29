@@ -1,14 +1,12 @@
 <script setup lang="ts">
-import { VxButton, VxCallout, VxSkeleton } from '@vexoulz/ui'
 import ManageShell from '@/components/ManageShell.vue'
-import AuditTable from '@/components/AuditTable.vue'
+import AuditBrowser from '@/components/manage/AuditBrowser.vue'
+import '@/components/manage/tabs.css'
 import { admin } from '@/lib/admin'
 import { useLoad } from '@/lib/useLoad'
 
-const { data, error, reload } = useLoad(async () => {
-  const [audit, channels] = await Promise.all([admin.audit(200), admin.channels()])
-  return { entries: audit.entries, channels: channels.channels }
-})
+// Only to name channels the bot's entries don't; the log itself loads without it.
+const { data } = useLoad(async () => (await admin.channels()).channels)
 </script>
 
 <template>
@@ -16,18 +14,12 @@ const { data, error, reload } = useLoad(async () => {
     <p class="vx-muted intro">
       Every change to roles, permissions, cooldowns, toggles, filters, triggers and custom commands, whoever made it
       and however: in chat, here, or with an API key. You see the channels you manage, and your own changes anywhere
-      (a bot admin sees everything). The latest 200.
+      (a bot admin sees everything).
     </p>
-    <VxCallout v-if="error" tone="error" title="Couldn't load the audit log">
-      {{ error }}
-      <template #actions><VxButton size="sm" @click="reload">Try again</VxButton></template>
-    </VxCallout>
-    <div v-else-if="!data" class="loading" aria-busy="true"><VxSkeleton v-for="i in 10" :key="i" h="38px" /></div>
-    <AuditTable v-else :entries="data.entries" :channels="data.channels" />
+    <AuditBrowser :channels="data ?? []" />
   </ManageShell>
 </template>
 
 <style scoped>
 .intro { margin: 0 0 14px; max-width: 52rem; }
-.loading { display: grid; gap: 6px; }
 </style>

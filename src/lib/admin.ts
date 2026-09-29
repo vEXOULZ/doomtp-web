@@ -1,5 +1,5 @@
-// The admin half of the bot's JSON API (ADR-0016): the session, API keys, and a channel's settings. Every call
-// needs the admin session cookie; writes also send its CSRF token (see `auth` in api.ts).
+// The managing half of the bot's JSON API (ADR-0016, ADR-0026): the session, a channel's settings and logs, and
+// the bot's own. Every call needs the session cookie; writes also send its CSRF token (see `auth` in api.ts).
 import type { ChannelCommand, CommandRulePatch } from './modules'
 import { request, type ExplainReport, type Publication } from './api'
 
@@ -63,6 +63,9 @@ export interface Channel {
   timezone: string
   log_enabled: boolean
   history_backfill: boolean
+  /** Anyone may search the chat log while this and `log_enabled` are on; off, only moderators can. Older bots
+   *  don't send it. */
+  public_log?: boolean
   quiet_errors: boolean
   cc_edit_notice: boolean
   reply_hold_ms: number
@@ -75,6 +78,7 @@ export type ChannelPatch = Partial<{
   cc_edit_notice: boolean
   log_enabled: boolean
   history_backfill: boolean
+  public_log: boolean
   reply_hold_ms: number
   timezone: string
   automod_action: string
@@ -140,6 +144,90 @@ export interface Trigger {
   schedule: Record<string, unknown>
   enabled: boolean
   run_as_rank: number
+  /** Sent by bots from ADR-0026 on. */
+  log_level?: string
+  created_by?: string | null
+}
+export const TRIGGER_EVENTS = [
+  'redemption', 'raid', 'sub', 'resub', 'gift_sub', 'cheer', 'follow', 'stream_online', 'stream_offline',
+] as const
+export interface TriggerBody {
+  type: string
+  expr: string
+  match?: Record<string, unknown>
+  schedule?: Record<string, unknown>
+  /** At most the creator's own rank, which is the default. */
+  run_as_rank?: number
+  log_level?: string
+}
+
+export interface Variable {
+  name: string
+  value: unknown
+  updated_at: number | null
+  updated_by: string | null
+}
+/** A variable owner's limits: its quota, the largest value, list length and names per namespace. */
+export interface Limits {
+  quota_bytes: number
+  value_cap_bytes: number
+  list_items: number
+  names_per_space: number
+}
+export type LimitsPatch = Partial<{ [K in keyof Limits]: number | null }>
+export interface Storage extends Limits {
+  used_bytes: number
+  /** Bytes used per namespace. */
+  namespaces: Record<string, number>
+}
+export const OWNER_KINDS = ['channel', 'publisher', 'chatter'] as const
+export interface LimitOverride extends Partial<{ [K in keyof Limits]: number | null }> {
+  owner_kind: string
+  owner_id: string
+}
+
+/** One command or trigger run (the bot keeps them for a while). */
+export interface Run {
+  user_id: string | null
+  trigger_type: string | null
+  expr: string
+  code: string | null
+  message: string | null
+  duration_ms: number | null
+  cancelled_reason: string | null
+  at: number
+}
+
+export interface LogUser {
+  id: string
+  login: string | null
+  display_name?: string | null
+}
+/** One line of a channel's log timeline: a chat message, a notification (sub, raid...), or a moderation action. */
+export type LogEntry =
+  | { kind: 'message'; id: string; at: number; user: LogUser | null; text: string; deleted_at: number | null; cleared_at: number | null; is_command: boolean; source: string }
+  | { kind: 'notification'; id: string | number; at: number; user: LogUser | null; type: string; payload: unknown; source: string }
+  | { kind: 'moderation'; id: string | number; at: number; type: string; target: LogUser | null; moderator: LogUser | null; duration_s: number | null; reason: string | null; source: string }
+export interface LogQuery {
+  q?: string
+  user?: string
+  kind?: ('message' | 'notification' | 'moderation')[]
+  hide_removed?: boolean
+  cursor?: string
+  limit?: number
+}
+
+/** A host `http get` may fetch; the secret shows its kind and name, never its value. */
+export interface HttpHost {
+  pattern: string
+  plain_http: boolean
+  secret: { kind: 'query' | 'header'; name: string } | null
+  added_at: number | null
+  added_by: string | null
+}
+export interface HttpLimits {
+  channel_per_minute: number
+  host_per_minute: number
 }
 export interface AuditEntry {
   id: number
@@ -198,10 +286,14 @@ export const admin = {
     request<unknown>(`${at(login)}/modules/${encodeURIComponent(module)}`, json('PUT', { enabled })),
 
   publications: (login: string) => request<{ publications: Publication[] }>(`${at(login)}/publications`),
+  /** `cc enable|disable`: for whoever reaches the channel's `publish_min_role`. */
+  setPublication: (login: string, name: string, enabled: boolean) =>
+    request<{ name: string; enabled: boolean }>(`${at(login)}/publications/${encodeURIComponent(name)}`, json('PATCH', { enabled })),
 
   triggers: (login: string) => request<{ triggers: Trigger[] }>(`${at(login)}/triggers`),
   setTrigger: (login: string, id: number, enabled: boolean) =>
     request<unknown>(`${at(login)}/triggers/${id}`, json('PATCH', { enabled })),
+  createTrigger: (login: string, body: TriggerBody) => request<Trigger>(`${at(login)}/triggers`, json('POST', body)),
   deleteTrigger: (login: string, id: number) => request<unknown>(`${at(login)}/triggers/${id}`, json('DELETE')),
 
   filters: (login: string) => request<{ filters: FilterEntry[] }>(`${at(login)}/filters`),
@@ -224,6 +316,36 @@ export const admin = {
       `${at(login)}/commands/${encodeURIComponent(name)}`,
       json('PATCH', patch),
     ),
+  variables: (login: string) => request<{ variables: Variable[] }>(`${at(login)}/variables`),
+  storage: (login: string) => request<Storage>(`${at(login)}/storage`),
+  runs: (login: string, limit = 50) => request<{ runs: Run[] }>(`${at(login)}/runs?limit=${limit}`),
+  /** The channel's log as one timeline, newest first; pass `next` back as `cursor` for the page after. */
+  log: (login: string, query: LogQuery = {}) => {
+    const params = new URLSearchParams()
+    for (const [k, v] of Object.entries(query)) {
+      if (Array.isArray(v)) for (const one of v) params.append(k, one)
+      else if (v !== undefined && v !== '' && v !== false) params.set(k, String(v))
+    }
+    return request<{ channel_id: string; order: string; entries: LogEntry[]; next: string | null }>(`${at(login)}/log?${params}`)
+  },
+
+  variableLimits: () => request<{ defaults: Limits; overrides: LimitOverride[] }>('/variable-limits'),
+  setDefaultLimits: (patch: LimitsPatch) => request<Limits>('/variable-limits/default', json('PATCH', patch)),
+  /** One owner's override, by Twitch login; `null` in a field goes back to the default. */
+  setOwnerLimits: (kind: string, user: string, patch: LimitsPatch) =>
+    request<{ owner_kind: string; owner_id: string; override: LimitsPatch | null; effective: Limits }>(
+      `/variable-limits/${encodeURIComponent(kind)}/${encodeURIComponent(user)}`,
+      json('PATCH', patch),
+    ),
+  httpHosts: () => request<{ hosts: HttpHost[]; limits: HttpLimits }>('/http-hosts'),
+  allowHost: (pattern: string, plainHttp = false) =>
+    request<HttpHost>(`/http-hosts/${encodeURIComponent(pattern)}`, json('PUT', { plain_http: plainHttp })),
+  denyHost: (pattern: string) => request<unknown>(`/http-hosts/${encodeURIComponent(pattern)}`, json('DELETE')),
+  setHostSecret: (pattern: string, secret: { kind: 'query' | 'header'; name: string; value: string }) =>
+    request<unknown>(`/http-hosts/${encodeURIComponent(pattern)}/secret`, json('PUT', secret)),
+  clearHostSecret: (pattern: string) => request<unknown>(`/http-hosts/${encodeURIComponent(pattern)}/secret`, json('DELETE')),
+  setHttpLimits: (patch: Partial<HttpLimits>) => request<HttpLimits>('/http-limits', json('PATCH', patch)),
+
   audit: (limit = 50, query: Omit<AuditQuery, 'limit'> = {}) => {
     const params = new URLSearchParams({ limit: String(limit) })
     for (const [k, v] of Object.entries(query)) if (v !== undefined && v !== '') params.set(k, String(v))

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { can, isAdmin, manages, mayAddOwn, mayUpgrade, ownBanned, RANK, rankIn } from '../src/lib/access'
+import { can, isAdmin, manages, mayAddOwn, mayUpgrade, ownBanned, RANK, rankIn, reachesRole } from '../src/lib/access'
 import type { Session } from '../src/lib/admin'
 import { bounceOnce, refresh } from '../src/lib/session'
 
@@ -126,5 +126,29 @@ describe('bounceOnce', () => {
     vi.stubGlobal('sessionStorage', undefined)
     expect(bounceOnce(true, '/', go)).toBe(false)
     expect(go).not.toHaveBeenCalled()
+  })
+})
+
+describe('reachesRole', () => {
+  const ROLES = [
+    { name: 'everyone', rank: 0 },
+    { name: 'vip', rank: 60 },
+    { name: 'moderator', rank: 80 },
+    { name: 'broadcaster', rank: 100 },
+  ]
+
+  it("compares the session's rank in the channel with the setting's role", async () => {
+    await signIn({ role: 'moderator', user: USER, channels: ['bob'], channel_roles: { bob: 'moderator' }, channel_ranks: { bob: 80 } })
+    expect(reachesRole('bob', 'vip', ROLES)).toBe(true)
+    expect(reachesRole('bob', 'moderator', ROLES)).toBe(true)
+    expect(reachesRole('bob', 'broadcaster', ROLES)).toBe(false)
+    expect(reachesRole('carol', 'vip', ROLES)).toBe(false)
+  })
+
+  it('treats a role it does not know as moderator, and no role as viewing the channel', async () => {
+    await signIn({ role: 'moderator', user: USER, channels: ['bob'], channel_roles: { bob: 'moderator' }, channel_ranks: { bob: 80 } })
+    expect(reachesRole('bob', 'editors', ROLES)).toBe(true)
+    expect(reachesRole('bob', null, ROLES)).toBe(true)
+    expect(reachesRole('carol', undefined, ROLES)).toBe(false)
   })
 })

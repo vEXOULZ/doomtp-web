@@ -14,6 +14,8 @@ export interface ChannelCommand {
   /** When set, exactly these roles may run it instead. */
   allowed_roles?: string[] | null
   cooldowns?: Record<string, { tier_s: number; user_s: number }>
+  /** What the bot logs when it runs here (bots from ADR-0026 on). */
+  log_level?: LogLevel
   /** Twitch permissions it needs, and those the bot doesn't have here. */
   requires?: string[]
   missing?: string[]
