@@ -4,7 +4,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import DtpShell from '@/components/DtpShell.vue'
 import { ApiError } from '@/lib/api'
-import { ensure, login, session, SIGNIN_ERRORS, twitchLoginUrl } from '@/lib/session'
+import { ensure, login, realSession as session, SIGNIN_ERRORS, twitchLoginUrl } from '@/lib/session'
 
 const route = useRoute()
 const router = useRouter()

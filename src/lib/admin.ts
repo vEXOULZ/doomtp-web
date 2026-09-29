@@ -275,7 +275,7 @@ export const admin = {
   createKey: (name: string, scopes: string[]) => request<ApiKey & { secret: string }>('/keys', json('POST', { name, scopes })),
   revokeKey: (id: number) => request<unknown>(`/keys/${id}`, json('DELETE')),
 
-  channels: () => request<{ channels: Channel[] }>('/channels'),
+  channels: (unscoped = false) => request<{ channels: Channel[] }>('/channels', {}, { unscoped }),
   channel: (login: string) => request<Channel>(at(login)),
   join: (login: string, rejoin = false) => request<Channel>('/channels', json('POST', { login, rejoin })),
   part: (login: string) => request<unknown>(at(login), json('DELETE')),
@@ -372,7 +372,7 @@ export const admin = {
   deleteVariable: (login: string, name: string) =>
     request<unknown>(`${at(login)}/variables/${encodeURIComponent(name)}`, json('DELETE')),
 
-  roles: (login: string) => request<ChannelRoles>(`${at(login)}/roles`),
+  roles: (login: string, unscoped = false) => request<ChannelRoles>(`${at(login)}/roles`, {}, { unscoped }),
   createRole: (login: string, name: string, rank: number) => request<unknown>(`${at(login)}/roles`, json('POST', { name, rank })),
   deleteRole: (login: string, name: string) => request<unknown>(`${at(login)}/roles/${encodeURIComponent(name)}`, json('DELETE')),
   /** `durationS` from a minute to 366 days; left out, until removed. */
