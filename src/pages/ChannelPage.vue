@@ -1,7 +1,10 @@
 <script setup lang="ts">
-import { VxButton, VxCallout, VxChip, VxEmptyState, VxSkeleton } from '@vexoulz/ui'
+import { VxButton, VxCallout, VxChip, VxEmptyState, VxSkeleton, VxTabs } from '@vexoulz/ui'
 import { computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import Cmd from '@/components/Cmd.vue'
+import ChatLogTab from '@/components/manage/ChatLogTab.vue'
+import '@/components/manage/tabs.css'
 import CommandTable from '@/components/CommandTable.vue'
 import DtpShell from '@/components/DtpShell.vue'
 import { manages } from '@/lib/access'
@@ -10,6 +13,17 @@ import { channelRows } from '@/lib/commands'
 import { useLoad } from '@/lib/useLoad'
 
 const props = defineProps<{ login: string }>()
+const route = useRoute()
+const router = useRouter()
+// The log is public unless the channel turned that off; the bot says so when asked, and the tab says it then.
+const TABS = [
+  { value: 'commands', label: 'Commands' },
+  { value: 'log', label: 'Chat log' },
+]
+const tab = computed({
+  get: () => (route.query.tab === 'log' ? 'log' : 'commands'),
+  set: (value: string) => router.replace({ query: { ...route.query, tab: value === 'commands' ? undefined : value } }),
+})
 
 const { data, error, status, reload } = useLoad(async () => {
   const [channel, publications, packs] = await Promise.all([
@@ -47,6 +61,9 @@ const here = computed(() => data.value?.channel.active && data.value.channel.sta
         <VxChip k="tier">{{ data.channel.tier }}</VxChip>
         <VxChip :tone="here ? 'ok' : 'bad'">{{ data.channel.status }}</VxChip>
       </div>
+      <VxTabs v-model="tab" :options="TABS" label="Channel sections" class="tabs" />
+      <ChatLogTab v-if="tab === 'log'" :login="data.channel.login" :logging="true" :public-log="true" public />
+      <template v-else>
       <p class="vx-muted">
         Type <Cmd t="help" :sign="sign" /> in chat for the commands you personally can run here. The
         <RouterLink to="/docs/commands">command reference</RouterLink> lists every built-in.
@@ -69,6 +86,7 @@ const here = computed(() => data.value?.channel.active && data.value.channel.sta
       <p v-else class="vx-muted">
         Nothing published here yet. A moderator can offer one with <Cmd t="cc publish <name>" :sign="sign" />.
       </p>
+      </template>
     </div>
   </DtpShell>
 </template>
@@ -81,4 +99,5 @@ const here = computed(() => data.value?.channel.active && data.value.channel.sta
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
 .after { margin-top: 14px; }
 .loading { display: flex; flex-direction: column; gap: 8px; }
+.tabs { margin: 4px 0 14px; }
 </style>

@@ -49,6 +49,10 @@ export type LogLevel = (typeof LOG_LEVELS)[number]
 export interface CommandRulePatch {
   enabled?: boolean | null
   required_role?: string | null
+  /** Exactly these roles instead of `required_role`; null goes back to the rank rule ([] is refused). */
+  allowed_roles?: string[] | null
+  /** Per role; null for a role drops the cooldown set for it. */
+  cooldowns?: Record<string, { tier_s: number; user_s: number } | null>
   log_level?: LogLevel
 }
 

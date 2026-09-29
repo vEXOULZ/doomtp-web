@@ -42,6 +42,7 @@ const NEEDS = {
   // what chat keeps for the broadcaster
   'settings.logging': channel(RANK.broadcaster),
   'settings.roles': channel(RANK.broadcaster),
+  'backfill.run': channel(RANK.broadcaster),
   'channel.part': channel(RANK.broadcaster),
   'channel.upgrade': channel(RANK.broadcaster),
   // the bot itself
