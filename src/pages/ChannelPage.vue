@@ -4,6 +4,7 @@ import { computed } from 'vue'
 import Cmd from '@/components/Cmd.vue'
 import CommandTable from '@/components/CommandTable.vue'
 import DtpShell from '@/components/DtpShell.vue'
+import { manages } from '@/lib/access'
 import { api } from '@/lib/api'
 import { channelRows } from '@/lib/commands'
 import { useLoad } from '@/lib/useLoad'
@@ -37,7 +38,10 @@ const here = computed(() => data.value?.channel.active && data.value.channel.sta
     </div>
 
     <div v-else class="doc">
-      <h1 class="vx-display">#{{ data.channel.login }}</h1>
+      <div class="title">
+        <h1 class="vx-display">#{{ data.channel.login }}</h1>
+        <VxButton v-if="manages(data.channel.login)" :to="`/manage/channels/${data.channel.login}`" size="sm">Manage</VxButton>
+      </div>
       <div class="chips">
         <VxChip k="sign">{{ data.channel.prefix }}</VxChip>
         <VxChip k="tier">{{ data.channel.tier }}</VxChip>
@@ -72,6 +76,8 @@ const here = computed(() => data.value?.channel.active && data.value.channel.sta
 <style scoped>
 .doc { max-width: none; }
 .doc > p { max-width: 52rem; }
+.title { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+.title h1 { margin-right: auto; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
 .after { margin-top: 14px; }
 .loading { display: flex; flex-direction: column; gap: 8px; }

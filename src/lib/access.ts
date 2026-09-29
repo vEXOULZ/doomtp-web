@@ -1,41 +1,100 @@
-// Who may do what on the admin pages, as the bot decides it (ADR-0017). The admin password and bot admins signed in
-// with Twitch are admins; everyone else signed in with Twitch is a moderator of the channels in their session: the
-// day-to-day parts of those channels, without the bot-wide controls. The bot enforces all of this; the pages only
-// avoid offering what it would refuse.
-import { computed } from 'vue'
+// Who may do what on the Manage pages, as the bot decides it (ADR-0017, ADR-0026): the web mirrors chat. In a channel
+// the session has the rank chat would give it there (moderator, broadcaster, raised by any custom role it holds);
+// the admin password and bot admins have the bot-admin rank everywhere. Everyone signed in has their personal area.
+// The bot enforces all of this; the pages only avoid offering what it would refuse.
 import { session } from './session'
 
-export type Access = 'moderator' | 'admin'
+/** Chat's built-in ranks (GET /roles), the ones the web gates on. */
+export const RANK = { everyone: 0, moderator: 80, broadcaster: 100, bot_admin: 1000 } as const
 
-/** Everything a page can gate on, and the least access it needs. */
+type Need =
+  | { scope: 'personal' } // anyone signed in, about themselves
+  | { scope: 'channel'; rank: number } // at least this rank in the channel
+  | { scope: 'bot' } // a bot admin
+
+const personal: Need = { scope: 'personal' }
+const bot: Need = { scope: 'bot' }
+const channel = (rank: number): Need => ({ scope: 'channel', rank })
+
+/** Everything a page can gate on, and what it needs. */
 const NEEDS = {
-  // day-to-day moderation of a channel
-  'modules.toggle': 'moderator',
-  'commands.edit': 'moderator',
-  'triggers.edit': 'moderator',
-  'filter.edit': 'moderator',
-  'ignored.edit': 'moderator',
-  'ignored.everywhere': 'admin',
-  'settings.chat': 'moderator',
-  explain: 'moderator',
-  audit: 'moderator',
+  // yours, wherever you are
+  me: personal,
+  explain: personal,
+  audit: personal,
+  'channel.add-own': personal,
+  // a channel's day-to-day, as its moderators run it in chat
+  'channel.view': channel(RANK.moderator),
+  'modules.toggle': channel(RANK.moderator),
+  'commands.edit': channel(RANK.moderator),
+  'publications.toggle': channel(RANK.moderator),
+  'triggers.edit': channel(RANK.moderator),
+  'filter.edit': channel(RANK.moderator),
+  'ignored.edit': channel(RANK.moderator),
+  'settings.chat': channel(RANK.moderator),
+  'settings.backfill': channel(RANK.moderator),
+  'explain.as': channel(RANK.moderator),
+  runs: channel(RANK.moderator),
+  messages: channel(RANK.moderator),
+  // what chat keeps for the broadcaster
+  'settings.logging': channel(RANK.broadcaster),
+  'settings.roles': channel(RANK.broadcaster),
+  'channel.part': channel(RANK.broadcaster),
+  'channel.upgrade': channel(RANK.broadcaster),
   // the bot itself
-  'channel.join': 'admin',
-  'channel.part': 'admin',
-  'settings.logging': 'admin',
-  'settings.roles': 'admin',
-  keys: 'admin',
-  health: 'admin',
-} as const satisfies Record<string, Access>
+  'ignored.everywhere': bot,
+  'channel.join': bot,
+  'channel.probe': bot,
+  keys: bot,
+  health: bot,
+  bot,
+} as const satisfies Record<string, Need>
 export type Action = keyof typeof NEEDS
 
-const RANK: Record<Access, number> = { moderator: 1, admin: 2 }
+/** Whether the session is the bot's admin: the password, a bot admin signed in with Twitch, or an older bot's
+ *  session that doesn't say (those were all admins). */
+export const isAdmin = () => session.authenticated && (session.role === 'admin' || session.role === null)
 
-export const access = computed<Access>(() => session.role ?? 'admin')
-export const can = (action: Action) => RANK[access.value] >= RANK[NEEDS[action]]
+/** The session's chat rank in a channel: 0 where it manages nothing. */
+export function rankIn(login: string): number {
+  if (!session.authenticated) return 0
+  if (isAdmin()) return RANK.bot_admin
+  const key = login.toLowerCase()
+  const rank = session.channelRanks?.[key]
+  if (rank !== undefined) return rank
+  const role = session.channelRoles?.[key]
+  if (role) return RANK[role]
+  // A bot from before channel ranks lists the channels only, all as a moderator.
+  return session.channels?.includes(key) ? RANK.moderator : 0
+}
 
-/** Whether this session manages a channel (a moderator only their own; an admin every one). */
-export const manages = (login: string) => session.channels === null || session.channels.includes(login.toLowerCase())
+/** The highest rank the session has in any channel (what a page without one channel may offer). */
+function bestRank(): number {
+  if (isAdmin()) return RANK.bot_admin
+  return Math.max(0, ...(session.channels ?? []).map(rankIn))
+}
+
+/** Whether the session reaches `rank` in `login`: for the settings a channel sets itself (`publish_min_role`...). */
+export const reaches = (login: string, rank: number) => rankIn(login) >= rank
+
+/** Whether the session may do `action`, in channel `login` for a channel action (without one: in any channel). */
+export function can(action: Action, login?: string): boolean {
+  if (!session.authenticated) return false
+  const need: Need = NEEDS[action]
+  if (need.scope === 'personal') return true
+  if (need.scope === 'bot') return isAdmin()
+  return (login === undefined ? bestRank() : rankIn(login)) >= need.rank
+}
+
+/** Whether this session manages a channel (an admin every one). */
+export const manages = (login: string) => can('channel.view', login)
 
 /** Whether this is the signed-in user: they may lift an ignore they set on themselves. */
 export const isMe = (userId: string) => session.user?.id === userId
+
+/** Whether the user's own channel banned the bot: then only an admin can rejoin it. */
+export const ownBanned = () => session.ownChannel?.status === 'banned'
+/** Whether to offer adding the bot to the user's own channel. */
+export const mayAddOwn = () => !!session.ownChannel && !session.ownChannel.joined && !ownBanned()
+/** Whether to offer the broadcaster a reconnect for more of their channel (anything short of the full tier). */
+export const mayUpgrade = () => !!session.ownChannel?.joined && !!session.ownChannel.tier && session.ownChannel.tier !== 'full'

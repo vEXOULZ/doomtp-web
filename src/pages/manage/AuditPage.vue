@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { VxButton, VxCallout, VxSkeleton } from '@vexoulz/ui'
-import AdminShell from '@/components/AdminShell.vue'
+import ManageShell from '@/components/ManageShell.vue'
 import AuditTable from '@/components/AuditTable.vue'
 import { admin } from '@/lib/admin'
 import { useLoad } from '@/lib/useLoad'
@@ -12,10 +12,11 @@ const { data, error, reload } = useLoad(async () => {
 </script>
 
 <template>
-  <AdminShell title="Audit">
+  <ManageShell title="Audit">
     <p class="vx-muted intro">
       Every change to roles, permissions, cooldowns, toggles, filters, triggers and custom commands, whoever made it
-      and however: in chat, here, or with an API key. The latest 200.
+      and however: in chat, here, or with an API key. You see the channels you manage, and your own changes anywhere
+      (a bot admin sees everything). The latest 200.
     </p>
     <VxCallout v-if="error" tone="error" title="Couldn't load the audit log">
       {{ error }}
@@ -23,7 +24,7 @@ const { data, error, reload } = useLoad(async () => {
     </VxCallout>
     <div v-else-if="!data" class="loading" aria-busy="true"><VxSkeleton v-for="i in 10" :key="i" h="38px" /></div>
     <AuditTable v-else :entries="data.entries" :channels="data.channels" />
-  </AdminShell>
+  </ManageShell>
 </template>
 
 <style scoped>

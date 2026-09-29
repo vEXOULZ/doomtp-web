@@ -7,13 +7,14 @@ import {
 } from '@vexoulz/ui'
 import { computed, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import AdminShell from '@/components/AdminShell.vue'
+import ManageShell from '@/components/ManageShell.vue'
 import ChannelSettings from '@/components/ChannelSettings.vue'
 import ChatLine from '@/components/ChatLine.vue'
 import { can, isMe, manages } from '@/lib/access'
 import { admin, readIgnored, type Channel, type Ignored } from '@/lib/admin'
 import { api, errorMessage } from '@/lib/api'
 import { commandRows, LOG_LEVELS, moduleRows, publishedRows, type CommandRow, type CommandRulePatch } from '@/lib/modules'
+import { refresh } from '@/lib/session'
 import { useLoad } from '@/lib/useLoad'
 
 const props = defineProps<{ login: string }>()
@@ -174,7 +175,8 @@ async function part() {
     await admin.part(props.login)
     toast.show(`Left #${props.login}`)
     partOpen.value = false
-    router.push('/admin')
+    await refresh() // a broadcaster who sent the bot away no longer manages the channel
+    router.push('/manage')
   } catch (e) {
     toast.show(errorMessage(e), { kind: 'error', duration: 5000 })
   } finally {
@@ -219,7 +221,7 @@ async function ignore() {
 }
 const name = (u: Ignored) => (u.login ? `@${u.login}` : u.userId)
 /** A moderator lifts ignores in this channel, an admin also bot-wide ones; anyone may lift their own self-ignore. */
-const mayLift = (u: Ignored) => (u.self && isMe(u.userId)) || (can('ignored.edit') && (!u.everywhere || can('ignored.everywhere')))
+const mayLift = (u: Ignored) => (u.self && isMe(u.userId)) || (can('ignored.edit', props.login) && (!u.everywhere || can('ignored.everywhere')))
 const lifting = ref<Ignored | null>(null)
 const lift = (u: Ignored) =>
   act('unignore', () => admin.unignore(props.login, u.userId, u.everywhere), `${name(u)} isn't ignored ${u.everywhere ? 'anywhere' : 'here'} any more`).then(
@@ -228,21 +230,21 @@ const lift = (u: Ignored) =>
 </script>
 
 <template>
-  <AdminShell :title="`#${login}`" eyebrow="Admin · channel">
+  <ManageShell :title="`#${login}`" eyebrow="Manage · channel">
     <template #actions>
       <RouterLink :to="`/channels/${login}`" class="vx-btn">Public page</RouterLink>
-      <VxButton v-if="data && can('channel.part')" variant="danger" @click="partOpen = true">Leave channel</VxButton>
+      <VxButton v-if="data && can('channel.part', login)" variant="danger" @click="partOpen = true">Leave channel</VxButton>
     </template>
 
     <VxCallout v-if="notMine || status === 403" tone="warn" :title="`#${login} isn't one of your channels`">
       You can manage the channels you own or moderate on Twitch. The bot checks that every few minutes, so if you became
       a moderator there just now, reload this page in a little while.
-      <template #actions><RouterLink to="/admin" class="vx-btn is-sm">Your channels</RouterLink></template>
+      <template #actions><RouterLink to="/manage" class="vx-btn is-sm">Your channels</RouterLink></template>
     </VxCallout>
     <VxCallout v-else-if="error" tone="error" :title="status === 404 ? `The bot doesn't know #${login}` : `Couldn't load #${login}`">
       {{ error }}
       <template #actions>
-        <RouterLink v-if="status === 404" to="/admin" class="vx-btn is-sm">All channels</RouterLink>
+        <RouterLink v-if="status === 404" to="/manage" class="vx-btn is-sm">All channels</RouterLink>
         <VxButton v-else size="sm" @click="reload">Try again</VxButton>
       </template>
     </VxCallout>
@@ -291,13 +293,13 @@ const lift = (u: Ignored) =>
                   <VxSwitch
                     v-else-if="m.enabled !== null"
                     :model-value="m.enabled"
-                    :disabled="!can('modules.toggle') || busy.has(`m:${m.name}`)"
+                    :disabled="!can('modules.toggle', login) || busy.has(`m:${m.name}`)"
                     @update:model-value="(on: boolean) => setModule(m.name, on)"
                   ><span class="sr-only">Module {{ m.name }}</span></VxSwitch>
                   <span v-else class="unknown">
                     <span class="vx-muted small" title="The bot doesn't report whether this one is on yet">state not reported</span>
-                    <VxButton size="sm" :disabled="!can('modules.toggle') || busy.has(`m:${m.name}`)" @click="setModule(m.name, true)">On</VxButton>
-                    <VxButton size="sm" :disabled="!can('modules.toggle') || busy.has(`m:${m.name}`)" @click="setModule(m.name, false)">Off</VxButton>
+                    <VxButton size="sm" :disabled="!can('modules.toggle', login) || busy.has(`m:${m.name}`)" @click="setModule(m.name, true)">On</VxButton>
+                    <VxButton size="sm" :disabled="!can('modules.toggle', login) || busy.has(`m:${m.name}`)" @click="setModule(m.name, false)">Off</VxButton>
                   </span>
                 </td>
               </tr>
@@ -331,11 +333,11 @@ const lift = (u: Ignored) =>
                   <VxSwitch
                     v-else
                     :model-value="c.enabled"
-                    :disabled="!can('commands.edit') || busy.has(`c:${c.name}`)"
+                    :disabled="!can('commands.edit', login) || busy.has(`c:${c.name}`)"
                     @update:model-value="(on: boolean) => setCommand(c.name, { enabled: on }, `${sign}${c.name} turned ${onOff(on)}`)"
                   ><span class="sr-only">Command {{ c.name }}</span></VxSwitch>
                 </td>
-                <td class="end"><VxButton v-if="can('commands.edit')" size="sm" variant="ghost" @click="editRule(c)">Edit</VxButton></td>
+                <td class="end"><VxButton v-if="can('commands.edit', login)" size="sm" variant="ghost" @click="editRule(c)">Edit</VxButton></td>
               </tr>
               <tr v-if="!shownCommands.length"><td colspan="6" class="vx-muted">No command matches “{{ cmdQuery }}”.</td></tr>
             </tbody>
@@ -392,11 +394,11 @@ const lift = (u: Ignored) =>
                 <td>
                   <VxSwitch
                     :model-value="t.enabled"
-                    :disabled="!can('triggers.edit') || busy.has(`t:${t.id}`)"
+                    :disabled="!can('triggers.edit', login) || busy.has(`t:${t.id}`)"
                     @update:model-value="(on: boolean) => act(`t:${t.id}`, () => admin.setTrigger(login, t.id, on), `${t.type} turned ${onOff(on)}`)"
                   ><span class="sr-only">{{ t.type }} {{ t.id }}</span></VxSwitch>
                 </td>
-                <td class="end"><VxButton v-if="can('triggers.edit')" size="sm" variant="ghost" @click="deletingTrigger = t.id">Delete</VxButton></td>
+                <td class="end"><VxButton v-if="can('triggers.edit', login)" size="sm" variant="ghost" @click="deletingTrigger = t.id">Delete</VxButton></td>
               </tr>
             </tbody>
           </table>
@@ -416,17 +418,17 @@ const lift = (u: Ignored) =>
                 <td>
                   <VxSwitch
                     :model-value="f.enabled"
-                    :disabled="!can('filter.edit') || busy.has(`f:${f.id}`)"
+                    :disabled="!can('filter.edit', login) || busy.has(`f:${f.id}`)"
                     @update:model-value="(on: boolean) => act(`f:${f.id}`, () => admin.setFilter(login, f.id, on), `${f.pattern} turned ${onOff(on)}`)"
                   ><span class="sr-only">Filter {{ f.pattern }}</span></VxSwitch>
                 </td>
-                <td class="end"><VxButton v-if="can('filter.edit')" size="sm" variant="ghost" @click="deletingFilter = f.id">Delete</VxButton></td>
+                <td class="end"><VxButton v-if="can('filter.edit', login)" size="sm" variant="ghost" @click="deletingFilter = f.id">Delete</VxButton></td>
               </tr>
             </tbody>
           </table>
         </div>
         <VxEmptyState v-else title="No entries for this channel" text="Add a word or pattern below." />
-        <form v-if="can('filter.edit')" class="add vx-panel" @submit.prevent="addFilter">
+        <form v-if="can('filter.edit', login)" class="add vx-panel" @submit.prevent="addFilter">
           <VxField label="Pattern">
             <template #default="{ id }"><VxInput :id="id" v-model="entry.pattern" mono placeholder="badword" /></template>
           </VxField>
@@ -493,7 +495,7 @@ const lift = (u: Ignored) =>
             </tbody>
           </table>
         </div>
-        <form v-if="can('ignored.edit')" class="add vx-panel" @submit.prevent="ignore">
+        <form v-if="can('ignored.edit', login)" class="add vx-panel" @submit.prevent="ignore">
           <VxField label="User">
             <template #default="{ id }"><VxInput :id="id" v-model="ignoring.login" mono placeholder="twitch login" /></template>
           </VxField>
@@ -571,7 +573,7 @@ const lift = (u: Ignored) =>
         >Delete</VxButton>
       </template>
     </VxDialog>
-  </AdminShell>
+  </ManageShell>
 </template>
 
 <style scoped>

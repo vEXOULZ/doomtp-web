@@ -1,7 +1,8 @@
-// The admin session: one reactive session for the whole app, the same shape as vods'. The router guard calls
-// `ensure()`; a 401 from any admin call drops the session so the next step lands on the sign-in page.
+// The bot session: one reactive session for the whole app. DtpShell loads it on every page, so the Manage bar
+// shows as soon as someone is signed in; the router guard awaits it on /manage pages. A 401 from any call made with
+// the session drops it, and the next step lands on the sign-in page.
 import { reactive, readonly } from 'vue'
-import { admin, type Session } from './admin'
+import { admin, type OwnChannel, type Session, type SessionRole } from './admin'
 import { auth } from './api'
 
 const state = reactive({
@@ -13,12 +14,17 @@ const state = reactive({
   twitchLogin: false,
   expiresAt: null as number | null,
   /** What the session may do (see access.ts); an older bot doesn't say, which means admin. */
-  role: null as 'moderator' | 'admin' | null,
+  role: null as SessionRole | null,
   /** The signed-in Twitch user; null for the admin password. */
   user: null as { id: string; login: string } | null,
-  /** The channels a moderator manages; null means every channel. */
+  /** The channels the session manages; null means every channel (an admin). */
   channels: null as string[] | null,
-  /** Why the admin was sent to the sign-in page (an expired session). */
+  /** Why it manages each one, and its chat rank there (custom roles included). Null for an admin. */
+  channelRoles: null as Record<string, 'broadcaster' | 'moderator'> | null,
+  channelRanks: null as Record<string, number> | null,
+  /** The user's own channel, for the "add the bot" and "upgrade" buttons. */
+  ownChannel: null as OwnChannel | null,
+  /** Why the visitor was sent to the sign-in page (an expired session). */
   notice: null as string | null,
 })
 export const session = readonly(state)
@@ -32,7 +38,22 @@ function apply(s: Session) {
   state.role = s.role ?? null
   state.user = s.user ?? null
   state.channels = s.channels ?? null
+  state.channelRoles = s.channel_roles ?? null
+  state.channelRanks = s.channel_ranks ?? null
+  state.ownChannel = s.own_channel ?? null
   auth.csrf = s.csrf
+}
+
+function clear() {
+  state.authenticated = false
+  state.expiresAt = null
+  state.role = null
+  state.user = null
+  state.channels = null
+  state.channelRoles = null
+  state.channelRanks = null
+  state.ownChannel = null
+  auth.csrf = null
 }
 
 let onExpired: (() => void) | null = null
@@ -43,14 +64,13 @@ export function setExpiredHandler(fn: () => void) {
 
 auth.onUnauthorized = () => {
   if (!state.authenticated) return
-  state.authenticated = false
-  auth.csrf = null
+  clear()
   state.notice = 'Your session ended. Sign in again.'
   onExpired?.()
 }
 
 let pending: Promise<void> | null = null
-/** Loads the session once; the guard awaits it on every admin navigation. */
+/** Loads the session once; later calls share the answer. */
 export function ensure(): Promise<void> {
   if (state.checked) return Promise.resolve()
   pending ??= admin
@@ -65,12 +85,39 @@ export function ensure(): Promise<void> {
   return pending
 }
 
+/** Asks the bot again, after something that changes what the session manages (adding the bot to a channel). */
+export function refresh(): Promise<void> {
+  state.checked = false
+  return ensure()
+}
+
 /**
- * Where the Twitch sign-in starts: the bot sends the person to Twitch and back to its own callback, which sets the
- * session cookie and lands on `next` (a path on this site), or on /admin/login?error=<reason> when it fails.
+ * Where the Twitch sign-in starts: the bot sends the person to Twitch (or through the vexoulz account, ADR-0023) and
+ * back to its own callback, which sets the session cookie and lands on `next` (a path on this site), or on
+ * /admin/login?error=<reason> when it fails.
  */
 export function twitchLoginUrl(next: string): string {
   return `/auth/admin/login?${new URLSearchParams({ next })}`
+}
+
+/** Where a broadcaster grants the bot more of their channel (a basic or moderator tier becomes full). */
+export const CONNECT_URL = '/auth/connect'
+
+const BOUNCED = 'dtp:signin-bounced'
+/**
+ * Someone signed in to their vexoulz account but without a bot session goes through the bot's sign-in once, which
+ * comes straight back signed in. At most once per tab, so a sign-in that fails can't loop. True if it navigated.
+ */
+export function bounceOnce(accountSignedIn: boolean, here: string, go = (url: string) => window.location.assign(url)): boolean {
+  if (!accountSignedIn || !state.checked || state.authenticated || !state.twitchLogin) return false
+  try {
+    if (sessionStorage.getItem(BOUNCED)) return false
+    sessionStorage.setItem(BOUNCED, '1')
+  } catch {
+    return false // no storage: no way to tell a second bounce from the first, so none at all
+  }
+  go(twitchLoginUrl(here))
+  return true
 }
 
 /** Why a Twitch sign-in came back to the sign-in page (`?error=` from the bot's callback). */
@@ -91,8 +138,12 @@ export async function logout(): Promise<void> {
   try {
     await admin.logout()
   } finally {
-    state.authenticated = false
-    state.expiresAt = null
-    auth.csrf = null
+    clear()
   }
+}
+
+/** Adds the bot to the user's own channel; the session manages it straight away. */
+export async function joinOwnChannel(): Promise<void> {
+  await admin.joinOwn()
+  await refresh()
 }

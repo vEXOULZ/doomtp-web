@@ -1,18 +1,20 @@
 <script setup lang="ts">
-// Explain as a chatter you name (architecture §11 `as_user`): admin only, like the bot's /admin/explain.
+// Explain and sandbox for anyone signed in: what an expression would do in any channel, and optionally run it with
+// nothing sent or saved. Checking it as a chatter you name (architecture §11 `as_user`) is for the channel's
+// moderators, as the bot allows it.
 import { VxButton, VxCallout, VxCheckbox, VxField, VxInput, VxSelect, VxSkeleton } from '@vexoulz/ui'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import AdminShell from '@/components/AdminShell.vue'
+import ManageShell from '@/components/ManageShell.vue'
 import ExplainReport from '@/components/ExplainReport.vue'
+import { can } from '@/lib/access'
 import { admin, EXPLAIN_BADGES } from '@/lib/admin'
-import type { ExplainReport as Report } from '@/lib/api'
+import { api, errorMessage, type ExplainReport as Report } from '@/lib/api'
 import { useLoad } from '@/lib/useLoad'
-import { errorMessage } from '@/lib/api'
 
 const route = useRoute()
 const router = useRouter()
-const { data: channels, error: loadError, reload } = useLoad(async () => (await admin.channels()).channels)
+const { data: channels, error: loadError, reload } = useLoad(async () => (await api.site()).channels)
 
 const form = reactive({
   channel: typeof route.query.channel === 'string' ? route.query.channel : '',
@@ -26,6 +28,8 @@ watch(channels, (list) => {
 })
 const options = computed(() => (channels.value ?? []).map((c) => ({ value: c.login, label: `#${c.login}`, sub: c.prefix })))
 const sign = computed(() => channels.value?.find((c) => c.login === form.channel)?.prefix ?? '!')
+/** Whether this channel lets the session check as someone else: its moderators and up. */
+const asOthers = computed(() => !!form.channel && can('explain.as', form.channel))
 
 const badge = (name: string) => ({
   get: () => form.badges.includes(name),
@@ -45,11 +49,11 @@ async function submit() {
     report.value = await admin.explainAs({
       text: form.text,
       channel: form.channel,
-      as_user: form.as_user.trim() || undefined,
-      badges: form.badges,
+      as_user: (asOthers.value && form.as_user.trim()) || undefined,
+      badges: asOthers.value ? form.badges : [],
       run: form.run,
     })
-    checkedAs.value = form.as_user.trim()
+    checkedAs.value = asOthers.value ? form.as_user.trim() : ''
     router.replace({ query: { channel: form.channel } })
   } catch (e) {
     error.value = errorMessage(e)
@@ -60,12 +64,12 @@ async function submit() {
 </script>
 
 <template>
-  <AdminShell title="Explain">
+  <ManageShell title="Explain">
     <p class="vx-muted intro">
-      What an expression would do in a channel, checked as a chatter you name. Chat badges (moderator, VIP,
-      subscriber) only arrive with a chat message, so tick the ones to assume; custom roles, the broadcaster and bot
-      admins are looked up as in chat. <b>Run</b> evaluates it too, with variable writes discarded, cooldowns
-      untouched and nothing sent.
+      What an expression would do in a channel. <b>Run</b> evaluates it too, with variable writes discarded,
+      cooldowns untouched and nothing sent. In a channel you moderate you can also check it as a chatter you name:
+      chat badges (moderator, VIP, subscriber) only arrive with a chat message, so tick the ones to assume; custom
+      roles, the broadcaster and bot admins are looked up as in chat.
     </p>
     <VxCallout v-if="loadError" tone="error" title="Couldn't load the channels">
       {{ loadError }}
@@ -83,7 +87,7 @@ async function submit() {
           </template>
         </VxField>
       </div>
-      <div class="line">
+      <div v-if="asOthers" class="line">
         <VxField label="As chatter" help="A Twitch login. Empty: nobody in particular.">
           <template #default="{ id }"><VxInput :id="id" v-model="form.as_user" placeholder="login" mono /></template>
         </VxField>
@@ -104,7 +108,7 @@ async function submit() {
       <p v-if="checkedAs" class="vx-muted">Checked as <b>{{ checkedAs }}</b>.</p>
       <ExplainReport :report="report" />
     </section>
-  </AdminShell>
+  </ManageShell>
 </template>
 
 <style scoped>

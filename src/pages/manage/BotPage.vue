@@ -1,25 +1,22 @@
 <script setup lang="ts">
-import { VxButton, VxCallout, VxCheckbox, VxChip, VxDialog, VxField, VxInput, VxSkeleton, VxStatusDot, timeAgo, useToast } from '@vexoulz/ui'
+// The bot itself, for its admins: health, joining channels, and API keys.
+import { VxButton, VxCallout, VxCheckbox, VxChip, VxDialog, VxEmptyState, VxField, VxInput, VxSkeleton, timeAgo, useToast } from '@vexoulz/ui'
 import { computed, ref } from 'vue'
-import AdminShell from '@/components/AdminShell.vue'
-import AuditTable from '@/components/AuditTable.vue'
+import { useRouter } from 'vue-router'
+import ManageShell from '@/components/ManageShell.vue'
 import { can } from '@/lib/access'
 import { admin, health, type ApiKey } from '@/lib/admin'
 import { ApiError, errorMessage } from '@/lib/api'
 import { useLoad } from '@/lib/useLoad'
 
 const toast = useToast()
+const router = useRouter()
+const allowed = computed(() => can('bot'))
 const { data, error, reload } = useLoad(async () => {
-  // A moderator gets neither health nor API keys from the bot, so those aren't asked for.
-  const [ready, channels, keys, audit] = await Promise.all([
-    can('health') ? health() : null,
-    admin.channels(),
-    can('keys') ? admin.keys() : null,
-    admin.audit(8),
-  ])
-  return { ready, channels: channels.channels, keys: keys?.keys ?? [], audit: audit.entries }
+  if (!allowed.value) return null
+  const [ready, keys] = await Promise.all([health(), admin.keys()])
+  return { ready, keys: keys.keys }
 })
-const message = (e: unknown) => (errorMessage(e))
 
 // ── health ──
 const components = computed(() =>
@@ -41,7 +38,7 @@ async function join() {
     await admin.join(login)
     joinLogin.value = ''
     toast.show(`Joined #${login}`)
-    await reload()
+    router.push(`/manage/channels/${encodeURIComponent(login)}`)
   } catch (e) {
     toast.show(`Couldn't join #${login}: ${errorMessage(e)}`, { kind: 'error', duration: 5000 })
   } finally {
@@ -102,14 +99,15 @@ async function revoke() {
 </script>
 
 <template>
-  <AdminShell title="Overview">
-    <VxCallout v-if="error" tone="error" title="Couldn't load the admin overview">
+  <ManageShell title="Bot">
+    <VxEmptyState v-if="!allowed" code="403" title="Bot admins only" text="This page runs the bot itself: its health, joining channels and API keys." />
+    <VxCallout v-else-if="error" tone="error" title="Couldn't load the bot's state">
       {{ error }}
       <template #actions><VxButton size="sm" @click="reload">Try again</VxButton></template>
     </VxCallout>
     <div v-else-if="!data" class="loading" aria-busy="true"><VxSkeleton v-for="i in 8" :key="i" h="38px" /></div>
     <template v-else>
-      <section v-if="can('health')">
+      <section>
         <h2 class="vx-eyebrow sec">Health</h2>
         <div class="table-scroll vx-panel">
           <table class="vx-table">
@@ -126,31 +124,16 @@ async function revoke() {
       </section>
 
       <section>
-        <h2 class="vx-eyebrow sec">Channels</h2>
-        <div class="table-scroll vx-panel">
-          <table class="vx-table">
-            <thead><tr><th>Channel</th><th>Status</th><th>Sign</th><th>Tier</th><th>Logging</th><th>Backfill</th></tr></thead>
-            <tbody>
-              <tr v-for="c in data.channels" :key="c.channel_id">
-                <td><RouterLink :to="`/admin/channels/${c.login}`" class="chan">#{{ c.login }}</RouterLink></td>
-                <td><VxStatusDot :status="c.banned ? 'warn' : c.active && c.status === 'joined' ? 'ok' : 'off'" :label="c.status" /></td>
-                <td class="vx-mono">{{ c.prefix }}</td>
-                <td>{{ c.tier }}</td>
-                <td>{{ c.log_enabled ? 'on' : 'off' }}</td>
-                <td>{{ c.history_backfill ? 'on' : 'off' }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <form v-if="can('channel.join')" class="row" @submit.prevent="join">
+        <h2 class="vx-eyebrow sec">Join a channel</h2>
+        <form class="row" @submit.prevent="join">
           <label class="sr-only" for="join-login">Channel to join</label>
           <VxInput id="join-login" v-model="joinLogin" placeholder="channel login" mono />
           <VxButton type="submit" :loading="joining" :disabled="!joinLogin.trim()">Join channel</VxButton>
         </form>
-        <p v-if="can('channel.join')" class="vx-muted small">The same as <code>join</code> in chat: the bot joins and subscribes to the channel's events.</p>
+        <p class="vx-muted small">The same as <code>join</code> in chat: the bot joins and subscribes to the channel's events.</p>
       </section>
 
-      <section v-if="can('keys')">
+      <section>
         <h2 class="vx-eyebrow sec">API keys</h2>
         <p class="vx-muted small">
           Keys for <code>/api/v1</code>. A <code>read</code> key sees configuration and logs; a <code>write</code> key
@@ -175,11 +158,6 @@ async function revoke() {
         <div class="row"><VxButton @click="keyOpen = true">New key</VxButton></div>
       </section>
 
-      <section>
-        <h2 class="vx-eyebrow sec">Recent changes</h2>
-        <AuditTable :entries="data.audit" :channels="data.channels" />
-        <div class="row"><RouterLink to="/admin/audit" class="vx-btn">All changes</RouterLink></div>
-      </section>
     </template>
 
     <VxDialog v-model:open="keyOpen" title="New API key">
@@ -211,7 +189,7 @@ async function revoke() {
         <VxButton variant="danger-solid" :loading="revokeBusy" @click="revoke">Revoke</VxButton>
       </template>
     </VxDialog>
-  </AdminShell>
+  </ManageShell>
 </template>
 
 <style scoped>
@@ -223,7 +201,6 @@ section { margin-bottom: 28px; }
 .row :deep(.vx-input-wrap) { flex: 1 1 14rem; max-width: 20rem; }
 .table-scroll > table { min-width: 34rem; }
 .detail { font-family: var(--vx-font-mono); font-size: 12px; overflow-wrap: anywhere; }
-.chan { color: var(--vx-accent); }
 .end { text-align: right; }
 .vx-chip + .vx-chip { margin-left: 4px; }
 .dialog-form { display: grid; gap: 12px; margin-top: 12px; }
