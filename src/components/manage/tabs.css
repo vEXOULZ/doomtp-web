@@ -1,0 +1,18 @@
+/* Shared by the channel page's tabs (components/manage/*Tab.vue) and the other Manage pages that reuse them. */
+.mtab .intro { margin: 0 0 10px; }
+.mtab .small { font-size: 12px; }
+.mtab .end { text-align: right; white-space: nowrap; }
+.mtab .wrap { overflow-wrap: anywhere; }
+.mtab .nowrap { white-space: nowrap; }
+.mtab .table-scroll > table { min-width: 30rem; }
+.mtab .sub { margin: 18px 0 8px; }
+.mtab .sub:first-child { margin-top: 0; }
+.mtab .search { margin-bottom: 10px; max-width: 22rem; }
+.mtab .add { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; padding: 14px; margin-top: 12px; }
+.mtab .add .vx-checkbox { align-self: center; }
+.mtab .grow { flex: 1 1 14rem; }
+.mtab .filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 12px; margin: 0 0 12px; }
+.mtab .pager { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
+.mtab .loading { display: grid; gap: 6px; }
+.dialog-form { display: grid; gap: 14px; margin-top: 4px; }
+.dialog-form .vx-segmented { flex-wrap: wrap; }

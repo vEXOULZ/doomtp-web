@@ -16,10 +16,8 @@ const where = (e: AuditEntry) => {
   const login = e.channel_login ?? logins.value.get(id)
   return login ? `#${login}` : id
 }
-const change = (e: AuditEntry) => {
-  const after = e.after && typeof e.after === 'object' ? JSON.stringify(e.after) : e.after
-  return after === null || after === undefined ? '' : String(after)
-}
+/** A before or after value as one line; nothing when there's none. */
+const one = (v: unknown) => (v === null || v === undefined ? '' : typeof v === 'object' ? JSON.stringify(v) : String(v))
 </script>
 
 <template>
@@ -33,7 +31,11 @@ const change = (e: AuditEntry) => {
           <td>{{ where(e) }}</td>
           <td class="target">
             {{ e.target ?? '' }}
-            <span v-if="change(e)" class="vx-muted after">→ {{ change(e) }}</span>
+            <div v-if="one(e.before) || one(e.after)" class="change">
+              <span v-if="one(e.before)" class="before" title="Before">{{ one(e.before) }}</span>
+              <span v-if="one(e.before)" class="vx-muted" aria-hidden="true"> → </span>
+              <span class="after" title="After">{{ one(e.after) || '(removed)' }}</span>
+            </div>
           </td>
           <td class="vx-mono vx-muted">{{ e.actor_login ? `@${e.actor_login}` : e.actor_user_id ?? (e.via === 'chat' ? 'bot' : 'admin') }}</td>
           <td><VxChip>{{ e.via }}</VxChip></td>
@@ -49,5 +51,7 @@ const change = (e: AuditEntry) => {
 .when { white-space: nowrap; }
 .action { font-size: 12.5px; }
 .target { overflow-wrap: anywhere; }
-.after { font-family: var(--vx-font-mono); font-size: 12px; }
+.change { font-family: var(--vx-font-mono); font-size: 12px; margin-top: 2px; }
+.before { color: var(--vx-muted); text-decoration: line-through; }
+.after { color: var(--vx-ink); }
 </style>

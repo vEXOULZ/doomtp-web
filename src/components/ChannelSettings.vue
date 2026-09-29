@@ -14,6 +14,8 @@ const fromChannel = (c: Channel) => ({
   prefix: c.prefix,
   log_enabled: c.log_enabled,
   history_backfill: c.history_backfill,
+  // Older bots don't know it; the switch is hidden then, so it's never sent.
+  public_log: c.public_log ?? true,
   error_replies: !c.quiet_errors,
   cc_edit_notice: c.cc_edit_notice,
   reply_hold_ms: c.reply_hold_ms,
@@ -110,6 +112,12 @@ const ROLE_FIELDS: [keyof Form, string, string][] = [
       <h3 class="vx-eyebrow">Logging</h3>
       <VxSwitch v-model="form.log_enabled" :disabled="!can('settings.logging', channel.login)" label="Keep a chat log (for search and logsearch)" />
       <VxSwitch v-model="form.history_backfill" :disabled="!can('settings.backfill', channel.login)" label="Backfill: fill gaps from a history service" />
+      <VxSwitch
+        v-if="channel.public_log !== undefined"
+        v-model="form.public_log"
+        :disabled="!can('settings.public-log', channel.login)"
+        label="Public log: anyone may search the messages (off: moderators only)"
+      />
       <p v-if="!can('settings.logging', channel.login)" class="vx-muted locked">Only the broadcaster turns the chat log on or off.</p>
       <h3 class="vx-eyebrow">Automod</h3>
       <VxField label="Messages the word filter blocks">
