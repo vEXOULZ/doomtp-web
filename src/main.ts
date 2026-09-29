@@ -9,6 +9,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import App from './App.vue'
 import { account } from './lib/account'
 import { hashPosition } from './lib/hash'
+import { ensure, session, setExpiredHandler, twitchLoginUrl } from './lib/session'
 
 // The same URLs as the bot's own pages, so links already out there (chat's explain links included) keep working.
 const router = createRouter({
@@ -21,12 +22,17 @@ const router = createRouter({
     { path: '/docs/api', component: () => import('./pages/ApiPage.vue') },
     { path: '/channels/:login', component: () => import('./pages/ChannelPage.vue'), props: true },
     { path: '/explain/:token', component: () => import('./pages/ExplainPage.vue'), props: true },
-    // Admin. Every page but the sign-in needs a session; see src/lib/session.ts.
+    // Manage. Every page needs a session (see src/lib/session.ts); what each shows depends on its rank.
+    { path: '/manage', component: () => import('./pages/manage/OverviewPage.vue') },
+    { path: '/manage/me', component: () => import('./pages/manage/MePage.vue') },
+    { path: '/manage/channels/:login', component: () => import('./pages/manage/ChannelPage.vue'), props: true },
+    { path: '/manage/explain', component: () => import('./pages/manage/ExplainPage.vue') },
+    { path: '/manage/audit', component: () => import('./pages/manage/AuditPage.vue') },
+    { path: '/manage/bot', component: () => import('./pages/manage/BotPage.vue') },
+    // The sign-in page: the bot's Twitch sign-in lands here with ?error=, and the admin password lives here.
     { path: '/admin/login', component: () => import('./pages/admin/AdminLoginPage.vue'), meta: { public: true } },
-    { path: '/admin', component: () => import('./pages/admin/AdminOverviewPage.vue') },
-    { path: '/admin/channels/:login', component: () => import('./pages/admin/AdminChannelPage.vue'), props: true },
-    { path: '/admin/explain', component: () => import('./pages/admin/AdminExplainPage.vue') },
-    { path: '/admin/audit', component: () => import('./pages/admin/AdminAuditPage.vue') },
+    // The old admin area, for links and bookmarks already out there.
+    { path: '/admin/:rest(.*)*', redirect: (to) => ({ path: `/manage${to.path.slice('/admin'.length)}`, query: to.query, hash: to.hash }) },
     { path: '/:pathMatch(.*)*', component: () => import('./pages/NotFoundPage.vue') },
   ],
   scrollBehavior: (to, from, saved) => {
@@ -37,22 +43,23 @@ const router = createRouter({
   },
 })
 
-// The admin session (and the admin client behind it) loads with the first admin page, not for every visitor.
-let sessionModule: Promise<typeof import('./lib/session')> | undefined
-const loadSession = () =>
-  (sessionModule ??= import('./lib/session').then((m) => {
-    m.setExpiredHandler(() => {
-      const here = router.currentRoute.value
-      if (here.path.startsWith('/admin') && !here.meta.public) router.push({ path: '/admin/login', query: { next: here.fullPath } })
-    })
-    return m
-  }))
+// A session that ends mid-use sends the visitor to the sign-in page, which says why and brings them back.
+setExpiredHandler(() => {
+  const here = router.currentRoute.value
+  if (here.path.startsWith('/manage')) router.push({ path: '/admin/login', query: { next: here.fullPath } })
+})
 
+// Manage pages need a session. Signed out, the visitor goes through the bot's Twitch sign-in (which, with the vexoulz
+// account as its provider, is the account sign-in) and comes back to the page; without it, to the password page.
 router.beforeEach(async (to) => {
-  if (!to.path.startsWith('/admin') || to.meta.public) return true
-  const { ensure, session } = await loadSession()
+  if (!to.path.startsWith('/manage')) return true
   await ensure()
-  return session.authenticated || { path: '/admin/login', query: { next: to.fullPath } }
+  if (session.authenticated) return true
+  if (session.twitchLogin && !session.notice) {
+    window.location.assign(twitchLoginUrl(to.fullPath))
+    return false
+  }
+  return { path: '/admin/login', query: { next: to.fullPath } }
 })
 
 createApp(App).use(router).use(VxBuild, { commit: __COMMIT__ }).use(account).mount('#app')

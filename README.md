@@ -32,26 +32,41 @@ The same URLs as the bot's own pages, so links already out there keep working (c
 | `/explain/:token` | the report behind a chat `explain` link |
 | anything else | 404 |
 
-### Admin
+### Manage
 
-Not linked from the public pages. Everything under `/admin` except the sign-in page needs a session with the bot;
-without one you are sent to `/admin/login` and back afterwards. There are two ways in (the bot's ADR-0017):
+Signing in adds a **Manage** bar at the top of every page, with a switcher for the channels you manage. There's no
+separate admin site. Everything under `/manage` needs a session with the bot. Without one, you go through the bot's
+Twitch sign-in and come back; if that isn't set up, you land on `/admin/login`. There are two ways in (the bot's
+ADR-0017 and ADR-0026):
 
 - **Sign in with Twitch** (`/auth/admin/login` on the bot, offered when the bot's `/api/v1/session` says
-  `twitch_login`). The bot's owners and admins get the admin view; anyone else who owns or moderates a channel the
-  bot is in gets the **moderator** view of those channels only: settings, modules, command rules, triggers, filters and ignored
-  users, but not joining or leaving channels, the logging and "who may" settings, API keys or health. The bot
-  refuses those itself; the pages just don't offer them. Failures come back as `/admin/login?error=<reason>`.
+  `twitch_login`). The account menu's "Sign in" uses it too. Someone already signed in to their vexoulz account
+  without a bot session goes through it once per tab, silently.
+  - **The bot's owners and admins** see everything.
+  - **Everyone else** gets what they may do in chat:
+    - In a channel they **moderate**: settings, modules, command rules, publications, triggers, filters, ignored
+      users, backfill, runs and the chat log.
+    - As the channel's **broadcaster**, also: logging, the "who may" roles, and leaving.
+    - **Anyone signed in** gets Me, Explain, their own changes in Audit, and a button to add the bot to their own
+      channel (at once), or to connect it for the full tier.
+
+  The bot refuses anything above your rank itself; the pages just don't offer it. Failures come back as
+  `/admin/login?error=<reason>`.
 - **The admin password** (`ADMIN_PASSWORD`): the admin view, and the way in when Twitch is down. The bot takes it
   only from its local network by default (`ADMIN_PASSWORD_NETWORKS`), so from outside the page offers Twitch alone.
 
 | path | what |
 |---|---|
 | `/admin/login` | sign in with Twitch, or with the admin password |
-| `/admin` | health, the channels (join one), API keys (create, revoke), recent changes |
-| `/admin/channels/:login` | one channel: settings, modules, command rules (on or off, who may run it, log level), published packs, triggers and timers, word filter, ignored users; leave or rejoin |
-| `/admin/explain` | explain an expression as a chatter you name, with the badges you pick, and optionally run it |
-| `/admin/audit` | the latest 200 configuration changes, from chat, here or an API key |
+| `/manage` | your channels and your rank in each, adding the bot to your channel, recent changes |
+| `/manage/me` | your channel, the channels you moderate, and what you changed |
+| `/manage/channels/:login` | one channel: settings, modules, command rules (on or off, who may run it, log level), published packs, triggers and timers, word filter, ignored users; leave or rejoin |
+| `/manage/explain` | explain an expression in any channel, and optionally run it; in a channel you manage, as a chatter you name, with the badges you pick |
+| `/manage/audit` | configuration changes, from chat, here or an API key: every channel's for an admin, else your channels' and your own |
+| `/manage/bot` | bot admins: health, joining a channel, API keys |
+
+Old `/admin/...` links redirect to `/manage/...`. The public channel page shows a "Manage" button to anyone who
+manages that channel.
 
 The session is the bot's cookie (`/api/v1/session`); every write sends the CSRF token it returns as
 `X-CSRF-Token`. When the session runs out, the next request sends you to sign in again.
@@ -82,7 +97,7 @@ python scripts/dev_api.py
 ```
 
 It has no Twitch sign-in; for the moderator view, open `http://127.0.0.1:8080/dev/login-as?user=alice` (a
-moderator of `vexoulz`), then this site at `http://127.0.0.1:5176/admin`: the session cookie belongs to the host,
+moderator of `vexoulz`; `newcomer` is a plain user), then this site at `http://127.0.0.1:5176/manage`: the session cookie belongs to the host,
 so use `127.0.0.1` for both, not `localhost`.
 
 ## Publishing

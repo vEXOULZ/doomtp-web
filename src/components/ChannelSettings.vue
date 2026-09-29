@@ -108,8 +108,9 @@ const ROLE_FIELDS: [keyof Form, string, string][] = [
 
     <div class="group vx-panel">
       <h3 class="vx-eyebrow">Logging</h3>
-      <VxSwitch v-model="form.log_enabled" :disabled="!can('settings.logging')" label="Keep a chat log (for search and logsearch)" />
-      <VxSwitch v-model="form.history_backfill" :disabled="!can('settings.logging')" label="Backfill: fill gaps from a history service" />
+      <VxSwitch v-model="form.log_enabled" :disabled="!can('settings.logging', channel.login)" label="Keep a chat log (for search and logsearch)" />
+      <VxSwitch v-model="form.history_backfill" :disabled="!can('settings.backfill', channel.login)" label="Backfill: fill gaps from a history service" />
+      <p v-if="!can('settings.logging', channel.login)" class="vx-muted locked">Only the broadcaster turns the chat log on or off.</p>
       <h3 class="vx-eyebrow">Automod</h3>
       <VxField label="Messages the word filter blocks">
         <template #default><VxSegmented v-model="form.automod_action" :options="AUTOMOD" label="Automod action" /></template>
@@ -121,12 +122,13 @@ const ROLE_FIELDS: [keyof Form, string, string][] = [
 
     <div class="group vx-panel">
       <h3 class="vx-eyebrow">Who may</h3>
+      <p v-if="!can('settings.roles', channel.login)" class="vx-muted locked">Only the broadcaster changes these.</p>
       <div v-for="[key, label, hint] in ROLE_FIELDS" :key="key" class="role">
         <span>{{ label }} <code class="vx-muted">{{ hint }}</code></span>
         <VxSelect
           :model-value="String(form[key])"
           :options="roleOptions"
-          :disabled="!can('settings.roles')"
+          :disabled="!can('settings.roles', channel.login)"
           size="sm"
           width="180px"
           align="right"
@@ -160,4 +162,5 @@ const ROLE_FIELDS: [keyof Form, string, string][] = [
 }
 .spacer { flex: 1; }
 .err { color: var(--vx-bad); }
+.locked { font-size: 12px; margin: 0; }
 </style>

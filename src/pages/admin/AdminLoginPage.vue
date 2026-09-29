@@ -15,8 +15,8 @@ const error = ref<string | null>(null)
 
 const next = computed(() => {
   const n = route.query.next
-  // Only paths inside the admin area: never an absolute URL from the query.
-  return typeof n === 'string' && n.startsWith('/admin') && !n.startsWith('//') ? n : '/admin'
+  // Only paths on this site: never an absolute URL from the query.
+  return typeof n === 'string' && n.startsWith('/') && !n.startsWith('//') && !n.includes('\\') && !n.startsWith('/admin/login') ? n : '/manage'
 })
 
 /** A failed Twitch sign-in, as the bot's callback reports it. */
@@ -59,7 +59,7 @@ async function submit() {
   <DtpShell>
     <form class="login vx-panel" @submit.prevent="submit">
       <div class="vx-eyebrow">dtp.vexoulz.net</div>
-      <h1 class="vx-display">Admin</h1>
+      <h1 class="vx-display">Sign in</h1>
       <VxCallout v-if="signinError" tone="error">{{ signinError }}</VxCallout>
       <VxCallout v-else-if="session.notice && !error" tone="warn">{{ session.notice }}</VxCallout>
       <VxCallout v-if="session.checked && !offered" tone="warn" title="Sign-in is off">
@@ -69,7 +69,7 @@ async function submit() {
       </VxCallout>
       <template v-if="session.twitchLogin">
         <VxButton :href="twitchLoginUrl(next)" variant="primary" class="twitch">Sign in with Twitch</VxButton>
-        <p class="vx-muted note">For the channel's broadcaster and moderators, and the bot's admins.</p>
+        <p class="vx-muted note">Anyone with a Twitch account: manage your commands, and the channels you run.</p>
         <div v-if="session.enabled" class="or vx-muted" role="separator">or with the admin password</div>
       </template>
       <template v-if="session.enabled">

@@ -1,14 +1,21 @@
 <script setup lang="ts">
-// Configuration changes (the bot's audit log): what changed, where, by whom and how. Channel ids are shown as
-// logins when the channel is known; the actor stays a Twitch user id, which is all the log keeps (none for
-// changes made with the admin session or a key).
+// Configuration changes (the bot's audit log): what changed, where, by whom and how. The bot names the channel and
+// the actor when it knows them; otherwise the channel id is looked up in `channels`, and the actor stays a Twitch
+// user id (none for changes made with the admin password or a key).
 import { VxChip, timeAgo } from '@vexoulz/ui'
 import { computed } from 'vue'
 import { type AuditEntry, type Channel } from '@/lib/admin'
 
-const props = defineProps<{ entries: AuditEntry[]; channels: Pick<Channel, 'channel_id' | 'login'>[] }>()
+const props = withDefaults(defineProps<{ entries: AuditEntry[]; channels?: Pick<Channel, 'channel_id' | 'login'>[] }>(), {
+  channels: () => [],
+})
 const logins = computed(() => new Map(props.channels.map((c) => [c.channel_id, c.login])))
-const where = (id: string | null) => (!id || id === '*' ? 'everywhere' : logins.value.has(id) ? `#${logins.value.get(id)}` : id)
+const where = (e: AuditEntry) => {
+  const id = e.channel_id
+  if (!id || id === '*') return 'everywhere'
+  const login = e.channel_login ?? logins.value.get(id)
+  return login ? `#${login}` : id
+}
 const change = (e: AuditEntry) => {
   const after = e.after && typeof e.after === 'object' ? JSON.stringify(e.after) : e.after
   return after === null || after === undefined ? '' : String(after)
@@ -23,12 +30,12 @@ const change = (e: AuditEntry) => {
         <tr v-for="e in entries" :key="e.id">
           <td class="vx-muted when" :title="new Date(e.at).toLocaleString()">{{ timeAgo(e.at) }}</td>
           <td><code class="action">{{ e.action }}</code></td>
-          <td>{{ where(e.channel_id) }}</td>
+          <td>{{ where(e) }}</td>
           <td class="target">
             {{ e.target ?? '' }}
             <span v-if="change(e)" class="vx-muted after">→ {{ change(e) }}</span>
           </td>
-          <td class="vx-mono vx-muted">{{ e.actor_user_id ?? (e.via === 'chat' ? 'bot' : 'admin') }}</td>
+          <td class="vx-mono vx-muted">{{ e.actor_login ? `@${e.actor_login}` : e.actor_user_id ?? (e.via === 'chat' ? 'bot' : 'admin') }}</td>
           <td><VxChip>{{ e.via }}</VxChip></td>
         </tr>
         <tr v-if="!entries.length"><td colspan="6" class="vx-muted">Nothing changed yet.</td></tr>

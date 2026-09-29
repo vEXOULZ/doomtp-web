@@ -19,11 +19,28 @@ export interface Session {
   admin_enabled: boolean
   /** Who is behind the session (bot ADR-0017): the password is an admin with no user; a Twitch sign-in names the
    *  user, and a moderator's `channels` are the logins they may manage (null: every channel). */
-  role?: 'moderator' | 'admin' | null
+  role?: SessionRole | null
   user?: { id: string; login: string } | null
   channels?: string[] | null
   /** Whether the bot offers signing in with Twitch (`/auth/admin/login`); older bots don't say, which means no. */
   twitch_login?: boolean
+  /** Why the session manages each channel, and its chat rank there, custom roles included (ADR-0026). Null for an
+   *  admin, who manages every channel. */
+  channel_roles?: Record<string, 'broadcaster' | 'moderator'> | null
+  channel_ranks?: Record<string, number> | null
+  /** The signed-in user's own channel: whether the bot is in it, and at what tier. Null for the admin password. */
+  own_channel?: OwnChannel | null
+}
+
+/** `user` manages no channel; `moderator` manages the ones in `channels`; `admin` manages the bot. */
+export type SessionRole = 'user' | 'moderator' | 'admin'
+
+export interface OwnChannel {
+  login: string
+  joined: boolean
+  status: string | null
+  /** `full`, `moderator` or `basic`: how much the broadcaster granted (below full, reconnect to upgrade). */
+  tier: string | null
 }
 
 export interface ApiKey {
@@ -135,6 +152,20 @@ export interface AuditEntry {
   after: unknown
   /** Epoch ms. */
   at: number
+  /** Filled in by bots from ADR-0026 on: the channel's and actor's logins, when known. */
+  channel_login?: string | null
+  actor_login?: string | null
+}
+export interface AuditQuery {
+  limit?: number
+  /** A channel login. */
+  channel?: string
+  /** A login, or `me`. */
+  actor?: string
+  /** `cc.edit`, or `cc.` for every cc one. */
+  action?: string
+  /** The `next` of the page before. */
+  before?: number
 }
 /** /readyz: each component's status and whatever detail it reports. */
 export interface Health {
@@ -149,6 +180,8 @@ export const admin = {
   session: () => request<Session>('/session'),
   login: (password: string) => request<Session>('/session', json('POST', { password })),
   logout: () => request<unknown>('/session', json('DELETE')),
+  /** Adds the bot to the signed-in user's own channel at once (ADR-0026). */
+  joinOwn: () => request<{ login: string; channel_id: string }>('/me/channel', json('POST')),
 
   keys: () => request<{ keys: ApiKey[] }>('/keys'),
   createKey: (name: string, scopes: string[]) => request<ApiKey & { secret: string }>('/keys', json('POST', { name, scopes })),
@@ -191,7 +224,11 @@ export const admin = {
       `${at(login)}/commands/${encodeURIComponent(name)}`,
       json('PATCH', patch),
     ),
-  audit: (limit = 50) => request<{ entries: AuditEntry[] }>(`/audit?limit=${limit}`),
+  audit: (limit = 50, query: Omit<AuditQuery, 'limit'> = {}) => {
+    const params = new URLSearchParams({ limit: String(limit) })
+    for (const [k, v] of Object.entries(query)) if (v !== undefined && v !== '') params.set(k, String(v))
+    return request<{ entries: AuditEntry[]; next?: number | null }>(`/audit?${params}`)
+  },
 
   explainAs: (body: { text: string; channel: string; as_user?: string; badges: string[]; run: boolean; context?: string }) =>
     request<ExplainReport>('/explain', json('POST', { context: 'line', ...body })),
