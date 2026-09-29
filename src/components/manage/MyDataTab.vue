@@ -35,7 +35,7 @@ const outcome = (r: MyRun): { label: string; tone: 'ok' | 'bad' | 'warn' } =>
 
 <template>
   <section class="mtab">
-    <div class="filters">
+    <div class="filters vx-form-row">
       <VxInput v-model="query" :placeholder="show === 'variables' ? 'Find a variable or value' : 'Find in expressions and errors'" aria-label="Find" class="grow" />
       <VxSegmented v-if="show === 'runs'" v-model="limit" :options="LIMITS" label="How many runs" />
       <VxButton :loading="loading" @click="reload">Refresh</VxButton>

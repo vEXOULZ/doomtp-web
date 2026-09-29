@@ -81,6 +81,30 @@ export function customRow(name: string, command: CustomCommand, module: string, 
   }
 }
 
+/** A command the reference knows nothing more about than its name. */
+export function bareRow(name: string, module: string, summary: string): CommandRow {
+  return {
+    key: `bare:${name}`,
+    name,
+    usage: name,
+    module,
+    kind: 'built-in',
+    role: 'everyone',
+    summary,
+    description: '',
+    aliases: [],
+    params: [],
+    examples: [],
+    cooldowns: [],
+    alwaysOn: false,
+    fixedPolicy: false,
+    owner: '',
+    version: 0,
+    body: '',
+    search: [name, module, summary].join(' ').toLowerCase(),
+  }
+}
+
 const byModuleThenName = (a: CommandRow, b: CommandRow) =>
   a.module.localeCompare(b.module) || a.name.localeCompare(b.name)
 

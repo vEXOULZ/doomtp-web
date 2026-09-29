@@ -90,7 +90,7 @@ const deleting = ref<MyPack | null>(null)
         </form>
       </div>
 
-      <form class="add vx-panel" @submit.prevent="create">
+      <form class="add vx-form-row vx-panel" @submit.prevent="create">
         <VxField label="New pack" help="Lowercase letters, digits and _.">
           <template #default="{ id }"><VxInput :id="id" v-model="draft.name" mono :invalid="!!draft.name && !NAME.test(name)" /></template>
         </VxField>

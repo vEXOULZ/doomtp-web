@@ -68,7 +68,7 @@ const lift = (u: Ignored) =>
         </tbody>
       </table>
     </div>
-    <form v-if="can('ignored.edit', login)" class="add vx-panel" @submit.prevent="ignore">
+    <form v-if="can('ignored.edit', login)" class="add vx-form-row vx-panel" @submit.prevent="ignore">
       <VxField label="User">
         <template #default="{ id }"><VxInput :id="id" v-model="ignoring.login" mono placeholder="twitch login" /></template>
       </VxField>

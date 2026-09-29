@@ -1,10 +1,12 @@
 <script setup lang="ts">
 // Configuration changes (the bot's audit log): what changed, where, by whom and how. The bot names the channel and
 // the actor when it knows them; otherwise the channel id is looked up in `channels`, and the actor stays a Twitch
-// user id (none for changes made with the admin password or a key).
+// user id (none for changes made with the admin password or a key). A known actor shows as @login, with the id in a
+// tooltip.
 import { VxChip, timeAgo } from '@vexoulz/ui'
 import { computed } from 'vue'
 import { type AuditEntry, type Channel } from '@/lib/admin'
+import UserRef from './UserRef.vue'
 
 const props = withDefaults(defineProps<{ entries: AuditEntry[]; channels?: Pick<Channel, 'channel_id' | 'login'>[] }>(), {
   channels: () => [],
@@ -37,7 +39,7 @@ const one = (v: unknown) => (v === null || v === undefined ? '' : typeof v === '
               <span class="after" title="After">{{ one(e.after) || '(removed)' }}</span>
             </div>
           </td>
-          <td class="vx-mono vx-muted">{{ e.actor_login ? `@${e.actor_login}` : e.actor_user_id ?? (e.via === 'chat' ? 'bot' : 'admin') }}</td>
+          <td class="vx-mono vx-muted"><UserRef :id="e.actor_user_id" :login="e.actor_login" :fallback="e.via === 'chat' ? 'bot' : 'admin'" /></td>
           <td><VxChip>{{ e.via }}</VxChip></td>
         </tr>
         <tr v-if="!entries.length"><td colspan="6" class="vx-muted">Nothing changed yet.</td></tr>

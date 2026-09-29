@@ -25,8 +25,10 @@ import '@/components/manage/tabs.css'
 import { can, manages } from '@/lib/access'
 import { admin, readIgnored, type Channel } from '@/lib/admin'
 import { api, errorMessage } from '@/lib/api'
+import { builtinRow, customRow } from '@/lib/commands'
 import { commandRows, moduleRows, publishedRows } from '@/lib/modules'
 import { CONNECT_URL, refresh, session } from '@/lib/session'
+import { defaultSign, loadSite } from '@/lib/site'
 import { useAct, onOff } from '@/lib/useAct'
 import { useLoad } from '@/lib/useLoad'
 
@@ -41,7 +43,7 @@ const notMine = computed(() => !manages(props.login))
 const { data, error, status, reload } = useLoad(
   async () => {
     if (notMine.value) return null
-    const [channel, modules, commands, packs, publications, triggers, filters, ignored, roles, builtins] = await Promise.all([
+    const [channel, modules, commands, packs, publications, triggers, filters, ignored, roles, builtins, site] = await Promise.all([
       admin.channel(props.login),
       admin.modules(props.login),
       admin.channelCommands(props.login),
@@ -52,13 +54,21 @@ const { data, error, status, reload } = useLoad(
       admin.ignored(props.login),
       api.roles(),
       api.commands(),
+      loadSite(),
     ])
+    const specSign = site?.default_prefix ?? defaultSign()
     return {
       channel,
       modules: moduleRows(modules.modules, commands.commands, packs.packs, publications.publications),
       published: publishedRows(packs.packs, publications.publications),
       packs: packs.packs,
       commands: commandRows(commands.commands, builtins.commands),
+      // What the public pages say about each (published ones too while switched off here).
+      reference: [
+        ...builtins.commands.map((b) => builtinRow(b, specSign, channel.prefix)),
+        ...publications.publications.map((p) => customRow(p.published_as, p, 'custom', 'published')),
+        ...packs.packs.flatMap((p) => p.commands.map((c) => customRow(c.name, c, p.name, 'published'))),
+      ],
       triggers: triggers.triggers,
       filters: filters.filters.filter((f) => !f.global),
       globalFilters: filters.filters.filter((f) => f.global),
@@ -187,7 +197,7 @@ async function part() {
         <BackfillPanel :key="String(data.channel.history_backfill)" :login="login" />
       </template>
       <ModulesTab v-else-if="tab === 'modules'" :login="login" :sign="sign" :modules="data.modules" :reload="reload" />
-      <RulesTab v-else-if="tab === 'rules'" :login="login" :sign="sign" :commands="data.commands" :roles="data.roles" :reload="reload" />
+      <RulesTab v-else-if="tab === 'rules'" :login="login" :sign="sign" :commands="data.commands" :reference="data.reference" :roles="data.roles" :reload="reload" />
       <PublishedTab
         v-else-if="tab === 'commands'"
         :login="login"

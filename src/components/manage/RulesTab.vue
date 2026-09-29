@@ -1,11 +1,15 @@
 <script setup lang="ts">
 // Every command chat can run in a channel, and who may: on or off, the role it needs (or exactly which roles), its
 // cooldowns and log level, as `cmd` does in chat. Without a channel, the same rules bot-wide (the Bot page).
+// It reads like the public command pages (CommandTable: a line opens its arguments, examples and body), with the
+// rules in force here in place of the defaults and the switch and Edit on each line.
 import { VxButton, VxCheckbox, VxChip, VxDialog, VxField, VxInput, VxSegmented, VxSelect, VxSwitch } from '@vexoulz/ui'
 import { computed, reactive, ref } from 'vue'
 import ChatLine from '@/components/ChatLine.vue'
+import CommandTable from '@/components/CommandTable.vue'
 import { can } from '@/lib/access'
 import { admin } from '@/lib/admin'
+import { bareRow, type CommandRow as RefRow } from '@/lib/commands'
 import { count } from '@/lib/format'
 import { LOG_LEVELS, type CommandRow, type CommandRulePatch } from '@/lib/modules'
 import { onOff, useAct } from '@/lib/useAct'
@@ -15,25 +19,37 @@ const props = defineProps<{
   login: string | null
   sign: string
   commands: CommandRow[]
+  /** What the public pages say about each command (built-ins and what is published), by name. */
+  reference: RefRow[]
   /** The roles a rule can name: the built-in ones, then this channel's own. */
   roles: string[]
   reload: () => Promise<void>
 }>()
 const { busy, act } = useAct(props.reload)
 
-const query = ref('')
-const shown = computed(() => {
-  const q = query.value.trim().toLowerCase().replace(/^[^\w]+/, '')
-  return q ? props.commands.filter((c) => c.name.includes(q) || c.module.includes(q) || c.summary?.toLowerCase().includes(q)) : props.commands
-})
+// The public row for each command, with who may run it and its cooldowns as they are here.
+const byName = computed(() => new Map(props.reference.map((r) => [r.name, r])))
+const rows = computed(() =>
+  props.commands.map((c): RefRow => {
+    const base = byName.value.get(c.name) ?? bareRow(c.name, c.module, c.summary ?? '')
+    return {
+      ...base,
+      key: c.name,
+      module: c.module,
+      summary: c.summary ?? base.summary,
+      role: c.allowed_roles?.length || (c.required_role && c.required_role !== 'everyone') ? who(c) : 'everyone',
+      cooldowns: Object.entries(c.cooldowns ?? {}).map(([role, cd]) => ({ role, shared: cd.tier_s, personal: cd.user_s })),
+      alwaysOn: !c.toggleable,
+      fixedPolicy: c.fixedPolicy,
+    }
+  }),
+)
+const rules = computed(() => new Map(props.commands.map((c) => [c.name, c])))
+const ruleOf = (r: RefRow) => rules.value.get(r.key)!
 const mayEdit = computed(() => (props.login ? can('commands.edit', props.login) : can('bot')))
 const setCommand = (name: string, patch: CommandRulePatch, done: string) =>
   act(`c:${name}`, () => (props.login ? admin.setCommand(props.login, name, patch) : admin.setGlobalCommand(name, patch)), done)
 const who = (c: CommandRow) => (c.allowed_roles?.length ? c.allowed_roles.join(', ') : c.required_role ? `${c.required_role}+` : '—')
-const cooldown = (c: CommandRow) =>
-  Object.entries(c.cooldowns ?? {})
-    .map(([role, cd]) => [cd.user_s && `${cd.user_s}s each`, cd.tier_s && `${cd.tier_s}s shared`].filter(Boolean).join(', ') + ` (${role})`)
-    .join('; ')
 
 // The rule editor: each field starts at "leave as is", so saving sends only what was picked.
 const KEEP = 'keep'
@@ -129,35 +145,32 @@ async function save() {
       <ChatLine :lines="`${sign}cmd disable <name>`" :sign="sign" /> in chat; a command whose module is off stays off
       whatever it says here.
     </p>
-    <VxInput v-model="query" class="search" placeholder="Find a command or module" aria-label="Find a command" />
-    <div class="table-scroll vx-panel">
-      <table class="vx-table rules">
-        <thead><tr><th>Command</th><th>Module</th><th>Who may</th><th>Cooldown</th><th>On</th><th></th></tr></thead>
-        <tbody>
-          <tr v-for="c in shown" :key="c.name">
-            <td>
-              <ChatLine :lines="`${sign}${c.name}`" :sign="sign" />
-              <div v-if="c.summary" class="vx-muted small">{{ c.summary }}</div>
-              <VxChip v-if="c.missing?.length" tone="bad" :title="`The bot needs the ${c.missing.join(', ')} permission on Twitch here`">needs {{ c.missing.join(', ') }}</VxChip>
-            </td>
-            <td class="vx-mono vx-muted">{{ c.module }}</td>
-            <td class="nowrap">{{ who(c) }}</td>
-            <td class="vx-muted small">{{ cooldown(c) || '—' }}</td>
-            <td class="nowrap">
-              <span v-if="!c.toggleable" class="vx-muted small">always on</span>
-              <VxSwitch
-                v-else
-                :model-value="c.enabled"
-                :disabled="!mayEdit || busy.has(`c:${c.name}`)"
-                @update:model-value="(on: boolean) => setCommand(c.name, { enabled: on }, `${sign}${c.name} turned ${onOff(on)}`)"
-              ><span class="sr-only">Command {{ c.name }}</span></VxSwitch>
-            </td>
-            <td class="end"><VxButton v-if="mayEdit" size="sm" variant="ghost" @click="edit(c)">Edit</VxButton></td>
-          </tr>
-          <tr v-if="!shown.length"><td colspan="6" class="vx-muted">No command matches “{{ query }}”.</td></tr>
-        </tbody>
-      </table>
-    </div>
+    <CommandTable :rows="rows" :sign="sign" actions-label="On">
+      <template #note="{ row }">
+        <VxChip
+          v-if="ruleOf(row).missing?.length"
+          tone="bad"
+          :title="`The bot needs the ${ruleOf(row).missing!.join(', ')} permission on Twitch here`"
+        >needs {{ ruleOf(row).missing!.join(', ') }}</VxChip>
+      </template>
+      <template #actions="{ row }">
+        <span v-if="!ruleOf(row).toggleable" class="vx-muted small nowrap">always on</span>
+        <VxSwitch
+          v-else
+          :model-value="ruleOf(row).enabled"
+          :disabled="!mayEdit || busy.has(`c:${row.key}`)"
+          @update:model-value="(on: boolean) => setCommand(row.key, { enabled: on }, `${sign}${row.key} turned ${onOff(on)}`)"
+        ><span class="sr-only">Command {{ row.key }}</span></VxSwitch>
+        <VxButton v-if="mayEdit" size="sm" variant="ghost" @click="edit(ruleOf(row))">Edit</VxButton>
+      </template>
+      <template #detail="{ row }">
+        <div class="chips">
+          <VxChip k="on here">{{ ruleOf(row).toggleable ? onOff(ruleOf(row).enabled) : 'always' }}</VxChip>
+          <VxChip v-if="ruleOf(row).log_level" k="log level">{{ ruleOf(row).log_level }}</VxChip>
+          <VxChip v-if="ruleOf(row).requires?.length" k="Twitch permission">{{ ruleOf(row).requires!.join(', ') }}</VxChip>
+        </div>
+      </template>
+    </CommandTable>
 
     <VxDialog :open="editing !== null" :title="editing ? `${sign}${editing.name} here` : ''" @update:open="(v: boolean) => { if (!v) editing = null }">
       <form v-if="editing" id="rule-form" class="dialog-form" @submit.prevent="save">
@@ -218,7 +231,7 @@ async function save() {
 </template>
 
 <style scoped>
-.rules td .vx-chip { margin-top: 4px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .only { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 8px; }
 .cds { display: grid; gap: 6px; }
 .cd { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }

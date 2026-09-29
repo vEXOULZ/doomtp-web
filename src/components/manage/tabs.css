@@ -8,10 +8,10 @@
 .mtab .sub { margin: 18px 0 8px; }
 .mtab .sub:first-child { margin-top: 0; }
 .mtab .search { margin-bottom: 10px; max-width: 22rem; }
-.mtab .add { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; padding: 14px; margin-top: 12px; }
-.mtab .add .vx-checkbox { align-self: center; }
+/* Rows of fields and buttons are .vx-form-row (lined up whatever help or error text a field shows). */
+.mtab .add { padding: 14px; margin-top: 12px; }
 .mtab .grow { flex: 1 1 14rem; }
-.mtab .filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 12px; margin: 0 0 12px; }
+.mtab .filters { margin: 0 0 12px; }
 .mtab .pager { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
 .mtab .loading { display: grid; gap: 6px; }
 .dialog-form { display: grid; gap: 14px; margin-top: 4px; }

@@ -9,6 +9,7 @@ import { admin } from '@/lib/admin'
 import { api } from '@/lib/api'
 import { useAct } from '@/lib/useAct'
 import { useLoad } from '@/lib/useLoad'
+import UserRef from '../UserRef.vue'
 
 const props = defineProps<{ login: string; sign: string }>()
 const { data, error, reload } = useLoad(async () => {
@@ -88,7 +89,7 @@ const expires = (at: number | null) => (at ? `until ${new Date(at).toLocaleStrin
         <table v-if="r.members.length" class="vx-table members">
           <tbody>
             <tr v-for="m in r.members" :key="m.user_id">
-              <td class="vx-mono">@{{ m.login ?? m.user_id }}</td>
+              <td class="vx-mono"><UserRef :id="m.user_id" :login="m.login" /></td>
               <td class="vx-muted small" :title="expires(m.expires_at)">{{ m.expires_at ? `ends ${timeAgo(m.expires_at)}` : 'until removed' }}</td>
               <td class="end">
                 <VxButton
@@ -105,7 +106,7 @@ const expires = (at: number | null) => (at ? `until ${new Date(at).toLocaleStrin
         <p v-else class="vx-muted small none">Nobody holds it.</p>
       </div>
 
-      <form v-if="mayEdit" class="add vx-panel" @submit.prevent="create">
+      <form v-if="mayEdit" class="add vx-form-row vx-panel" @submit.prevent="create">
         <VxField label="New role" help="Lowercase letters, digits and _.">
           <template #default="{ id }"><VxInput :id="id" v-model="role.name" mono placeholder="regular" :invalid="!!role.name && !validName" /></template>
         </VxField>

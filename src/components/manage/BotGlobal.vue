@@ -8,12 +8,14 @@ import FilterTab from '@/components/manage/FilterTab.vue'
 import RulesTab from '@/components/manage/RulesTab.vue'
 import { admin, readIgnored, type AdminUser, type GlobalCommand, type Ignored } from '@/lib/admin'
 import { api } from '@/lib/api'
+import { referenceRows } from '@/lib/commands'
 import type { CommandRow, LogLevel } from '@/lib/modules'
 import { useAct } from '@/lib/useAct'
+import { defaultSign, loadSite } from '@/lib/site'
 import { useLoad } from '@/lib/useLoad'
 
 const { data, error, reload } = useLoad(async () => {
-  const [admins, modules, commands, filters, ignored, roles, published, packs, channels] = await Promise.all([
+  const [admins, modules, commands, filters, ignored, roles, published, packs, channels, builtins, site] = await Promise.all([
     admin.admins(),
     admin.globalModules(),
     admin.globalCommands(),
@@ -23,7 +25,10 @@ const { data, error, reload } = useLoad(async () => {
     api.globalCommands(),
     api.packs(),
     admin.channels(),
+    api.commands(),
+    loadSite(),
   ])
+  const globalPacks = packs.packs.filter((p) => p.scope === 'global')
   return {
     admins,
     modules: modules.modules,
@@ -32,12 +37,14 @@ const { data, error, reload } = useLoad(async () => {
     ignored: ignored.ignored.map((e) => readIgnored(e, true)),
     roles: roles.roles.filter((r) => r.rank <= 100).map((r) => r.name),
     published: published.commands,
-    packs: packs.packs.filter((p) => p.scope === 'global'),
+    packs: globalPacks,
+    reference: referenceRows(builtins.commands, published.commands, globalPacks, site?.default_prefix ?? defaultSign()),
     // Ignoring everywhere goes through a channel's route; any joined channel does.
     anchor: channels.channels[0]?.login ?? null,
   }
 })
 const { busy, act } = useAct(reload)
+const sign = computed(defaultSign)
 
 /** The bot-wide rule as the rules table reads a channel's: unset means on, and the command's own role. */
 function asRow(c: GlobalCommand): CommandRow {
@@ -196,7 +203,7 @@ function unpublish() {
         </div>
       </template>
 
-      <RulesTab v-else-if="section === 'rules'" :login="null" sign="!" :commands="data.commands" :roles="data.roles" :reload="reload" />
+      <RulesTab v-else-if="section === 'rules'" :login="null" :sign="sign" :commands="data.commands" :reference="data.reference" :roles="data.roles" :reload="reload" />
 
       <FilterTab v-else-if="section === 'filter'" :login="null" :filters="data.filters" :reload="reload" />
 
