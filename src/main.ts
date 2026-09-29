@@ -7,6 +7,7 @@ import { createApp } from 'vue'
 import { createRouter, createWebHistory } from 'vue-router'
 
 import App from './App.vue'
+import { account } from './lib/account'
 import { hashPosition } from './lib/hash'
 
 // The same URLs as the bot's own pages, so links already out there (chat's explain links included) keep working.
@@ -54,4 +55,4 @@ router.beforeEach(async (to) => {
   return session.authenticated || { path: '/admin/login', query: { next: to.fullPath } }
 })
 
-createApp(App).use(router).use(VxBuild, { commit: __COMMIT__ }).mount('#app')
+createApp(App).use(router).use(VxBuild, { commit: __COMMIT__ }).use(account).mount('#app')
