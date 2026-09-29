@@ -1,9 +1,10 @@
 <script setup lang="ts">
 // Every page's frame: the shared shell with dtp's nav, and the bot's version and default sign in the footer.
-import { VxAccountMenu, VxSiteFooter, VxSiteShell } from '@vexoulz/ui'
+import { VxSiteFooter, VxSiteShell } from '@vexoulz/ui'
 import type { NavItem } from '@vexoulz/ui'
 import { onMounted } from 'vue'
 import { loadSite, site } from '@/lib/site'
+import AccountMenu from './AccountMenu.vue'
 
 const NAV: NavItem[] = [
   { label: 'Features', to: '/docs/features' },
@@ -17,7 +18,7 @@ onMounted(loadSite)
 
 <template>
   <VxSiteShell site="dtp" :nav="NAV">
-    <template #account><VxAccountMenu disabled note="Sign-in comes later." /></template>
+    <template #account><AccountMenu /></template>
     <slot></slot>
     <template #footer>
       <VxSiteFooter>
