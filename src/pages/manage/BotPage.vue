@@ -1,10 +1,11 @@
 <script setup lang="ts">
 // The bot itself, for its admins: health, joining channels, API keys, variable storage limits and the hosts
-// `http get` may fetch.
+// `http get` may fetch, and what every channel inherits (admins, modules, rules, filter, ignored, published).
 import { VxButton, VxCallout, VxCheckbox, VxChip, VxDialog, VxEmptyState, VxField, VxInput, VxSkeleton, timeAgo, useToast } from '@vexoulz/ui'
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import ManageShell from '@/components/ManageShell.vue'
+import BotGlobal from '@/components/manage/BotGlobal.vue'
 import HttpHostsPanel from '@/components/manage/HttpHostsPanel.vue'
 import LimitsPanel from '@/components/manage/LimitsPanel.vue'
 import '@/components/manage/tabs.css'
@@ -176,6 +177,8 @@ async function revoke() {
         <p class="vx-muted small">The hosts custom commands may fetch with <code>http get</code>, the same as <code>admin http</code> in chat.</p>
         <HttpHostsPanel />
       </section>
+
+      <BotGlobal />
 
     </template>
 

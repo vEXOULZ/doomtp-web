@@ -1,7 +1,7 @@
 // The managing half of the bot's JSON API (ADR-0016, ADR-0026): the session, a channel's settings and logs, and
 // the bot's own. Every call needs the session cookie; writes also send its CSRF token (see `auth` in api.ts).
 import type { ChannelCommand, CommandRulePatch } from './modules'
-import { request, type ExplainReport, type Publication } from './api'
+import { request, type CustomCommand, type ExplainReport, type Publication } from './api'
 
 const json = (method: string, body?: unknown): RequestInit => ({
   method,
@@ -354,6 +354,258 @@ export const admin = {
 
   explainAs: (body: { text: string; channel: string; as_user?: string; badges: string[]; run: boolean; context?: string }) =>
     request<ExplainReport>('/explain', json('POST', { context: 'line', ...body })),
+
+  // a channel's own things, as chat manages them (ADR-0026)
+  resetModule: (login: string, module: string) =>
+    request<unknown>(`${at(login)}/modules/${encodeURIComponent(module)}`, json('DELETE')),
+  resetCommand: (login: string, name: string) =>
+    request<unknown>(`${at(login)}/commands/${encodeURIComponent(name)}`, json('DELETE')),
+  editTrigger: (login: string, id: number, patch: TriggerPatch) =>
+    request<Trigger>(`${at(login)}/triggers/${id}`, json('PATCH', patch)),
+  testTriggers: (login: string, text: string) =>
+    request<{ matches: { trigger: Trigger; fields: Record<string, unknown> }[] }>(`${at(login)}/triggers/test`, json('POST', { text })),
+  editFilter: (login: string, id: number, patch: FilterPatch) =>
+    request<FilterEntry>(`${at(login)}/filters/${id}`, json('PATCH', patch)),
+  testFilter: (login: string, text: string) => request<FilterTest>(`${at(login)}/filters/test`, json('POST', { text })),
+  setVariable: (login: string, name: string, value: unknown) =>
+    request<unknown>(`${at(login)}/variables/${encodeURIComponent(name)}`, json('PUT', { value })),
+  deleteVariable: (login: string, name: string) =>
+    request<unknown>(`${at(login)}/variables/${encodeURIComponent(name)}`, json('DELETE')),
+
+  roles: (login: string) => request<ChannelRoles>(`${at(login)}/roles`),
+  createRole: (login: string, name: string, rank: number) => request<unknown>(`${at(login)}/roles`, json('POST', { name, rank })),
+  deleteRole: (login: string, name: string) => request<unknown>(`${at(login)}/roles/${encodeURIComponent(name)}`, json('DELETE')),
+  /** `durationS` from a minute to 366 days; left out, until removed. */
+  grantRole: (login: string, role: string, user: string, durationS?: number) =>
+    request<unknown>(
+      `${at(login)}/roles/${encodeURIComponent(role)}/members/${encodeURIComponent(user)}`,
+      json('PUT', durationS ? { duration_s: durationS } : {}),
+    ),
+  revokeRole: (login: string, role: string, user: string) =>
+    request<unknown>(`${at(login)}/roles/${encodeURIComponent(role)}/members/${encodeURIComponent(user)}`, json('DELETE')),
+
+  callbacks: (login: string) => request<{ callbacks: Callback[] }>(`${at(login)}/callbacks`),
+  setCallback: (login: string, kind: string, scope: string, expr: string) =>
+    request<unknown>(`${at(login)}/callbacks/${encodeURIComponent(kind)}/${encodeURIComponent(scope)}`, json('PUT', { expr })),
+  deleteCallback: (login: string, kind: string, scope: string) =>
+    request<unknown>(`${at(login)}/callbacks/${encodeURIComponent(kind)}/${encodeURIComponent(scope)}`, json('DELETE')),
+  customecho: (login: string) => request<{ customecho: { command: string; template: string }[] }>(`${at(login)}/customecho`),
+  setCustomecho: (login: string, name: string, text: string) =>
+    request<unknown>(`${at(login)}/customecho/${encodeURIComponent(name)}`, json('PUT', { text })),
+  deleteCustomecho: (login: string, name: string) =>
+    request<unknown>(`${at(login)}/customecho/${encodeURIComponent(name)}`, json('DELETE')),
+
+  publish: (login: string, command: string, name?: string) =>
+    request<{ needs_grants?: Record<string, string[]> }>(`${at(login)}/publications`, json('POST', { command, name: name || undefined })),
+  unpublish: (login: string, name: string) =>
+    request<unknown>(`${at(login)}/publications/${encodeURIComponent(name)}`, json('DELETE')),
+  publishPack: (login: string, pack: string, owner?: string) =>
+    request<unknown>(`${at(login)}/packs`, json('POST', { pack, owner: owner || undefined })),
+  unpublishPack: (login: string, name: string, owner?: string) =>
+    request<unknown>(`${at(login)}/packs/${encodeURIComponent(name)}${owner ? `?owner=${encodeURIComponent(owner)}` : ''}`, json('DELETE')),
+  grants: (login: string) => request<{ grants: Grant[] }>(`${at(login)}/grants`),
+  grant: (login: string, name: string, variable: string) =>
+    request<unknown>(`${at(login)}/grants/${encodeURIComponent(name)}/${encodeURIComponent(variable)}`, json('PUT')),
+  ungrant: (login: string, name: string, variable: string) =>
+    request<unknown>(`${at(login)}/grants/${encodeURIComponent(name)}/${encodeURIComponent(variable)}`, json('DELETE')),
+
+  backfill: (login: string, limit = 20) => request<{ enabled: boolean; jobs: BackfillJob[] }>(`${at(login)}/backfill?limit=${limit}`),
+  /** Fetch what the log is missing (`gaps`), or one time range. */
+  startBackfill: (login: string, body: { gaps: true } | { from_ms?: number; to_ms?: number }) =>
+    request<unknown>(`${at(login)}/backfill`, json('POST', body)),
+  cancelBackfill: (login: string, id: number) => request<unknown>(`${at(login)}/backfill/${id}`, json('DELETE')),
+  probe: (login: string) => request<{ login: string; capabilities: string[] }>(`${at(login)}/capabilities/probe`, json('POST')),
+
+  // yours, wherever you are
+  myCommands: () => request<MyCommands>('/me/custom-commands'),
+  createCommand: (body: { name: string; body: string; summary?: string; channel: string }) =>
+    request<MyCommand>('/me/custom-commands', json('POST', body)),
+  editCommand: (name: string, patch: { body?: string; summary?: string; shareable?: boolean; channel?: string }) =>
+    request<MyCommand>(`/me/custom-commands/${encodeURIComponent(name)}`, json('PATCH', patch)),
+  deleteCommand: (name: string) =>
+    request<{ name: string; removed: boolean; links: number; publications: number }>(`/me/custom-commands/${encodeURIComponent(name)}`, json('DELETE')),
+  commandVersions: (name: string) =>
+    request<{ name: string; current: number; versions: { version: number; body: string; created_at: number }[] }>(
+      `/me/custom-commands/${encodeURIComponent(name)}/versions`,
+    ),
+  revertCommand: (name: string, version: number) =>
+    request<MyCommand>(`/me/custom-commands/${encodeURIComponent(name)}/revert`, json('POST', { version })),
+  setParam: (name: string, position: string, param: ParamBody) =>
+    request<unknown>(`/me/custom-commands/${encodeURIComponent(name)}/params/${encodeURIComponent(position)}`, json('PUT', param)),
+  deleteParam: (name: string, position: string) =>
+    request<unknown>(`/me/custom-commands/${encodeURIComponent(name)}/params/${encodeURIComponent(position)}`, json('DELETE')),
+  /** Your alias for someone's shared command (`owner`), or for one a channel published (`channel`). */
+  link: (alias: string, body: { command: string; owner?: string; channel?: string }) =>
+    request<unknown>(`/me/links/${encodeURIComponent(alias)}`, json('PUT', body)),
+  unlink: (alias: string) => request<unknown>(`/me/links/${encodeURIComponent(alias)}`, json('DELETE')),
+  myPacks: () => request<{ packs: MyPack[] }>('/me/packs'),
+  createPack: (name: string, summary: string) => request<unknown>('/me/packs', json('POST', { name, summary })),
+  sharePack: (name: string, shareable: boolean) => request<unknown>(`/me/packs/${encodeURIComponent(name)}`, json('PATCH', { shareable })),
+  deletePack: (name: string) => request<unknown>(`/me/packs/${encodeURIComponent(name)}`, json('DELETE')),
+  addToPack: (pack: string, command: string, internal = false) =>
+    request<unknown>(`/me/packs/${encodeURIComponent(pack)}/commands/${encodeURIComponent(command)}`, json('PUT', { internal })),
+  removeFromPack: (pack: string, command: string) =>
+    request<unknown>(`/me/packs/${encodeURIComponent(pack)}/commands/${encodeURIComponent(command)}`, json('DELETE')),
+  myVariables: () => request<{ variables: MyVariable[] }>('/me/variables'),
+  myRuns: (limit = 50) => request<{ runs: MyRun[] }>(`/me/runs?limit=${limit}`),
+
+  // the bot itself
+  admins: () => request<{ owners: AdminUser[]; admins: AdminUser[]; you_manage: boolean }>('/admins'),
+  addAdmin: (login: string) => request<unknown>('/admins', json('POST', { login })),
+  removeAdmin: (userId: string) => request<unknown>(`/admins/${encodeURIComponent(userId)}`, json('DELETE')),
+  globalModules: () => request<{ modules: GlobalModule[] }>('/global/modules'),
+  setGlobalModule: (module: string, enabled: boolean) =>
+    request<unknown>(`/global/modules/${encodeURIComponent(module)}`, json('PUT', { enabled })),
+  resetGlobalModule: (module: string) => request<unknown>(`/global/modules/${encodeURIComponent(module)}`, json('DELETE')),
+  globalCommands: () => request<{ commands: GlobalCommand[] }>('/global/commands'),
+  setGlobalCommand: (name: string, patch: CommandRulePatch) =>
+    request<unknown>(`/global/commands/${encodeURIComponent(name)}`, json('PATCH', patch)),
+  resetGlobalCommand: (name: string) => request<unknown>(`/global/commands/${encodeURIComponent(name)}`, json('DELETE')),
+  globalFilters: () => request<{ filters: FilterEntry[] }>('/global/filters'),
+  addGlobalFilter: (body: FilterBody) => request<FilterEntry>('/global/filters', json('POST', body)),
+  editGlobalFilter: (id: number, patch: FilterPatch) => request<FilterEntry>(`/global/filters/${id}`, json('PATCH', patch)),
+  deleteGlobalFilter: (id: number) => request<unknown>(`/global/filters/${id}`, json('DELETE')),
+  ignoredEverywhere: () => request<{ ignored: IgnoredRaw[] }>('/ignored'),
+  publishGlobal: (command: string, name?: string) =>
+    request<unknown>('/global/publications', json('POST', { command, name: name || undefined })),
+  unpublishGlobal: (name: string) => request<unknown>(`/global/publications/${encodeURIComponent(name)}`, json('DELETE')),
+  publishGlobalPack: (pack: string, owner?: string) =>
+    request<unknown>('/global/packs', json('POST', { pack, owner: owner || undefined })),
+  unpublishGlobalPack: (name: string, owner?: string) =>
+    request<unknown>(`/global/packs/${encodeURIComponent(name)}${owner ? `?owner=${encodeURIComponent(owner)}` : ''}`, json('DELETE')),
+}
+
+export interface TriggerPatch {
+  enabled?: boolean
+  expr?: string
+  match?: Record<string, unknown>
+  schedule?: Record<string, unknown>
+  run_as_rank?: number
+  log_level?: string
+}
+export interface FilterBody {
+  pattern: string
+  kind: string
+  action: string
+  category?: string
+  replacement?: string
+}
+export type FilterPatch = Partial<FilterBody & { enabled: boolean }>
+export interface FilterTest {
+  /** The text after any replacements. */
+  text: string
+  blocked: boolean
+  /** Whether a replacement applied. */
+  changed: boolean
+  patterns: string[]
+  /** What automod would do, or null for nothing. */
+  automod: { action: string; seconds?: number } | null
+  automod_able: boolean
+}
+export interface RoleMember {
+  user_id: string
+  login: string | null
+  expires_at: number | null
+}
+export interface ChannelRoles {
+  builtin: { name: string; rank: number }[]
+  roles: { name: string; rank: number; global: boolean; manageable: boolean; members: RoleMember[] }[]
+  your_rank: number
+}
+export const CALLBACK_KINDS = ['on_cooldown', 'on_denied'] as const
+export interface Callback {
+  /** `channel`, `module:<name>` or `command:<name>`. */
+  scope: string
+  kind: string
+  expr: string
+}
+export interface Grant {
+  name: string
+  id: string
+  owner: string
+  /** The variables the command writes, and which of them this channel lets it. */
+  writes: string[]
+  granted: string[]
+}
+export interface BackfillJob {
+  id: number
+  from_ms: number
+  to_ms: number
+  requested_by: string
+  requested_at: number
+  /** queued, running, done, failed or cancelled. */
+  state: string
+  started_at: number | null
+  finished_at: number | null
+  fetched: number
+  inserted: number
+  complete: boolean | null
+  error: string | null
+}
+export interface ParamBody {
+  name: string
+  type?: string
+  required?: boolean
+  default?: string
+  min?: number
+  max?: number
+  max_len?: number
+  choices?: string[]
+  description: string
+}
+export interface MyCommand extends CustomCommand {
+  links?: number
+  publications?: { channel: string; name: string; status: string }[]
+}
+export interface MyCommands {
+  commands: MyCommand[]
+  linked: (CustomCommand & { alias: string })[]
+  quota?: unknown
+}
+export interface MyPack {
+  id: string
+  name: string
+  summary: string | null
+  system: boolean
+  commands: { name: string; internal: boolean; shareable: boolean }[]
+  shareable: boolean
+  /** Channel logins, or `global`. */
+  published: string[]
+}
+export interface MyVariable {
+  namespace: string
+  name: string
+  channel: string | null
+  keys?: string[] | null
+  value: unknown
+  updated_at: number | null
+  updated_by: string | null
+}
+export interface MyRun extends Omit<Run, 'user_id'> {
+  channel_id: string
+  channel: string | null
+}
+export interface AdminUser {
+  user_id: string
+  login: string | null
+}
+export interface GlobalModule {
+  module: string
+  enabled: boolean | null
+  toggleable: boolean
+  kind?: string
+}
+export interface GlobalCommand {
+  name: string
+  module: string
+  summary: string | null
+  enabled: boolean | null
+  toggleable: boolean
+  fixed_policy: boolean
+  required_role: string | null
+  allowed_roles: string[] | null
+  cooldowns: Record<string, { tier_s: number; user_s: number }> | null
+  log_level: string | null
 }
 
 /** /readyz lives outside /api/v1, and answers 503 with the same body when something is down. */

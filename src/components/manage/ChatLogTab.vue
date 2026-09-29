@@ -1,28 +1,29 @@
 <script setup lang="ts">
 // A channel's chat log as one timeline, newest first: messages, notifications (subs, raids...) and moderation,
-// searched as `logsearch` does in chat. The bot pages it with a cursor, so the pages go older and back.
+// searched as `logsearch` does in chat. The bot pages it with a cursor, so the pages go older and back. On the public
+// channel page (`public`) it has no moderation and no removed messages, which the bot leaves out for the public.
 import { VxButton, VxCallout, VxCheckbox, VxChip, VxEmptyState, VxField, VxInput, VxSkeleton, timeAgo } from '@vexoulz/ui'
 import { computed, reactive, ref } from 'vue'
 import { admin, type LogEntry, type LogQuery, type LogUser } from '@/lib/admin'
 import { useLoad } from '@/lib/useLoad'
 
-const props = defineProps<{ login: string; logging: boolean; publicLog: boolean | undefined }>()
+const props = defineProps<{ login: string; logging: boolean; publicLog: boolean | undefined; public?: boolean }>()
 const PAGE = 100
 type Kind = NonNullable<LogQuery['kind']>[number]
 const KINDS: { value: Kind; label: string }[] = [
   { value: 'message', label: 'Messages' },
   { value: 'notification', label: 'Notifications' },
-  { value: 'moderation', label: 'Moderation' },
+  ...(props.public ? [] : [{ value: 'moderation' as Kind, label: 'Moderation' }]),
 ]
 
 // What the form holds, and what the pages were asked with (the form applies on submit).
-const form = reactive({ q: '', user: '', kinds: ['message', 'notification', 'moderation'] as Kind[], hideRemoved: false })
+const form = reactive({ q: '', user: '', kinds: KINDS.map((k) => k.value), hideRemoved: false })
 const asked = ref({ ...form, kinds: [...form.kinds] })
 /** The cursor of each page shown so far: the first page has none. */
 const cursors = ref<(string | undefined)[]>([undefined])
 const page = computed(() => cursors.value.length - 1)
 
-const { data, error, loading, reload } = useLoad(
+const { data, error, status, loading, reload } = useLoad(
   () =>
     admin.log(props.login, {
       q: asked.value.q.trim() || undefined,
@@ -59,6 +60,9 @@ function describe(e: LogEntry): string {
     <VxCallout v-if="!logging" tone="info" title="The chat log is off here">
       The broadcaster turns it on in Settings → Logging. What was logged before stays searchable.
     </VxCallout>
+    <p v-else-if="public" class="vx-muted intro">
+      What was said in #{{ login }}, and its subs, raids and the like. Removed messages aren't shown here.
+    </p>
     <p v-else class="vx-muted intro">
       <template v-if="publicLog">Anyone can search this log's messages on the public channel page; moderation stays here.</template>
       <template v-else-if="publicLog === false">Only moderators can search this log (Settings → Logging).</template>
@@ -73,12 +77,15 @@ function describe(e: LogEntry): string {
       </VxField>
       <div class="kinds">
         <VxCheckbox v-for="k in KINDS" :key="k.value" :model-value="form.kinds.includes(k.value)" :label="k.label" @update:model-value="(on: boolean) => toggleKind(k.value, on)" />
-        <VxCheckbox v-model="form.hideRemoved" label="Hide removed" />
+        <VxCheckbox v-if="!public" v-model="form.hideRemoved" label="Hide removed" />
       </div>
       <VxButton type="submit" variant="primary" :disabled="!form.kinds.length">Search</VxButton>
     </form>
 
-    <VxCallout v-if="error" tone="error" title="Couldn't load the log">
+    <VxCallout v-if="public && (status === 401 || status === 403)" tone="info" :title="`#${login}'s chat log isn't public`">
+      Its log is off, or its broadcaster or moderators keep it to moderators.
+    </VxCallout>
+    <VxCallout v-else-if="error" tone="error" title="Couldn't load the log">
       {{ error }}
       <template #actions><VxButton size="sm" @click="reload">Try again</VxButton></template>
     </VxCallout>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bytes, count, shown } from '../src/lib/format'
+import { bytes, count, shown, span, typedValue } from '../src/lib/format'
 
 describe('bytes', () => {
   it('keeps small sizes in bytes and rounds larger ones', () => {
@@ -31,5 +31,27 @@ describe('count', () => {
     expect(count('')).toBeNull()
     expect(count('1.5')).toBeNull()
     expect(count('-3')).toBeNull()
+  })
+})
+
+describe('typedValue', () => {
+  it('reads JSON, else keeps the text', () => {
+    expect(typedValue('42')).toBe(42)
+    expect(typedValue(' true ')).toBe(true)
+    expect(typedValue('[1, "a"]')).toEqual([1, 'a'])
+    expect(typedValue('{"k": null}')).toEqual({ k: null })
+    expect(typedValue('hello there')).toBe('hello there')
+    expect(typedValue('   ')).toBe('')
+  })
+})
+
+describe('span', () => {
+  it('uses the largest whole unit', () => {
+    expect(span(90)).toBe('90s')
+    expect(span(120)).toBe('2m')
+    expect(span(3600)).toBe('1h')
+    expect(span(5400)).toBe('90m')
+    expect(span(172800)).toBe('2d')
+    expect(span(0)).toBe('0s')
   })
 })

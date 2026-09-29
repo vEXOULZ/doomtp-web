@@ -1,11 +1,13 @@
 <script setup lang="ts">
 // A channel's triggers and timers: listeners on chat, Twitch events, timers and crons. Added, turned on or off and
-// deleted as `trigger` and `timer` do in chat; a new one runs at its creator's rank at most.
-import { VxButton, VxCheckbox, VxChip, VxDialog, VxEmptyState, VxField, VxInput, VxRadioGroup, VxSelect, VxStepper, VxSwitch } from '@vexoulz/ui'
+// edited and deleted as `trigger` and `timer` do in chat; one runs at its creator's rank at most. A listener's
+// pattern can be tried on a line of chat first.
+import { VxButton, VxCheckbox, VxChip, VxDialog, VxEmptyState, VxField, VxInput, VxRadioGroup, VxSelect, VxStepper, VxSwitch, useToast } from '@vexoulz/ui'
 import { computed, reactive, ref } from 'vue'
 import ChatLine from '@/components/ChatLine.vue'
 import { can, rankIn } from '@/lib/access'
 import { admin, TRIGGER_EVENTS, type Trigger, type TriggerBody } from '@/lib/admin'
+import { errorMessage } from '@/lib/api'
 import { LOG_LEVELS } from '@/lib/modules'
 import { onOff, useAct } from '@/lib/useAct'
 
@@ -53,8 +55,31 @@ const blank = () => ({
 })
 const form = reactive(blank())
 const creating = ref(false)
+/** The trigger being edited; null while adding one. */
+const editing = ref<Trigger | null>(null)
 function openCreate() {
   Object.assign(form, blank())
+  editing.value = null
+  creating.value = true
+}
+function openEdit(t: Trigger) {
+  const every = typeof t.schedule.every_s === 'number' ? t.schedule.every_s : 900
+  const unit = every % 3600 === 0 ? 'h' : every % 60 === 0 ? 'm' : 's'
+  Object.assign(form, blank(), {
+    kind: t.type === 'listener' || t.type === 'timer' || t.type === 'cron' ? t.type : 'event',
+    expr: t.expr,
+    regex: typeof t.match.regex === 'string' ? t.match.regex : '',
+    name: typeof t.match.name === 'string' ? t.match.name : '',
+    event: t.type,
+    every: every / { s: 1, m: 60, h: 3600 }[unit],
+    unit,
+    cron: typeof t.schedule.cron === 'string' ? t.schedule.cron : '',
+    onlyLive: !!t.schedule.only_live,
+    minLines: typeof t.schedule.min_chat_lines === 'number' ? t.schedule.min_chat_lines : 0,
+    runAs: Math.min(t.run_as_rank, maxRank.value),
+    log: t.log_level ?? 'output',
+  })
+  editing.value = t
   creating.value = true
 }
 const kindOptions = KINDS.map((k) => ({ value: k.value, label: `${k.label}: ${k.hint}` }))
@@ -90,8 +115,36 @@ const body = computed<TriggerBody | null>(() => {
 async function create() {
   if (!body.value) return
   const made = body.value.type
-  if (await act('t-add', () => admin.createTrigger(props.login, body.value!), `Added a ${made}`)) creating.value = false
+  const t = editing.value
+  // A trigger keeps its type; the rest is sent whole. The jitter isn't on the form, so an edit keeps it.
+  const done = t
+    ? await act('t-add', () => {
+        const { type: _type, ...patch } = body.value!
+        const schedule = patch.schedule && t.schedule.jitter_s ? { ...patch.schedule, jitter_s: t.schedule.jitter_s } : patch.schedule
+        return admin.editTrigger(props.login, t.id, { ...patch, schedule })
+      }, `${made} ${t.id} saved`)
+    : await act('t-add', () => admin.createTrigger(props.login, body.value!), `Added a ${made}`)
+  if (done) creating.value = false
 }
+
+// ── trying a line of chat against the listeners ──
+const sample = ref('')
+const testing = ref(false)
+const tested = ref<{ text: string; matches: { trigger: Trigger; fields: Record<string, unknown> }[] } | null>(null)
+async function test() {
+  const text = sample.value.trim()
+  if (!text) return
+  testing.value = true
+  try {
+    tested.value = { text, matches: (await admin.testTriggers(props.login, text)).matches }
+  } catch (e) {
+    tested.value = null
+    toast.show(errorMessage(e), { kind: 'error', duration: 5000 })
+  } finally {
+    testing.value = false
+  }
+}
+const toast = useToast()
 </script>
 
 <template>
@@ -126,15 +179,38 @@ async function create() {
                 @update:model-value="(on: boolean) => act(`t:${t.id}`, () => admin.setTrigger(login, t.id, on), `${t.type} turned ${onOff(on)}`)"
               ><span class="sr-only">{{ t.type }} {{ t.id }}</span></VxSwitch>
             </td>
-            <td class="end"><VxButton v-if="can('triggers.edit', login)" size="sm" variant="ghost" @click="deleting = t.id">Delete</VxButton></td>
+            <td class="end">
+              <template v-if="can('triggers.edit', login)">
+                <VxButton size="sm" variant="ghost" @click="openEdit(t)">Edit</VxButton>
+                <VxButton size="sm" variant="ghost" @click="deleting = t.id">Delete</VxButton>
+              </template>
+            </td>
           </tr>
         </tbody>
       </table>
     </div>
 
-    <VxDialog v-model:open="creating" title="New trigger or timer" width="560px">
+    <form v-if="triggers.some((t) => t.type === 'listener')" class="add vx-panel test" @submit.prevent="test">
+      <VxField label="Try a chat line" help="Which listeners it would set off, and what their patterns capture. Nothing runs." class="grow">
+        <template #default="{ id }"><VxInput :id="id" v-model="sample" placeholder="hello there" /></template>
+      </VxField>
+      <VxButton type="submit" :loading="testing" :disabled="!sample.trim()">Try</VxButton>
+      <div v-if="tested" class="result" role="status">
+        <template v-if="!tested.matches.length">No listener matches “{{ tested.text }}”.</template>
+        <template v-else>
+          <div v-for="m in tested.matches" :key="m.trigger.id">
+            <VxChip tone="accent">matches</VxChip>
+            <code>{{ m.trigger.match.regex }}</code>
+            <span v-if="!m.trigger.enabled" class="vx-muted small"> (off)</span>
+            <span v-if="Object.keys(m.fields).length" class="vx-muted small vx-mono"> {{ JSON.stringify(m.fields) }}</span>
+          </div>
+        </template>
+      </div>
+    </form>
+
+    <VxDialog v-model:open="creating" :title="editing ? `Edit ${editing.type} ${editing.id}` : 'New trigger or timer'" width="560px">
       <form id="trigger-form" class="dialog-form" @submit.prevent="create">
-        <VxRadioGroup v-model="form.kind" :options="kindOptions" label="Kind" />
+        <VxRadioGroup v-if="!editing" v-model="form.kind" :options="kindOptions" label="Kind" />
         <template v-if="form.kind === 'listener'">
           <VxField label="Pattern" help="A regular expression, matched against each chat message.">
             <template #default="{ id }"><VxInput :id="id" v-model="form.regex" mono placeholder="^hello\b" /></template>
@@ -143,8 +219,8 @@ async function create() {
             <template #default="{ id }"><VxInput :id="id" v-model="form.name" mono /></template>
           </VxField>
         </template>
-        <VxField v-else-if="form.kind === 'event'" label="Event">
-          <template #default="{ id }"><VxSelect :id="id" v-model="form.event" :options="eventOptions" width="100%" /></template>
+        <VxField v-else-if="form.kind === 'event'" label="Event" :help="editing ? 'A trigger keeps its event: add a new one for another.' : undefined">
+          <template #default="{ id }"><VxSelect :id="id" v-model="form.event" :options="eventOptions" width="100%" :disabled="!!editing" /></template>
         </VxField>
         <template v-else>
           <VxField v-if="form.kind === 'timer'" label="Every" help="Between a minute and a day.">
@@ -175,7 +251,7 @@ async function create() {
       </form>
       <template #actions="{ close }">
         <VxButton @click="close">Cancel</VxButton>
-        <VxButton type="submit" form="trigger-form" variant="primary" :loading="busy.has('t-add')" :disabled="!body">Add</VxButton>
+        <VxButton type="submit" form="trigger-form" variant="primary" :loading="busy.has('t-add')" :disabled="!body">{{ editing ? 'Save' : 'Add' }}</VxButton>
       </template>
     </VxDialog>
 
@@ -195,4 +271,5 @@ async function create() {
 
 <style scoped>
 .every { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.test .result { flex-basis: 100%; display: grid; gap: 4px; overflow-wrap: anywhere; }
 </style>

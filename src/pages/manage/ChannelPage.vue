@@ -9,11 +9,14 @@ import ManageShell from '@/components/ManageShell.vue'
 import ChannelSettings from '@/components/ChannelSettings.vue'
 import ChatLine from '@/components/ChatLine.vue'
 import AuditBrowser from '@/components/manage/AuditBrowser.vue'
+import BackfillPanel from '@/components/manage/BackfillPanel.vue'
 import ChatLogTab from '@/components/manage/ChatLogTab.vue'
 import FilterTab from '@/components/manage/FilterTab.vue'
 import IgnoredTab from '@/components/manage/IgnoredTab.vue'
 import ModulesTab from '@/components/manage/ModulesTab.vue'
 import PublishedTab from '@/components/manage/PublishedTab.vue'
+import RepliesTab from '@/components/manage/RepliesTab.vue'
+import RolesTab from '@/components/manage/RolesTab.vue'
 import RulesTab from '@/components/manage/RulesTab.vue'
 import RunsTab from '@/components/manage/RunsTab.vue'
 import TriggersTab from '@/components/manage/TriggersTab.vue'
@@ -54,6 +57,7 @@ const { data, error, status, reload } = useLoad(
       channel,
       modules: moduleRows(modules.modules, commands.commands, packs.packs, publications.publications),
       published: publishedRows(packs.packs, publications.publications),
+      packs: packs.packs,
       commands: commandRows(commands.commands, builtins.commands),
       triggers: triggers.triggers,
       filters: filters.filters.filter((f) => !f.global),
@@ -78,7 +82,9 @@ const TABS = [
   { value: 'rules', label: 'Commands' },
   { value: 'commands', label: 'Published' },
   { value: 'triggers', label: 'Triggers & timers' },
+  { value: 'replies', label: 'Replies' },
   { value: 'filter', label: 'Word filter' },
+  { value: 'roles', label: 'Roles' },
   { value: 'variables', label: 'Variables' },
   { value: 'runs', label: 'Runs' },
   { value: 'log', label: 'Chat log' },
@@ -111,6 +117,7 @@ function saved(channel: Channel) {
 
 // ── rejoin and part ──
 const { busy, act } = useAct(reload)
+const probe = () => act('probe', () => admin.probe(props.login), `Asked Twitch what the bot may do in #${props.login}`)
 const rejoin = () => act('rejoin', () => admin.join(props.login, true), `Rejoined #${props.login}`)
 const partOpen = ref(false)
 async function part() {
@@ -158,6 +165,7 @@ async function part() {
         <span class="vx-muted small">Twitch permissions:</span>
         <VxChip v-for="cap in data.channel.capabilities" :key="cap">{{ cap }}</VxChip>
         <span v-if="!data.channel.capabilities.length" class="vx-muted small">none beyond chat</span>
+        <VxButton v-if="can('channel.probe')" size="sm" variant="ghost" :loading="busy.has('probe')" @click="probe">Check again</VxButton>
       </div>
 
       <VxCallout v-if="mayUpgrade" tone="info" :title="`#${login} is on the ${data.channel.tier} tier`">
@@ -174,7 +182,10 @@ async function part() {
 
       <VxTabs v-model="tab" :options="TABS" label="Channel sections" class="tabs" />
 
-      <ChannelSettings v-if="tab === 'settings'" :channel="data.channel" :roles="data.roles" @saved="saved" />
+      <template v-if="tab === 'settings'">
+        <ChannelSettings :channel="data.channel" :roles="data.roles" @saved="saved" />
+        <BackfillPanel :key="String(data.channel.history_backfill)" :login="login" />
+      </template>
       <ModulesTab v-else-if="tab === 'modules'" :login="login" :sign="sign" :modules="data.modules" :reload="reload" />
       <RulesTab v-else-if="tab === 'rules'" :login="login" :sign="sign" :commands="data.commands" :roles="data.roles" :reload="reload" />
       <PublishedTab
@@ -182,7 +193,9 @@ async function part() {
         :login="login"
         :sign="sign"
         :published="data.published"
+        :packs="data.packs"
         :publish-role="data.channel.roles.publish_min"
+        :grant-role="data.channel.roles.grant_min"
         :roles="data.allRoles"
         :reload="reload"
       />
@@ -195,7 +208,15 @@ async function part() {
         :reload="reload"
       />
       <FilterTab v-else-if="tab === 'filter'" :login="login" :filters="data.filters" :global-filters="data.globalFilters" :reload="reload" />
-      <VariablesTab v-else-if="tab === 'variables'" :login="login" />
+      <RepliesTab
+        v-else-if="tab === 'replies'"
+        :login="login"
+        :sign="sign"
+        :modules="data.modules.map((m) => m.name)"
+        :commands="data.commands.map((c) => c.name)"
+      />
+      <RolesTab v-else-if="tab === 'roles'" :login="login" :sign="sign" />
+      <VariablesTab v-else-if="tab === 'variables'" :login="login" :write-role="data.channel.roles.channel_var_write" :roles="data.allRoles" />
       <RunsTab v-else-if="tab === 'runs'" :login="login" :sign="sign" />
       <ChatLogTab v-else-if="tab === 'log'" :login="login" :logging="data.channel.log_enabled" :public-log="data.channel.public_log" />
       <section v-else-if="tab === 'audit'">

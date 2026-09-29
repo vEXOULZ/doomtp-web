@@ -11,6 +11,8 @@ const props = defineProps<{ login: string; sign: string; modules: ModuleRow[]; r
 const { busy, act } = useAct(props.reload)
 const setModule = (name: string, on: boolean) =>
   act(`m:${name}`, () => admin.setModule(props.login, name, on), `${name} turned ${onOff(on)}`)
+const resetModule = (name: string) =>
+  act(`m:${name}`, () => admin.resetModule(props.login, name), `${name} follows the bot-wide setting again`)
 </script>
 
 <template>
@@ -18,7 +20,8 @@ const setModule = (name: string, on: boolean) =>
     <p class="vx-muted intro">
       Built-in modules and the packs published here. Turning one off is the same as
       <ChatLine :lines="`${sign}module disable <name>`" :sign="sign" /> in chat, and turns off every command it
-      covers.
+      covers. <b>Default</b> drops this channel's choice, as <ChatLine :lines="`${sign}module reset <name>`" :sign="sign" />
+      does, so the module follows the bot-wide setting.
     </p>
     <div class="table-scroll vx-panel">
       <table class="vx-table modules">
@@ -45,6 +48,15 @@ const setModule = (name: string, on: boolean) =>
                 :disabled="!can('modules.toggle', login) || busy.has(`m:${m.name}`)"
                 @update:model-value="(on: boolean) => setModule(m.name, on)"
               ><span class="sr-only">Module {{ m.name }}</span></VxSwitch>
+              <VxButton
+                v-if="m.toggleable && can('modules.toggle', login)"
+                size="sm"
+                variant="ghost"
+                class="reset"
+                :disabled="busy.has(`m:${m.name}`)"
+                :title="`Let the bot-wide setting decide ${m.name}`"
+                @click="resetModule(m.name)"
+              >Default</VxButton>
               <span v-else class="unknown">
                 <span class="vx-muted small" title="The bot doesn't report whether this one is on yet">state not reported</span>
                 <VxButton size="sm" :disabled="!can('modules.toggle', login) || busy.has(`m:${m.name}`)" @click="setModule(m.name, true)">On</VxButton>
@@ -62,4 +74,6 @@ const setModule = (name: string, on: boolean) =>
 .mod .vx-chip { margin-left: 6px; }
 .modules .cmds :deep(code) { display: inline-block; margin: 2px 10px 2px 0; white-space: nowrap; }
 .unknown { display: inline-flex; align-items: center; gap: 6px; }
+.reset { margin-left: 6px; }
+.modules td.end { white-space: nowrap; }
 </style>
