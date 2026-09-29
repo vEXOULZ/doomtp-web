@@ -149,7 +149,7 @@ const toast = useToast()
 
 <template>
   <section class="mtab">
-    <div v-if="can('triggers.edit', login)" class="filters">
+    <div v-if="can('triggers.edit', login)" class="filters vx-form-row">
       <VxButton variant="primary" @click="openCreate">New trigger or timer</VxButton>
     </div>
     <VxEmptyState v-if="!triggers.length" title="No triggers or timers">
@@ -190,7 +190,7 @@ const toast = useToast()
       </table>
     </div>
 
-    <form v-if="triggers.some((t) => t.type === 'listener')" class="add vx-panel test" @submit.prevent="test">
+    <form v-if="triggers.some((t) => t.type === 'listener')" class="add vx-form-row vx-panel test" @submit.prevent="test">
       <VxField label="Try a chat line" help="Which listeners it would set off, and what their patterns capture. Nothing runs." class="grow">
         <template #default="{ id }"><VxInput :id="id" v-model="sample" placeholder="hello there" /></template>
       </VxField>

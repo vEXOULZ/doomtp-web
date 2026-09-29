@@ -66,7 +66,7 @@ async function saveOwner() {
     </VxCallout>
     <div v-else-if="!data" class="loading" aria-busy="true"><VxSkeleton v-for="i in 3" :key="i" h="38px" /></div>
     <template v-else>
-      <form class="add vx-panel" @submit.prevent="saveDefaults">
+      <form class="add vx-form-row vx-panel" @submit.prevent="saveDefaults">
         <VxField v-for="f in FIELDS" :key="f.key" :label="f.label" :help="f.size ? bytes(Number(defaults[f.key]) || 0) : undefined">
           <template #default="{ id }"><VxInput :id="id" v-model="defaults[f.key]" type="number" mono /></template>
         </VxField>
@@ -86,7 +86,7 @@ async function saveOwner() {
           </tbody>
         </table>
       </div>
-      <form class="add vx-panel" @submit.prevent="saveOwner">
+      <form class="add vx-form-row vx-panel" @submit.prevent="saveOwner">
         <VxField label="Owner kind"><template #default><VxSelect v-model="owner.kind" :options="KIND_OPTIONS" width="140px" /></template></VxField>
         <VxField label="Twitch login">
           <template #default="{ id }"><VxInput :id="id" v-model="owner.user" mono placeholder="login" /></template>

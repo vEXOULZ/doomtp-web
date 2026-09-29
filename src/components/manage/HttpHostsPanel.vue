@@ -94,7 +94,7 @@ const saveLimits = () => act('limits', () => admin.setHttpLimits(limitsPatch.val
           </tbody>
         </table>
       </div>
-      <form class="add vx-panel" @submit.prevent="allow">
+      <form class="add vx-form-row vx-panel" @submit.prevent="allow">
         <VxField label="Host" class="grow" help="A name like api.example.com, or *.example.com for its subdomains.">
           <template #default="{ id }"><VxInput :id="id" v-model="adding.pattern" mono placeholder="api.example.com" /></template>
         </VxField>
@@ -103,7 +103,7 @@ const saveLimits = () => act('limits', () => admin.setHttpLimits(limitsPatch.val
       </form>
 
       <h3 class="vx-eyebrow sub">Rate limits</h3>
-      <form class="add vx-panel" @submit.prevent="saveLimits">
+      <form class="add vx-form-row vx-panel" @submit.prevent="saveLimits">
         <VxField label="Requests a minute, per channel">
           <template #default="{ id }"><VxInput :id="id" v-model="limits.channel_per_minute" type="number" mono /></template>
         </VxField>

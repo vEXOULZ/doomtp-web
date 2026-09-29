@@ -166,6 +166,8 @@ export interface Variable {
   value: unknown
   updated_at: number | null
   updated_by: string | null
+  /** Filled in by bots after 0.4.0: the login of `updated_by`, when known. */
+  updated_by_login?: string | null
 }
 /** A variable owner's limits: its quota, the largest value, list length and names per namespace. */
 export interface Limits {

@@ -236,7 +236,7 @@ async function saveLink() {
           </tr>
         </tbody>
       </table>
-      <form class="param-form" @submit.prevent="saveParam">
+      <form class="param-form vx-form-row" @submit.prevent="saveParam">
         <VxField label="Position">
           <template #default="{ id }"><VxInput :id="id" v-model="param.position" mono class="pos" /></template>
         </VxField>
@@ -324,7 +324,6 @@ async function saveLink() {
 .chip { margin-left: 6px; }
 .body { max-width: 26rem; }
 .params { margin-bottom: 10px; }
-.param-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 12px; }
 .param-form .pos { width: 5rem; }
 .param-form .grow { flex: 1 1 14rem; }
 </style>

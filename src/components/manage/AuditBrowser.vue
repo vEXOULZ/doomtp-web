@@ -39,7 +39,7 @@ const newer = () => page.value > 0 && (befores.value = befores.value.slice(0, -1
 
 <template>
   <div class="mtab">
-    <form class="filters" @submit.prevent="search">
+    <form class="filters vx-form-row" @submit.prevent="search">
       <VxField label="By">
         <template #default="{ id }"><VxInput :id="id" v-model="form.actor" mono placeholder="login, or me" /></template>
       </VxField>

@@ -68,7 +68,7 @@ function describe(e: LogEntry): string {
       <template v-else-if="publicLog === false">Only moderators can search this log (Settings → Logging).</template>
     </p>
 
-    <form class="filters" @submit.prevent="search">
+    <form class="filters vx-form-row" @submit.prevent="search">
       <VxField label="Words" class="grow">
         <template #default="{ id }"><VxInput :id="id" v-model="form.q" type="search" placeholder="search the log" /></template>
       </VxField>

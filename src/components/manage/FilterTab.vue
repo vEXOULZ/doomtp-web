@@ -113,7 +113,7 @@ const automodSays = (t: FilterTest) => {
       </table>
     </div>
     <VxEmptyState v-else :title="login ? 'No entries for this channel' : 'The bot-wide list is empty'" :text="mayEdit ? 'Add a word or pattern below.' : undefined" />
-    <form v-if="mayEdit" class="add vx-panel" @submit.prevent="add">
+    <form v-if="mayEdit" class="add vx-form-row vx-panel" @submit.prevent="add">
       <VxField label="Pattern">
         <template #default="{ id }"><VxInput :id="id" v-model="entry.pattern" mono placeholder="badword" /></template>
       </VxField>
@@ -130,7 +130,7 @@ const automodSays = (t: FilterTest) => {
 
     <template v-if="login">
       <h2 class="vx-eyebrow sub">Try a message</h2>
-      <form class="add vx-panel test" @submit.prevent="test">
+      <form class="add vx-form-row vx-panel test" @submit.prevent="test">
         <VxField label="Message" help="What this channel's list and the bot-wide one do to it, and what automod would do. Nothing is sent." class="grow">
           <template #default="{ id }"><VxInput :id="id" v-model="sample" placeholder="a message from chat" /></template>
         </VxField>

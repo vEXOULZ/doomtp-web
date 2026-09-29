@@ -10,6 +10,7 @@ import type { Role } from '@/lib/api'
 import { bytes, shown, typedValue } from '@/lib/format'
 import { useAct } from '@/lib/useAct'
 import { useLoad } from '@/lib/useLoad'
+import UserRef from '../UserRef.vue'
 
 const props = defineProps<{
   login: string
@@ -86,7 +87,7 @@ const deleting = ref<string | null>(null)
                 <td class="vx-mono nowrap">channel.{{ v.name }}</td>
                 <td class="vx-mono wrap value">{{ shown(v.value) }}</td>
                 <td class="vx-muted nowrap" :title="v.updated_at ? new Date(v.updated_at).toLocaleString() : undefined">{{ timeAgo(v.updated_at) }}</td>
-                <td class="vx-muted vx-mono">{{ v.updated_by ?? '' }}</td>
+                <td class="vx-muted vx-mono"><UserRef :id="v.updated_by" :login="v.updated_by_login" /></td>
                 <td class="end">
                   <template v-if="mayWrite">
                     <VxButton size="sm" variant="ghost" @click="openSet(v)">Edit</VxButton>
