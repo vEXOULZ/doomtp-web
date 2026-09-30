@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// The Manage bar: at the top of every page once someone is signed in, with what they may manage. A channel
+// The Manage bar: at the top of the Manage pages (ManageShell), with what the person signed in may manage. A channel
 // switcher for the channels they run, their own area, Explain and Audit, and the bot's own page for admins.
 // On a narrow screen it wraps; nothing is dropped.
 import { VxSelect } from '@vexoulz/ui'
