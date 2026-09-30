@@ -416,6 +416,9 @@ export const admin = {
   startBackfill: (login: string, body: { gaps: true } | { from_ms?: number; to_ms?: number }) =>
     request<unknown>(`${at(login)}/backfill`, json('POST', body)),
   cancelBackfill: (login: string, id: number) => request<unknown>(`${at(login)}/backfill/${id}`, json('DELETE')),
+  /** When the bot was listening between `since` and `until` (now by default), and the holes in between. */
+  coverage: (login: string, since: number, until?: number) =>
+    request<Coverage>(`${at(login)}/log/coverage?since=${since}${until === undefined ? '' : `&until=${until}`}`),
   probe: (login: string) => request<{ login: string; capabilities: string[] }>(`${at(login)}/capabilities/probe`, json('POST')),
 
   // yours, wherever you are
@@ -528,6 +531,12 @@ export interface Grant {
   /** The variables the command writes, and which of them this channel lets it. */
   writes: string[]
   granted: string[]
+}
+export interface Coverage {
+  complete: boolean
+  /** `before_log`: before the log's first session; `between_sessions`: while the bot was away; `not_listening`:
+   *  since it last stopped. */
+  gaps: { from: number; to: number; reason: 'before_log' | 'between_sessions' | 'not_listening'; backfill: unknown }[]
 }
 export interface BackfillJob {
   id: number
