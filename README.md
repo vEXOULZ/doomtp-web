@@ -116,3 +116,9 @@ repo and must never be committed here. `.gitignore` blocks `.env*` (except `.env
 
 `public/fonts/twemoji-sign.woff2` is one glyph (🏜, the default command sign) cut from Twemoji, so the sign looks
 the same in text, inputs and the editor on every system. Licences and how to rebuild it: `public/fonts/ATTRIBUTION.md`.
+
+## Assets still needed
+
+Stand-ins (`VxPlaceholder`) until the real files exist:
+
+- **Twitch mark** (16px, for dark backgrounds) on the header's Manage button, `src/components/ManageLink.vue`.

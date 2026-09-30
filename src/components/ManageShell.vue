@@ -1,12 +1,15 @@
 <script setup lang="ts">
-// Frame for every Manage page: the site's own shell (with the Manage bar), a dimmer sky, and the page's heading.
+// Frame for every Manage page: the site's own shell, the Manage bar, a dimmer sky, and the page's heading.
+import { session } from '@/lib/session'
 import DtpShell from './DtpShell.vue'
+import ManageBar from './ManageBar.vue'
 
 defineProps<{ title: string; eyebrow?: string }>()
 </script>
 
 <template>
   <DtpShell sky="dim">
+    <ManageBar v-if="session.authenticated" />
     <div class="head">
       <div class="vx-eyebrow">{{ eyebrow ?? 'Manage' }}</div>
       <h1 class="vx-display">{{ title }}</h1>
