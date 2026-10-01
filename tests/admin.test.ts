@@ -75,11 +75,11 @@ describe('admin.log', () => {
   afterEach(() => vi.unstubAllGlobals())
 
   it('repeats kinds and leaves out empty filters', async () => {
-    const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ channel_id: '1', order: 'desc', entries: [], next: null })))
+    const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ items: [], next_cursor: null })))
     vi.stubGlobal('fetch', fetch)
     await admin.log('bob', { q: 'hi there', user: '', kind: ['message', 'moderation'], hide_removed: false, cursor: undefined, limit: 100 })
     const url = new URL(String(fetch.mock.calls[0]![0]), 'http://x')
-    expect(url.pathname).toMatch(/\/channels\/bob\/log$/)
+    expect(url.pathname).toBe('/api/v2/channels/bob/log')
     expect(url.searchParams.getAll('kind')).toEqual(['message', 'moderation'])
     expect(url.searchParams.get('q')).toBe('hi there')
     expect(url.searchParams.get('limit')).toBe('100')

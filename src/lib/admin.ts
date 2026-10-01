@@ -2,6 +2,7 @@
 // the bot's own. Every call needs the session cookie; writes also send its CSRF token (see `auth` in api.ts).
 import type { ChannelCommand, CommandRulePatch } from './modules'
 import type { AuditOut } from '@vexoulz/platform-web'
+import type { LogCoverage, LogEntry, LogQuery } from '@vexoulz/platform-web/chat'
 import { request, type CustomCommand, type ExplainReport, type Publication } from './api'
 
 const json = (method: string, body?: unknown): RequestInit => ({
@@ -201,24 +202,8 @@ export interface Run {
   at: number
 }
 
-export interface LogUser {
-  id: string
-  login: string | null
-  display_name?: string | null
-}
-/** One line of a channel's log timeline: a chat message, a notification (sub, raid...), or a moderation action. */
-export type LogEntry =
-  | { kind: 'message'; id: string; at: number; user: LogUser | null; text: string; deleted_at: number | null; cleared_at: number | null; is_command: boolean; source: string }
-  | { kind: 'notification'; id: string | number; at: number; user: LogUser | null; type: string; payload: unknown; source: string }
-  | { kind: 'moderation'; id: string | number; at: number; type: string; target: LogUser | null; moderator: LogUser | null; duration_s: number | null; reason: string | null; source: string }
-export interface LogQuery {
-  q?: string
-  user?: string
-  kind?: ('message' | 'notification' | 'moderation')[]
-  hide_removed?: boolean
-  cursor?: string
-  limit?: number
-}
+// The log's shapes (/api/v2/channels/{login}/log, ADR-0027) are the shared chat library's.
+export type { LogCoverage, LogEntry, LogQuery, LogUser } from '@vexoulz/platform-web/chat'
 
 /** A host `http get` may fetch; the secret shows its kind and name, never its value. */
 export interface HttpHost {
@@ -313,14 +298,15 @@ export const admin = {
   variables: (login: string) => request<{ variables: Variable[] }>(`${at(login)}/variables`),
   storage: (login: string) => request<Storage>(`${at(login)}/storage`),
   runs: (login: string, limit = 50) => request<{ runs: Run[] }>(`${at(login)}/runs?limit=${limit}`),
-  /** The channel's log as one timeline, newest first; pass `next` back as `cursor` for the page after. */
+  /** The channel's log as one timeline (/api/v2), newest first unless `order` says; pass `next_cursor` back as
+   *  `cursor`, with the same filters, for the page after. */
   log: (login: string, query: LogQuery = {}) => {
     const params = new URLSearchParams()
     for (const [k, v] of Object.entries(query)) {
       if (Array.isArray(v)) for (const one of v) params.append(k, one)
       else if (v !== undefined && v !== '' && v !== false) params.set(k, String(v))
     }
-    return request<{ channel_id: string; order: string; entries: LogEntry[]; next: string | null }>(`${at(login)}/log?${params}`)
+    return request<{ items: LogEntry[]; next_cursor: string | null }>(`${at(login)}/log?${params}`, {}, { v2: true })
   },
 
   variableLimits: () => request<{ defaults: Limits; overrides: LimitOverride[] }>('/variable-limits'),
@@ -408,9 +394,12 @@ export const admin = {
   startBackfill: (login: string, body: { gaps: true } | { from_ms?: number; to_ms?: number }) =>
     request<unknown>(`${at(login)}/backfill`, json('POST', body)),
   cancelBackfill: (login: string, id: number) => request<unknown>(`${at(login)}/backfill/${id}`, json('DELETE')),
-  /** When the bot was listening between `since` and `until` (now by default), and the holes in between. */
-  coverage: (login: string, since: number, until?: number) =>
-    request<Coverage>(`${at(login)}/log/coverage?since=${since}${until === undefined ? '' : `&until=${until}`}`),
+  /** When the bot was listening between `since` and `until` (now by default, both ISO 8601), the holes in between and
+   *  what backfill made of each. */
+  coverage: (login: string, since: string, until?: string) => {
+    const params = new URLSearchParams({ since, ...(until ? { until } : {}) })
+    return request<LogCoverage>(`${at(login)}/log/coverage?${params}`, {}, { v2: true })
+  },
   probe: (login: string) => request<{ login: string; capabilities: string[] }>(`${at(login)}/capabilities/probe`, json('POST')),
 
   // yours, wherever you are
@@ -523,12 +512,6 @@ export interface Grant {
   /** The variables the command writes, and which of them this channel lets it. */
   writes: string[]
   granted: string[]
-}
-export interface Coverage {
-  complete: boolean
-  /** `before_log`: before the log's first session; `between_sessions`: while the bot was away; `not_listening`:
-   *  since it last stopped. */
-  gaps: { from: number; to: number; reason: 'before_log' | 'between_sessions' | 'not_listening'; backfill: unknown }[]
 }
 export interface BackfillJob {
   id: number

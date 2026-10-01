@@ -230,7 +230,7 @@ async function part() {
       <RolesTab v-else-if="tab === 'roles'" :login="login" :sign="sign" />
       <VariablesTab v-else-if="tab === 'variables'" :login="login" :write-role="data.channel.roles.channel_var_write" :roles="data.allRoles" />
       <RunsTab v-else-if="tab === 'runs'" :login="login" :sign="sign" />
-      <ChatLogTab v-else-if="tab === 'log'" :login="login" :logging="data.channel.log_enabled" :public-log="data.channel.public_log" />
+      <ChatLogTab v-else-if="tab === 'log'" :login="login" :logging="data.channel.log_enabled" :public-log="data.channel.public_log" :channel-id="data.channel.channel_id" />
       <section v-else-if="tab === 'audit'">
         <p class="vx-muted intro">Every change made here, in chat, on this site or with an API key.</p>
         <AuditBrowser :client="platform" :scope="data.channel.channel_id" action-hint="cc. or cc.edit" target-hint="exact, or a prefix:">

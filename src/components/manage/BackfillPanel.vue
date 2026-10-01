@@ -44,8 +44,9 @@ watch(
     logStart.value = null
     if (!load) return
     try {
-      const got = await admin.coverage(login, 0)
-      logStart.value = got.gaps.find((g) => g.reason === 'before_log')?.to ?? null
+      const got = await admin.coverage(login, new Date(0).toISOString())
+      const start = got.gaps.find((g) => g.reason === 'before_log')?.end
+      logStart.value = start ? Date.parse(start) : null
     } catch {
       // no coverage (an older bot, or no log): the preset just isn't offered
     }
