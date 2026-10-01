@@ -62,7 +62,7 @@ const here = computed(() => data.value?.channel.active && data.value.channel.sta
         <VxChip :tone="here ? 'ok' : 'bad'">{{ data.channel.status }}</VxChip>
       </div>
       <VxTabs v-model="tab" :options="TABS" label="Channel sections" class="tabs" />
-      <ChatLogTab v-if="tab === 'log'" :login="data.channel.login" :logging="true" :public-log="true" public />
+      <ChatLogTab v-if="tab === 'log'" :login="data.channel.login" :logging="true" :public-log="true" :channel-id="data.channel.channel_id" public />
       <template v-else>
       <p class="vx-muted">
         Type <Cmd t="help" :sign="sign" /> in chat for the commands you personally can run here. The

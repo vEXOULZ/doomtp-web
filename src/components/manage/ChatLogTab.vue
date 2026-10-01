@@ -4,7 +4,7 @@
 // and moderation as notices. Searched as `logsearch` does in chat, over a time range if given; the bot pages it with
 // a cursor, so the pages go older and back. On the public channel page (`public`) it has no moderation and no removed
 // messages, which the bot leaves out for the public, and no coverage.
-import { loadChannelEmotes, toChatLine, type EmoteSet, type LogEntry } from '@vexoulz/platform-web/chat'
+import { loadBadges, loadChannelEmotes, toChatLine, type EmoteSet, type LogEntry, type RawBadges } from '@vexoulz/platform-web/chat'
 import { ChatLine } from '@vexoulz/platform-web/vue'
 import { VxButton, VxCallout, VxCheckbox, VxEmptyState, VxField, VxInput, VxSelect, VxSkeleton } from '@vexoulz/ui'
 import { computed, reactive, ref, shallowRef, watch } from 'vue'
@@ -85,8 +85,24 @@ const older = () => data.value?.next_cursor && (cursors.value = [...cursors.valu
 const newer = () => page.value > 0 && (cursors.value = cursors.value.slice(0, -1))
 const toggleKind = (k: Kind, on: boolean) => (form.kinds = on ? [...form.kinds, k] : form.kinds.filter((x) => x !== k))
 
-// The channel's third-party emotes, loaded once per channel; the log shows without them until they come.
+// The channel's third-party emotes and its Twitch badges (the bot fetches those: they need its Twitch token), loaded
+// once per channel; the log shows without them until they come, or if they don't.
 const emotes = shallowRef<EmoteSet | null>(null)
+const badges = shallowRef<RawBadges | null>(null)
+watch(
+  () => props.login,
+  async (login, _, onCleanup) => {
+    badges.value = null
+    const ctl = new AbortController()
+    onCleanup(() => ctl.abort())
+    try {
+      badges.value = await loadBadges(`/api/v2/channels/${encodeURIComponent(login)}/badges`, { signal: ctl.signal })
+    } catch {
+      // aborted: a newer channel's load replaces it
+    }
+  },
+  { immediate: true },
+)
 watch(
   () => props.channelId,
   async (id, _, onCleanup) => {
@@ -102,7 +118,7 @@ watch(
   },
   { immediate: true },
 )
-const lines = computed(() => (data.value?.items ?? []).map((e) => ({ at: e.at, line: toChatLine(e, emotes.value) })))
+const lines = computed(() => (data.value?.items ?? []).map((e) => ({ at: e.at, line: toChatLine(e, emotes.value, badges.value) })))
 const paging = computed(() => (asked.value.order === 'asc' ? { back: 'Earlier', on: 'Later' } : { back: 'Newer', on: 'Older' }))
 </script>
 

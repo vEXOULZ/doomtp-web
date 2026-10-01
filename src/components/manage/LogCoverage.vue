@@ -1,7 +1,8 @@
 <script setup lang="ts">
 // When the bot was listening, over the log's current range (the last 7 days if none), from
 // /api/v2/channels/{login}/log/coverage: the holes it left and what backfill made of each. A hole can be shown in the
-// log, or backfilled by whoever may run backfills; an admin follows the channel's backfills to its jobs.
+// log, or backfilled by whoever may run backfills; an admin follows the channel's backfills, or the one that filled a
+// hole, to its jobs.
 import type { LogGap } from '@vexoulz/platform-web/chat'
 import { VxButton, VxChip } from '@vexoulz/ui'
 import { computed } from 'vue'
@@ -82,6 +83,7 @@ const backfill = (g: LogGap) =>
             <strong>{{ REASON[g.reason] }}</strong>
             <span class="vx-muted small">{{ day(g.start) }} → {{ day(g.end) }} · {{ span(g) }}</span>
             <VxChip :tone="filled(g).tone">{{ filled(g).text }}</VxChip>
+            <RouterLink v-if="g.backfill?.job_id && isAdmin()" class="small" :to="`/manage/jobs/${g.backfill.job_id}`">job #{{ g.backfill.job_id }}</RouterLink>
           </div>
           <span class="acts">
             <VxButton size="sm" variant="ghost" @click="emit('show', g.start, g.end)">Show in log</VxButton>
