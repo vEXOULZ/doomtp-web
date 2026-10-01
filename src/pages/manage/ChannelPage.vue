@@ -8,7 +8,8 @@ import { useRoute, useRouter } from 'vue-router'
 import ManageShell from '@/components/ManageShell.vue'
 import ChannelSettings from '@/components/ChannelSettings.vue'
 import ChatLine from '@/components/ChatLine.vue'
-import AuditBrowser from '@/components/manage/AuditBrowser.vue'
+import { AuditBrowser } from '@vexoulz/platform-web/vue'
+import AuditActor from '@/components/AuditActor.vue'
 import BackfillPanel from '@/components/manage/BackfillPanel.vue'
 import ChatLogTab from '@/components/manage/ChatLogTab.vue'
 import FilterTab from '@/components/manage/FilterTab.vue'
@@ -24,6 +25,7 @@ import VariablesTab from '@/components/manage/VariablesTab.vue'
 import '@/components/manage/tabs.css'
 import { can, manages } from '@/lib/access'
 import { admin, readIgnored, type Channel } from '@/lib/admin'
+import { platform } from '@/lib/platform'
 import { api, errorMessage } from '@/lib/api'
 import { builtinRow, customRow } from '@/lib/commands'
 import { commandRows, moduleRows, publishedRows } from '@/lib/modules'
@@ -231,7 +233,9 @@ async function part() {
       <ChatLogTab v-else-if="tab === 'log'" :login="login" :logging="data.channel.log_enabled" :public-log="data.channel.public_log" />
       <section v-else-if="tab === 'audit'">
         <p class="vx-muted intro">Every change made here, in chat, on this site or with an API key.</p>
-        <AuditBrowser :scope="data.channel.channel_id" :channels="[data.channel]" />
+        <AuditBrowser :client="platform" :scope="data.channel.channel_id" action-hint="cc. or cc.edit" target-hint="exact, or a prefix:">
+          <template #actor="{ entry }"><AuditActor :entry="entry" /></template>
+        </AuditBrowser>
       </section>
       <IgnoredTab v-else-if="tab === 'ignored'" :login="login" :sign="sign" :ignored="data.ignored" :reload="reload" />
     </template>

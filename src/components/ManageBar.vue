@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // The Manage bar: at the top of the Manage pages (ManageShell), with what the person signed in may manage. A channel
-// switcher for the channels they run, their own area, Explain and Audit, and the bot's own page for admins.
+// switcher for the channels they run, their own area, Explain and Audit, and the bot's jobs and own page for admins.
 // On a narrow screen it wraps; nothing is dropped.
 import { VxSelect } from '@vexoulz/ui'
 import { computed } from 'vue'
@@ -17,6 +17,7 @@ const LINKS = computed(() => [
   { label: 'Me', to: '/manage/me' },
   { label: 'Explain', to: '/manage/explain' },
   { label: 'Audit', to: '/manage/audit' },
+  ...(can('bot') ? [{ label: 'Jobs', to: '/manage/jobs' }] : []),
   ...(can('bot') ? [{ label: 'Bot', to: '/manage/bot' }] : []),
 ])
 const current = (to: string, exact = false) => (exact ? route.path === to : route.path === to || route.path.startsWith(`${to}/`))
