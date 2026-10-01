@@ -37,7 +37,7 @@ const tab = computed({
 })
 
 const { data, error, reload } = useLoad(
-  async () => (session.user && tab.value === 'activity' ? (await admin.audit(50, { actor: 'me' })).entries : []),
+  async () => (session.user && tab.value === 'activity' ? (await admin.audit(50, { actor: 'me' })).items : []),
   () => tab.value,
 )
 const own = computed(() => (session.ownChannel?.joined ? session.ownChannel.login : null))

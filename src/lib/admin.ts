@@ -231,31 +231,44 @@ export interface HttpLimits {
   channel_per_minute: number
   host_per_minute: number
 }
+/** A row of the bot's audit log, as /api/v2/audit serves it (ADR-0027): a change, or a write it refused. */
 export interface AuditEntry {
   id: number
-  channel_id: string | null
-  actor_user_id: string | null
+  /** ISO 8601 UTC. */
+  at: string
+  /** `user` (a Twitch user, or the admin password, with no id), `api_key` or `system`. */
+  actor_kind: string
+  actor_id: string | null
+  actor_login: string | null
   via: string
   action: string
   target: string | null
+  /** The channel's id; null for the bot's own settings. */
+  scope: string | null
+  /** The channel's login, when the bot knows it. */
+  scope_name?: string | null
+  /** `ok`; `denied` or `failed` for a write the bot refused or that failed. */
+  outcome: string
   before: unknown
   after: unknown
-  /** Epoch ms. */
-  at: number
-  /** Filled in by bots from ADR-0026 on: the channel's and actor's logins, when known. */
-  channel_login?: string | null
-  actor_login?: string | null
+  detail: unknown
+  request_id: string | null
+  job_run_id: number | null
 }
 export interface AuditQuery {
   limit?: number
-  /** A channel login. */
-  channel?: string
+  /** A channel id. */
+  scope?: string
   /** A login, or `me`. */
   actor?: string
   /** `cc.edit`, or `cc.` for every cc one. */
   action?: string
-  /** The `next` of the page before. */
-  before?: number
+  /** The `next_cursor` of the page before. */
+  cursor?: string
+}
+export interface AuditPage {
+  items: AuditEntry[]
+  next_cursor: string | null
 }
 /** /readyz: each component's status and whatever detail it reports. */
 export interface Health {
@@ -351,7 +364,7 @@ export const admin = {
   audit: (limit = 50, query: Omit<AuditQuery, 'limit'> = {}) => {
     const params = new URLSearchParams({ limit: String(limit) })
     for (const [k, v] of Object.entries(query)) if (v !== undefined && v !== '') params.set(k, String(v))
-    return request<{ entries: AuditEntry[]; next?: number | null }>(`/audit?${params}`)
+    return request<AuditPage>(`/audit?${params}`, {}, { v2: true })
   },
 
   explainAs: (body: { text: string; channel: string; as_user?: string; badges: string[]; run: boolean; context?: string }) =>

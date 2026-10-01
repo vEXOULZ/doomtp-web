@@ -1,40 +1,40 @@
 <script setup lang="ts">
-// The audit log with filters (who, what) and older/newer pages. The bot pages it by entry id (`before`), so the
-// pages walk back and forth over a stack of those. Scoped to one channel when `channel` is set.
+// The audit log with filters (who, what) and older/newer pages. The bot pages it by cursor (`next_cursor`), so the
+// pages walk back and forth over a stack of those. Scoped to one channel when `scope` (its id) is set.
 import { VxButton, VxCallout, VxField, VxInput, VxSkeleton } from '@vexoulz/ui'
 import { computed, reactive, ref } from 'vue'
 import AuditTable from '@/components/AuditTable.vue'
 import { admin, type Channel } from '@/lib/admin'
 import { useLoad } from '@/lib/useLoad'
 
-const props = withDefaults(defineProps<{ channel?: string; channels?: Pick<Channel, 'channel_id' | 'login'>[]; pageSize?: number }>(), {
-  channel: undefined,
+const props = withDefaults(defineProps<{ scope?: string; channels?: Pick<Channel, 'channel_id' | 'login'>[]; pageSize?: number }>(), {
+  scope: undefined,
   channels: () => [],
   pageSize: 50,
 })
 
 const form = reactive({ actor: '', action: '' })
 const asked = ref({ ...form })
-const befores = ref<(number | undefined)[]>([undefined])
-const page = computed(() => befores.value.length - 1)
+const cursors = ref<(string | undefined)[]>([undefined])
+const page = computed(() => cursors.value.length - 1)
 
 const { data, error, loading, reload } = useLoad(
   () =>
     admin.audit(props.pageSize, {
-      channel: props.channel,
+      scope: props.scope,
       actor: asked.value.actor.trim().replace(/^@/, '') || undefined,
       action: asked.value.action.trim() || undefined,
-      before: befores.value[page.value],
+      cursor: cursors.value[page.value],
     }),
-  () => [props.channel, asked.value, befores.value],
+  () => [props.scope, asked.value, cursors.value],
 )
 
 function search() {
   asked.value = { ...form }
-  befores.value = [undefined]
+  cursors.value = [undefined]
 }
-const older = () => data.value?.next && (befores.value = [...befores.value, data.value.next])
-const newer = () => page.value > 0 && (befores.value = befores.value.slice(0, -1))
+const older = () => data.value?.next_cursor && (cursors.value = [...cursors.value, data.value.next_cursor])
+const newer = () => page.value > 0 && (cursors.value = cursors.value.slice(0, -1))
 </script>
 
 <template>
@@ -54,11 +54,11 @@ const newer = () => page.value > 0 && (befores.value = befores.value.slice(0, -1
       <template #actions><VxButton size="sm" @click="reload">Try again</VxButton></template>
     </VxCallout>
     <div v-else-if="!data" class="loading" aria-busy="true"><VxSkeleton v-for="i in 8" :key="i" h="38px" /></div>
-    <AuditTable v-else :entries="data.entries" :channels="channels" :aria-busy="loading" />
-    <div v-if="data && (page > 0 || data.next)" class="pager">
+    <AuditTable v-else :entries="data.items" :channels="channels" :aria-busy="loading" />
+    <div v-if="data && (page > 0 || data.next_cursor)" class="pager">
       <VxButton size="sm" :disabled="page === 0 || loading" @click="newer">Newer</VxButton>
       <span class="vx-muted small">Page {{ page + 1 }}</span>
-      <VxButton size="sm" :disabled="!data.next || loading" @click="older">Older</VxButton>
+      <VxButton size="sm" :disabled="!data.next_cursor || loading" @click="older">Older</VxButton>
     </div>
   </div>
 </template>

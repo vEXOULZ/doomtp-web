@@ -63,12 +63,12 @@ auth.scope = (path, body) => {
     return { ...b, channels: b.channels.filter((c) => mine.has(c.login.toLowerCase())) }
   }
   if (path === '/audit' || path.startsWith('/audit?')) {
-    const b = body as { entries?: AuditEntry[] }
-    if (!Array.isArray(b?.entries)) return body
-    const own = (e: AuditEntry) => !!state.user && e.actor_user_id === state.user.id
+    const b = body as { items?: AuditEntry[] }
+    if (!Array.isArray(b?.items)) return body
+    const own = (e: AuditEntry) => !!state.user && e.actor_kind === 'user' && e.actor_id === state.user.id
     return {
       ...b,
-      entries: b.entries.filter((e) => (e.channel_login ? mine.has(e.channel_login.toLowerCase()) : own(e))),
+      items: b.items.filter((e) => (e.scope_name && mine.has(e.scope_name.toLowerCase())) || own(e)),
     }
   }
   const roles = /^\/channels\/([^/?]+)\/roles$/.exec(path)

@@ -1,4 +1,4 @@
-// The bot's JSON API (doomtp-bot, /api/v1), served on this site's origin. Only the parts these pages read.
+// The bot's JSON API (doomtp-bot, /api/v1, and /api/v2 for the audit), served on this site's origin. Only the parts these pages read.
 // Fields are added on the bot's side, never renamed (ADR-0016), so optional ones here are the newer ones.
 
 export class ApiError extends Error {
@@ -43,8 +43,9 @@ const HARMLESS = (method: string, path: string) =>
   (method === 'POST' && (path === '/parse' || path.startsWith('/explain') || path.endsWith('/test'))) ||
   (method === 'DELETE' && path === '/session')
 
-/** `unscoped`: the answer as the bot gave it, even while previewing (the "View as" picker's own reads). */
-export async function request<T>(path: string, init: RequestInit = {}, { unscoped = false } = {}): Promise<T> {
+/** `unscoped`: the answer as the bot gave it, even while previewing (the "View as" picker's own reads). `v2`: from
+ *  /api/v2 (ADR-0027), whose errors are problem details, with the message in `detail` as well. */
+export async function request<T>(path: string, init: RequestInit = {}, { unscoped = false, v2 = false } = {}): Promise<T> {
   const headers = new Headers(init.headers)
   const method = (init.method ?? 'GET').toUpperCase()
   if (method !== 'GET' && method !== 'HEAD' && !HARMLESS(method, path)) {
@@ -54,7 +55,7 @@ export async function request<T>(path: string, init: RequestInit = {}, { unscope
   if (method !== 'GET' && auth.csrf) headers.set('X-CSRF-Token', auth.csrf)
   let response: Response
   try {
-    response = await fetch(`/api/v1${path}`, { credentials: 'same-origin', ...init, headers })
+    response = await fetch(`/api/${v2 ? 'v2' : 'v1'}${path}`, { credentials: 'same-origin', ...init, headers })
   } catch {
     throw new ApiError(0, "Couldn't reach the bot.")
   }

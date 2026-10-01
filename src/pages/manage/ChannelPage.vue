@@ -231,7 +231,7 @@ async function part() {
       <ChatLogTab v-else-if="tab === 'log'" :login="login" :logging="data.channel.log_enabled" :public-log="data.channel.public_log" />
       <section v-else-if="tab === 'audit'">
         <p class="vx-muted intro">Every change made here, in chat, on this site or with an API key.</p>
-        <AuditBrowser :channel="login" :channels="[data.channel]" />
+        <AuditBrowser :scope="data.channel.channel_id" :channels="[data.channel]" />
       </section>
       <IgnoredTab v-else-if="tab === 'ignored'" :login="login" :sign="sign" :ignored="data.ignored" :reload="reload" />
     </template>
