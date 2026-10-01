@@ -62,7 +62,7 @@ ADR-0017 and ADR-0026):
 | `/manage/me` | your channel, the channels you moderate, and what you changed |
 | `/manage/channels/:login` | one channel: settings, modules, command rules (on or off, who may run it, log level), published packs, triggers and timers, word filter, ignored users; leave or rejoin |
 | `/manage/explain` | explain an expression in any channel, and optionally run it; in a channel you manage, as a chatter you name, with the badges you pick |
-| `/manage/audit` | configuration changes, from chat, here or an API key: every channel's for an admin, else your channels' and your own |
+| `/manage/audit` | configuration changes, from chat, here or an API key, and the writes the bot refused (`/api/v2/audit`): every channel's for an admin, else your channels' and your own |
 | `/manage/bot` | bot admins: health, joining a channel, API keys |
 
 Old `/admin/...` links redirect to `/manage/...`. The public channel page shows a "Manage" button to anyone who

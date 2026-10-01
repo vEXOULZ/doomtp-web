@@ -88,14 +88,16 @@ describe('view as', () => {
     expect((await admin.channels()).channels.map((c) => c.login)).toEqual(['bob'])
     expect((await admin.channels(true)).channels.map((c) => c.login)).toEqual(['bob', 'carol'])
     reply({
-      entries: [
-        { id: 1, channel_login: 'bob', actor_user_id: '2' },
-        { id: 2, channel_login: 'carol', actor_user_id: '2' },
-        { id: 3, channel_login: null, actor_user_id: '9' },
-        { id: 4, channel_login: null, actor_user_id: '2' },
+      items: [
+        { id: 1, scope_name: 'bob', actor_kind: 'user', actor_id: '2' },
+        { id: 2, scope_name: 'carol', actor_kind: 'user', actor_id: '2' },
+        { id: 3, scope_name: null, actor_kind: 'user', actor_id: '9' },
+        { id: 4, scope_name: null, actor_kind: 'user', actor_id: '2' },
+        { id: 5, scope_name: 'carol', actor_kind: 'user', actor_id: '9' },
       ],
+      next_cursor: null,
     })
-    expect((await admin.audit(10)).entries.map((e) => e.id)).toEqual([1, 3])
+    expect((await admin.audit(10)).items.map((e) => e.id)).toEqual([1, 3, 5])
     reply({ builtin: [], roles: [], your_rank: 1000 })
     expect((await admin.roles('bob')).your_rank).toBe(80)
   })

@@ -17,7 +17,7 @@ const { data, error, reload } = useLoad(async () => {
     admin.audit(8),
     can('health') ? health().catch(() => null) : null,
   ])
-  return { channels: channels.channels, audit: audit.entries, ready }
+  return { channels: channels.channels, audit: audit.items, ready }
 })
 
 /** How the session reaches each channel, as chat would call it. */

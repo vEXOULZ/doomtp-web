@@ -33,6 +33,19 @@ describe('request', () => {
     expect(onUnauthorized).toHaveBeenCalledOnce()
   })
 
+  it("reads the audit from /api/v2, and a problem's detail when it fails", async () => {
+    const fetch = stub(new Response(JSON.stringify({ items: [], next_cursor: null })))
+    expect(await admin.audit(20, { scope: '123', actor: 'me', action: '', cursor: 'abc' })).toEqual({ items: [], next_cursor: null })
+    expect(fetch.mock.calls[0]![0]).toBe('/api/v2/audit?limit=20&scope=123&actor=me&cursor=abc')
+    stub(
+      new Response(JSON.stringify({ title: 'Bad Request', status: 400, detail: 'bad cursor', code: 'bad_cursor' }), {
+        status: 400,
+        headers: { 'content-type': 'application/problem+json' },
+      }),
+    )
+    await expect(admin.audit(20, { cursor: 'x' })).rejects.toThrow('bad cursor')
+  })
+
   it('keeps Retry-After on a 429', async () => {
     stub(new Response('{}', { status: 429, headers: { 'retry-after': '30' } }))
     await expect(request('/session', { method: 'POST' })).rejects.toMatchObject({ status: 429, retryAfter: 30 })
