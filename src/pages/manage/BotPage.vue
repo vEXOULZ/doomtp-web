@@ -143,7 +143,9 @@ async function revoke() {
         <p class="vx-muted small">
           Keys for <code>/api/v1</code>. A <code>read</code> key sees configuration and logs; a <code>write</code> key
           also changes them. The key is shown once, when it's made, and only its hash is kept: if it's lost, revoke it
-          and make another.
+          and make another. The routes are on the <RouterLink to="/docs/api">API page</RouterLink>; the
+          <code>/api/v2</code> ones (jobs, audit, chat log) are in <a href="/api/v2/docs">their own Swagger UI</a>, open to
+          anyone signed in.
         </p>
         <div class="table-scroll vx-panel">
           <table class="vx-table">
