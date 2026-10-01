@@ -96,6 +96,8 @@ export interface Site {
 export interface ChannelSummary extends SiteChannel {
   status: string
   active: boolean
+  /** The channel's Twitch id (bots from before 0.8 leave it out). */
+  channel_id?: string
 }
 export interface Role {
   name: string
