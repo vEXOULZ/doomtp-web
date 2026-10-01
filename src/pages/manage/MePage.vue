@@ -4,7 +4,8 @@
 import { VxButton, VxCallout, VxChip, VxSkeleton, VxTabs } from '@vexoulz/ui'
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import AuditTable from '@/components/AuditTable.vue'
+import { AuditTable } from '@vexoulz/platform-web/vue'
+import AuditActor from '@/components/AuditActor.vue'
 import ManageShell from '@/components/ManageShell.vue'
 import OwnChannelCard from '@/components/OwnChannelCard.vue'
 import MyCommandsTab from '@/components/manage/MyCommandsTab.vue'
@@ -89,7 +90,9 @@ const moderated = computed(() =>
         <template #actions><VxButton size="sm" @click="reload">Try again</VxButton></template>
       </VxCallout>
       <div v-else-if="!data" class="loading" aria-busy="true"><VxSkeleton v-for="i in 4" :key="i" h="38px" /></div>
-      <AuditTable v-else :entries="data" />
+      <AuditTable v-else :entries="data" empty="Nothing changed yet.">
+        <template #actor="{ entry }"><AuditActor :entry="entry" /></template>
+      </AuditTable>
     </section>
   </ManageShell>
 </template>

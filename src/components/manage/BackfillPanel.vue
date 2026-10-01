@@ -1,10 +1,10 @@
 <script setup lang="ts">
 // History backfill jobs for a channel: the queue and the latest finished ones. The broadcaster queues a pass over
 // every gap in the log (as `backfill` does in chat), or any range they pick (from before the bot was listening,
-// say), and cancels a job that hasn't started.
+// say), and cancels a job that hasn't started. Each is a `chat_backfill` job run: an admin follows it to its job page.
 import { VxButton, VxCallout, VxChip, VxEmptyState, VxField, timeAgo } from '@vexoulz/ui'
 import { computed, reactive, ref, watch } from 'vue'
-import { can } from '@/lib/access'
+import { can, isAdmin } from '@/lib/access'
 import { admin, type BackfillJob } from '@/lib/admin'
 import { useAct } from '@/lib/useAct'
 import { useLoad } from '@/lib/useLoad'
@@ -129,7 +129,10 @@ const result = (j: BackfillJob) =>
         <tbody>
           <tr v-for="j in data.jobs" :key="j.id">
             <td class="nowrap small">{{ day(j.from_ms) }} → {{ day(j.to_ms) }}</td>
-            <td><VxChip :tone="TONE[j.state] ?? 'default'">{{ j.state }}</VxChip></td>
+            <td class="nowrap">
+              <VxChip :tone="TONE[j.state] ?? 'default'">{{ j.state }}</VxChip>
+              <RouterLink v-if="isAdmin()" class="job small" :to="`/manage/jobs/${j.id}`">job {{ j.id }}</RouterLink>
+            </td>
             <td class="vx-muted small nowrap" :title="new Date(j.requested_at).toLocaleString()">{{ timeAgo(j.requested_at) }} · {{ j.requested_by }}</td>
             <td class="small wrap" :class="{ bad: j.error }">{{ result(j) }}</td>
             <td class="end">
@@ -158,4 +161,5 @@ const result = (j: BackfillJob) =>
 .small { font-size: 12px; margin: 0; }
 .nowrap { white-space: nowrap; }
 .bad { color: var(--vx-bad); }
+.job { margin-left: 6px; color: inherit; }
 </style>

@@ -1,12 +1,16 @@
 import '@vexoulz/ui/fonts.css'
 import '@vexoulz/ui/style.css'
+import '@vexoulz/platform-web/style.css'
 import './styles.css'
+import './styles/platform.css'
 
-import { VxBuild } from '@vexoulz/ui'
+import { createPlatformUi } from '@vexoulz/platform-web/vue'
+import { VxBuild, useToast } from '@vexoulz/ui'
 import { createApp } from 'vue'
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHistory, RouterLink } from 'vue-router'
 
 import App from './App.vue'
+import { isAdmin } from './lib/access'
 import { account } from './lib/account'
 import { hashPosition } from './lib/hash'
 import { ensure, previewing, realSession as session, setExpiredHandler, twitchLoginUrl } from './lib/session'
@@ -27,6 +31,8 @@ const router = createRouter({
     { path: '/manage/me', component: () => import('./pages/manage/MePage.vue') },
     { path: '/manage/channels/:login', component: () => import('./pages/manage/ChannelPage.vue'), props: true },
     { path: '/manage/explain', component: () => import('./pages/manage/ExplainPage.vue') },
+    { path: '/manage/jobs', component: () => import('./pages/manage/JobsPage.vue') },
+    { path: '/manage/jobs/:id(\\d+)', component: () => import('./pages/manage/JobPage.vue'), props: true },
     { path: '/manage/audit', component: () => import('./pages/manage/AuditPage.vue') },
     { path: '/manage/bot', component: () => import('./pages/manage/BotPage.vue') },
     // The sign-in page: the bot's Twitch sign-in lands here with ?error=, and the admin password lives here.
@@ -64,4 +70,21 @@ router.beforeEach(async (to) => {
   return { path: '/admin/login', query: { next: to.fullPath } }
 })
 
-createApp(App).use(router).use(VxBuild, { commit: __COMMIT__ }).use(account).mount('#app')
+createApp(App)
+  .use(router)
+  .use(VxBuild, { commit: __COMMIT__ })
+  .use(account)
+  // The shared jobs and audit components: where a job lives (its page is for admins), and toasts.
+  .use(
+    createPlatformUi({
+      link: RouterLink,
+      jobHref: (id) => (isAdmin() ? `/manage/jobs/${id}` : null),
+      subjectHref: (s) => {
+        const job = /^job:(\d+)$/.exec(s)
+        return job && isAdmin() ? `/manage/jobs/${job[1]}` : null
+      },
+      notify: (msg, kind) => useToast().show(msg, { kind, duration: kind === 'error' ? 5000 : 3000 }),
+      appName: 'bot',
+    }),
+  )
+  .mount('#app')

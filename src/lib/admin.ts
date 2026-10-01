@@ -1,6 +1,7 @@
 // The managing half of the bot's JSON API (ADR-0016, ADR-0026): the session, a channel's settings and logs, and
 // the bot's own. Every call needs the session cookie; writes also send its CSRF token (see `auth` in api.ts).
 import type { ChannelCommand, CommandRulePatch } from './modules'
+import type { AuditOut } from '@vexoulz/platform-web'
 import { request, type CustomCommand, type ExplainReport, type Publication } from './api'
 
 const json = (method: string, body?: unknown): RequestInit => ({
@@ -232,29 +233,7 @@ export interface HttpLimits {
   host_per_minute: number
 }
 /** A row of the bot's audit log, as /api/v2/audit serves it (ADR-0027): a change, or a write it refused. */
-export interface AuditEntry {
-  id: number
-  /** ISO 8601 UTC. */
-  at: string
-  /** `user` (a Twitch user, or the admin password, with no id), `api_key` or `system`. */
-  actor_kind: string
-  actor_id: string | null
-  actor_login: string | null
-  via: string
-  action: string
-  target: string | null
-  /** The channel's id; null for the bot's own settings. */
-  scope: string | null
-  /** The channel's login, when the bot knows it. */
-  scope_name?: string | null
-  /** `ok`; `denied` or `failed` for a write the bot refused or that failed. */
-  outcome: string
-  before: unknown
-  after: unknown
-  detail: unknown
-  request_id: string | null
-  job_run_id: number | null
-}
+export type AuditEntry = AuditOut
 export interface AuditQuery {
   limit?: number
   /** A channel id. */
