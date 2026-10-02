@@ -1,0 +1,1 @@
+import{_ as u,Q as f,a0 as i}from"./index-CUEb_Tx-.js";function w(t){const e=i(),a=f(new Set);async function o(r,n,s){a.add(r);try{return await n(),e.show(s),await t(),!0}catch(c){return e.show(u(c),{kind:"error",duration:5e3}),!1}finally{a.delete(r)}}return{busy:a,act:o}}const l=t=>t?"on":"off";export{l as o,w as u};
