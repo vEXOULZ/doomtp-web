@@ -2,7 +2,7 @@
 
 # doomtp-web
 
-dtp.vexoulz.net: doomtp-bot's docs, command reference, channel pages and chat's explain reports, over the
+dtp.vexoul.net: doomtp-bot's docs, command reference, channel pages and chat's explain reports, over the
 bot's JSON API, on the shared `@vexoulz/ui` design. Published by `publish.yml` to the `deploy` branch.
 
 - Data comes only from the bot's JSON API. Anything missing is asked for in doomtp-bot, not scraped or

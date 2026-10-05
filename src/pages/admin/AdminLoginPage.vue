@@ -58,7 +58,7 @@ async function submit() {
 <template>
   <DtpShell>
     <form class="login vx-panel" @submit.prevent="submit">
-      <div class="vx-eyebrow">dtp.vexoulz.net</div>
+      <div class="vx-eyebrow">dtp.vexoul.net</div>
       <h1 class="vx-display">Sign in</h1>
       <VxCallout v-if="signinError" tone="error">{{ signinError }}</VxCallout>
       <VxCallout v-else-if="session.notice && !error" tone="warn">{{ session.notice }}</VxCallout>
