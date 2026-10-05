@@ -1,4 +1,4 @@
-# dtp.vexoulz.net
+# dtp.vexoul.net
 
 The web pages of [doomtp-bot](https://github.com/vEXOULZ/doomtp-bot), a Twitch chat bot with a composable command
 language: its docs, the command reference, channel pages and chat's explain links. Vue 3 + TypeScript on the shared
