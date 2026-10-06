@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { VxButton, VxCallout, VxField, VxInput } from '@vexoulz/ui'
+import { VxButton, VxCallout, VxField, VxInput, VxTwitchGlyph } from '@vexoulz/ui'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import DtpShell from '@/components/DtpShell.vue'
@@ -68,7 +68,7 @@ async function submit() {
         (<code>ADMIN_PASSWORD_NETWORKS</code>, the bot's local network by default).
       </VxCallout>
       <template v-if="session.twitchLogin">
-        <VxButton :href="twitchLoginUrl(next)" variant="primary" class="twitch">Sign in with Twitch</VxButton>
+        <VxButton :href="twitchLoginUrl(next)" variant="primary" class="twitch"><VxTwitchGlyph />Sign in with Twitch</VxButton>
         <p class="vx-muted note">Anyone with a Twitch account: manage your commands, and the channels you run.</p>
         <div v-if="session.enabled" class="or vx-muted" role="separator">or with the admin password</div>
       </template>
@@ -87,7 +87,7 @@ async function submit() {
 <style scoped>
 .login { display: flex; flex-direction: column; gap: 14px; width: min(360px, 100%); margin: 8vh auto 0; padding: 24px; box-sizing: border-box; }
 .login h1 { font-size: 28px; margin: 0 0 4px; }
-.twitch { width: 100%; justify-content: center; }
+.twitch { width: 100%; justify-content: center; gap: 8px; }
 .note { margin: -6px 0 0; font-size: 12px; }
 .or { display: flex; align-items: center; gap: 10px; font-size: 12px; }
 .or::before, .or::after { content: ''; flex: 1; border-top: 1px solid var(--vx-line); }
