@@ -43,3 +43,19 @@ export function span(seconds: number): string {
   }
   return `${seconds}s`
 }
+
+/** A Twitch login as typed: trimmed, without a leading `@`. */
+export const loginOf = (typed: string) => typed.trim().replace(/^@/, '')
+
+/** `@login`, or the user id when the login isn't known. */
+export const atName = (login: string | null | undefined, id: string) => (login ? `@${login}` : id)
+
+const pad = (n: number) => String(n).padStart(2, '0')
+/** A time → a `datetime-local` input's value, in the viewer's own zone. */
+export function localInput(at: string | number): string {
+  const d = new Date(at)
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+/** A time as "Oct 9, 2026, 3:41 PM", in the viewer's own zone. */
+export const dateTime = (at: string | number) => new Date(at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })

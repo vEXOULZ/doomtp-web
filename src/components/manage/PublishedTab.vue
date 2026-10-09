@@ -14,6 +14,7 @@ import { CUSTOM_MODULE, type PublishedRow } from '@/lib/modules'
 import { session } from '@/lib/session'
 import { useAct } from '@/lib/useAct'
 import { useLoad } from '@/lib/useLoad'
+import { loginOf } from '@/lib/format'
 
 const props = defineProps<{
   login: string
@@ -76,7 +77,7 @@ async function publish() {
     const answer =
       pub.what === 'command'
         ? await admin.publish(props.login, pub.command, pub.as.trim() || undefined)
-        : await admin.publishPack(props.login, pub.pack.trim(), pub.what === 'shared' ? pub.owner.trim().replace(/^@/, '') : undefined)
+        : await admin.publishPack(props.login, pub.pack.trim(), pub.what === 'shared' ? loginOf(pub.owner) : undefined)
     needs = (answer as { needs_grants?: Record<string, string[]> }).needs_grants
   }
   const label = pub.what === 'command' ? `${props.sign}${pub.as.trim() || pub.command}` : pub.pack.trim()

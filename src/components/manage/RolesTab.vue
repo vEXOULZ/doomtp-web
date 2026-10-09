@@ -10,6 +10,7 @@ import { api } from '@/lib/api'
 import { useAct } from '@/lib/useAct'
 import { useLoad } from '@/lib/useLoad'
 import UserRef from '../UserRef.vue'
+import { loginOf } from '@/lib/format'
 
 const props = defineProps<{ login: string; sign: string }>()
 const { data, error, reload } = useLoad(async () => {
@@ -49,7 +50,7 @@ function openGive(name: string) {
   givingOpen.value = true
 }
 async function give() {
-  const user = giving.user.trim().replace(/^@/, '').toLowerCase()
+  const user = loginOf(giving.user).toLowerCase()
   if (!user) return
   const done = await act('r-give', () => admin.grantRole(props.login, giving.role, user, giving.duration || undefined), `@${user} is now ${giving.role}`)
   if (done) givingOpen.value = false
