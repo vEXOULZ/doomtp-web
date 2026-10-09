@@ -2,11 +2,12 @@
 // What reaches every channel, for bot admins: the admins themselves (`admin add|remove`, bot owners only), the
 // bot-wide module toggles and command rules every channel inherits, the bot-wide word filter, who is ignored
 // everywhere, and the commands and packs published everywhere.
-import { VxButton, VxCallout, VxChip, VxDialog, VxEmptyState, VxField, VxInput, VxSegmented, VxSkeleton, timeAgo } from '@vexoulz/ui'
+import { VxButton, VxCallout, VxChip, VxDialog, VxField, VxInput, VxSegmented, VxSkeleton } from '@vexoulz/ui'
 import { computed, reactive, ref } from 'vue'
 import FilterTab from '@/components/manage/FilterTab.vue'
+import IgnoredTab from '@/components/manage/IgnoredTab.vue'
 import RulesTab from '@/components/manage/RulesTab.vue'
-import { admin, readIgnored, type AdminUser, type GlobalCommand, type Ignored } from '@/lib/admin'
+import { admin, readIgnored, type AdminUser, type GlobalCommand } from '@/lib/admin'
 import { api } from '@/lib/api'
 import { referenceRows } from '@/lib/commands'
 import type { CommandRow, LogLevel } from '@/lib/modules'
@@ -92,20 +93,6 @@ const MODULE_STATES = [
 function setModule(module: string, state: string) {
   if (state === 'default') return act(`m:${module}`, () => admin.resetGlobalModule(module), `${module} left to each channel`)
   return act(`m:${module}`, () => admin.setGlobalModule(module, state === 'on'), `${module} ${state} everywhere`)
-}
-
-// ── ignored everywhere ──
-const ignoring = reactive({ login: '', reason: '' })
-async function ignore() {
-  const who = loginOf(ignoring.login)
-  const anchor = data.value?.anchor
-  if (!who || !anchor) return
-  const ok = await act('ignore', () => admin.ignore(anchor, { login: who, everywhere: true, reason: ignoring.reason.trim() || undefined }), `Ignoring @${who} everywhere`)
-  if (ok) Object.assign(ignoring, { login: '', reason: '' })
-}
-const lift = (u: Ignored) => {
-  const anchor = data.value?.anchor
-  if (anchor) act(`lift:${u.userId}`, () => admin.unignore(anchor, u.userId, true), `No longer ignoring ${atName(u.login, u.userId)}`)
 }
 
 // ── published everywhere ──
@@ -208,34 +195,7 @@ function unpublish() {
 
       <FilterTab v-else-if="section === 'filter'" :login="null" :filters="data.filters" :reload="reload" />
 
-      <template v-else-if="section === 'ignored'">
-        <p class="vx-muted small">Their messages are logged in every channel but never run a command.</p>
-        <VxEmptyState v-if="!data.ignored.length" title="Nobody is ignored everywhere" />
-        <div v-else class="table-scroll vx-panel">
-          <table class="vx-table">
-            <thead><tr><th>User</th><th>Why</th><th>By</th><th>Since</th><th></th></tr></thead>
-            <tbody>
-              <tr v-for="u in data.ignored" :key="u.userId">
-                <td class="vx-mono">{{ atName(u.login, u.userId) }}</td>
-                <td class="vx-muted">{{ u.reason ?? '' }}</td>
-                <td class="vx-muted">{{ u.self ? 'themselves' : u.addedByLogin ? `@${u.addedByLogin}` : '' }}</td>
-                <td class="vx-muted nowrap">{{ u.addedAt ? timeAgo(u.addedAt) : '' }}</td>
-                <td class="end">
-                  <VxButton size="sm" variant="ghost" :disabled="!data.anchor" :loading="busy.has(`lift:${u.userId}`)" @click="lift(u)">Stop ignoring</VxButton>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <form v-if="data.anchor" class="row" @submit.prevent="ignore">
-          <label class="sr-only" for="ignore-login">User to ignore everywhere</label>
-          <VxInput id="ignore-login" v-model="ignoring.login" placeholder="twitch login" mono />
-          <label class="sr-only" for="ignore-reason">Why</label>
-          <VxInput id="ignore-reason" v-model="ignoring.reason" placeholder="why (optional)" />
-          <VxButton type="submit" :loading="busy.has('ignore')" :disabled="!ignoring.login.trim()">Ignore everywhere</VxButton>
-        </form>
-        <p v-else class="vx-muted small">The bot has to be in a channel to ignore someone everywhere.</p>
-      </template>
+      <IgnoredTab v-else-if="section === 'ignored'" :login="data.anchor" :sign="sign" :ignored="data.ignored" :reload="reload" everywhere />
 
       <template v-else>
         <p class="vx-muted small">
