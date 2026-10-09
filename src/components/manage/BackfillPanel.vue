@@ -8,6 +8,7 @@ import { can, isAdmin } from '@/lib/access'
 import { admin, type BackfillJob } from '@/lib/admin'
 import { useAct } from '@/lib/useAct'
 import { useLoad } from '@/lib/useLoad'
+import { dateTime, localInput } from '@/lib/format'
 
 const props = defineProps<{ login: string }>()
 const { data, error, reload } = useLoad(() => admin.backfill(props.login), () => props.login)
@@ -15,16 +16,9 @@ const { busy, act } = useAct(reload)
 const mayRun = computed(() => can('backfill.run', props.login))
 
 const TONE: Record<string, 'ok' | 'bad' | 'accent' | 'default'> = { done: 'ok', failed: 'bad', running: 'accent' }
-const day = (ms: number) => new Date(ms).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
 
 // ── a range of their choosing, in the viewer's own time ──
 const HOUR = 3_600_000
-const pad = (n: number) => String(n).padStart(2, '0')
-/** Epoch ms → the `datetime-local` input's value. */
-function local(ms: number): string {
-  const d = new Date(ms)
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
-}
 const parse = (v: string) => (v ? new Date(v).getTime() : null)
 const range = reactive({ from: '', to: '' })
 const fromMs = computed(() => parse(range.from))
@@ -59,11 +53,11 @@ const PRESETS = [
   { label: 'Last 24 hours', hours: 24 },
 ]
 function preset(hours: number) {
-  Object.assign(range, { from: local(Date.now() - hours * HOUR), to: '' })
+  Object.assign(range, { from: localInput(Date.now() - hours * HOUR), to: '' })
 }
 function beforeLog() {
   if (logStart.value === null) return
-  Object.assign(range, { from: local(logStart.value - 24 * HOUR), to: local(logStart.value) })
+  Object.assign(range, { from: localInput(logStart.value - 24 * HOUR), to: localInput(logStart.value) })
 }
 async function queueRange() {
   if (fromMs.value === null || rangeError.value) return
@@ -101,12 +95,12 @@ const result = (j: BackfillJob) =>
       <div class="vx-form-row">
         <VxField label="From" :error="rangeError ?? undefined">
           <template #default="{ id }">
-            <input :id="id" v-model="range.from" class="vx-input" type="datetime-local" :max="local(Date.now())" required />
+            <input :id="id" v-model="range.from" class="vx-input" type="datetime-local" :max="localInput(Date.now())" required />
           </template>
         </VxField>
         <VxField label="To" help="Empty: until now.">
           <template #default="{ id }">
-            <input :id="id" v-model="range.to" class="vx-input" type="datetime-local" :min="range.from || undefined" :max="local(Date.now())" />
+            <input :id="id" v-model="range.to" class="vx-input" type="datetime-local" :min="range.from || undefined" :max="localInput(Date.now())" />
           </template>
         </VxField>
         <VxButton type="submit" :disabled="fromMs === null || !!rangeError" :loading="busy.has('range')">Backfill this range</VxButton>
@@ -117,7 +111,7 @@ const result = (j: BackfillJob) =>
           v-if="logStart !== null"
           type="button"
           class="vx-chip"
-          :title="`The log begins ${day(logStart)}`"
+          :title="`The log begins ${dateTime(logStart)}`"
           @click="beforeLog"
         >The day before the log began</button>
       </div>
@@ -129,7 +123,7 @@ const result = (j: BackfillJob) =>
         <thead><tr><th>Range</th><th>State</th><th>Asked</th><th>Result</th><th></th></tr></thead>
         <tbody>
           <tr v-for="j in data.jobs" :key="j.id">
-            <td class="nowrap small">{{ day(j.from_ms) }} → {{ day(j.to_ms) }}</td>
+            <td class="nowrap small">{{ dateTime(j.from_ms) }} → {{ dateTime(j.to_ms) }}</td>
             <td class="nowrap">
               <VxChip :tone="TONE[j.state] ?? 'default'">{{ j.state }}</VxChip>
               <RouterLink v-if="isAdmin()" class="job small" :to="`/manage/jobs/${j.id}`">job {{ j.id }}</RouterLink>

@@ -278,8 +278,6 @@ export const admin = {
   filters: (login: string) => request<{ filters: FilterEntry[] }>(`${at(login)}/filters`),
   addFilter: (login: string, body: { pattern: string; kind: string; action: string; replacement?: string }) =>
     request<FilterEntry>(`${at(login)}/filters`, json('POST', body)),
-  setFilter: (login: string, id: number, enabled: boolean) =>
-    request<unknown>(`${at(login)}/filters/${id}`, json('PATCH', { enabled })),
   deleteFilter: (login: string, id: number) => request<unknown>(`${at(login)}/filters/${id}`, json('DELETE')),
 
   ignored: (login: string) => request<{ ignored: IgnoredRaw[]; ignored_everywhere: IgnoredRaw[] }>(`${at(login)}/ignored`),

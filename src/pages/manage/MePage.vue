@@ -104,5 +104,4 @@ section { margin-bottom: 28px; }
 .chips .vx-chip { margin-left: 6px; }
 .loading { display: grid; gap: 6px; }
 .tabs { margin: 16px 0 14px; }
-.tabs :deep([role='tablist']) { overflow-x: auto; }
 </style>

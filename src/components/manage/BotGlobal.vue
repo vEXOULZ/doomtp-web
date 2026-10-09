@@ -13,6 +13,7 @@ import type { CommandRow, LogLevel } from '@/lib/modules'
 import { useAct } from '@/lib/useAct'
 import { defaultSign, loadSite } from '@/lib/site'
 import { useLoad } from '@/lib/useLoad'
+import { atName, loginOf } from '@/lib/format'
 
 const { data, error, reload } = useLoad(async () => {
   const [admins, modules, commands, filters, ignored, roles, published, packs, channels, builtins, site] = await Promise.all([
@@ -74,9 +75,9 @@ const SECTIONS = [
 
 // ── admins ──
 const adminLogin = ref('')
-const name = (u: AdminUser) => (u.login ? `@${u.login}` : u.user_id)
+const name = (u: AdminUser) => atName(u.login, u.user_id)
 async function addAdmin() {
-  const who = adminLogin.value.trim().replace(/^@/, '').toLowerCase()
+  const who = loginOf(adminLogin.value).toLowerCase()
   if (who && (await act('admin', () => admin.addAdmin(who), `@${who} is a bot admin`))) adminLogin.value = ''
 }
 const removing = ref<AdminUser | null>(null)
@@ -96,7 +97,7 @@ function setModule(module: string, state: string) {
 // ── ignored everywhere ──
 const ignoring = reactive({ login: '', reason: '' })
 async function ignore() {
-  const who = ignoring.login.trim().replace(/^@/, '')
+  const who = loginOf(ignoring.login)
   const anchor = data.value?.anchor
   if (!who || !anchor) return
   const ok = await act('ignore', () => admin.ignore(anchor, { login: who, everywhere: true, reason: ignoring.reason.trim() || undefined }), `Ignoring @${who} everywhere`)
@@ -104,7 +105,7 @@ async function ignore() {
 }
 const lift = (u: Ignored) => {
   const anchor = data.value?.anchor
-  if (anchor) act(`lift:${u.userId}`, () => admin.unignore(anchor, u.userId, true), `No longer ignoring ${u.login ? `@${u.login}` : u.userId}`)
+  if (anchor) act(`lift:${u.userId}`, () => admin.unignore(anchor, u.userId, true), `No longer ignoring ${atName(u.login, u.userId)}`)
 }
 
 // ── published everywhere ──
@@ -118,7 +119,7 @@ async function publish() {
   const ok =
     p.mode === 'command'
       ? await act('publish', () => admin.publishGlobal(p.command.trim(), p.as.trim() || undefined), `${p.as.trim() || p.command.trim()} published everywhere`)
-      : await act('publish', () => admin.publishGlobalPack(p.pack.trim(), p.owner.trim().replace(/^@/, '') || undefined), `Pack ${p.pack.trim()} published everywhere`)
+      : await act('publish', () => admin.publishGlobalPack(p.pack.trim(), loginOf(p.owner) || undefined), `Pack ${p.pack.trim()} published everywhere`)
   if (ok) Object.assign(publishing, { command: '', as: '', pack: '', owner: '' })
 }
 const mayPublish = computed(() => (publishing.mode === 'command' ? !!publishing.command.trim() : !!publishing.pack.trim()))
@@ -215,7 +216,7 @@ function unpublish() {
             <thead><tr><th>User</th><th>Why</th><th>By</th><th>Since</th><th></th></tr></thead>
             <tbody>
               <tr v-for="u in data.ignored" :key="u.userId">
-                <td class="vx-mono">{{ u.login ? `@${u.login}` : u.userId }}</td>
+                <td class="vx-mono">{{ atName(u.login, u.userId) }}</td>
                 <td class="vx-muted">{{ u.reason ?? '' }}</td>
                 <td class="vx-muted">{{ u.self ? 'themselves' : u.addedByLogin ? `@${u.addedByLogin}` : '' }}</td>
                 <td class="vx-muted nowrap">{{ u.addedAt ? timeAgo(u.addedAt) : '' }}</td>
