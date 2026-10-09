@@ -11,6 +11,7 @@ import { computed, reactive, ref, shallowRef, watch } from 'vue'
 import { admin } from '@/lib/admin'
 import { useLoad } from '@/lib/useLoad'
 import LogCoverage from './LogCoverage.vue'
+import { localInput, loginOf } from '@/lib/format'
 
 const props = defineProps<{
   login: string
@@ -33,12 +34,6 @@ const ORDERS = [
 ]
 
 // ── times, in the viewer's own zone ──
-const pad = (n: number) => String(n).padStart(2, '0')
-/** A time → the `datetime-local` input's value. */
-function local(at: string | number): string {
-  const d = new Date(at)
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
-}
 const iso = (v: string) => (v ? new Date(v).toISOString() : undefined)
 const stamp = (at: string) => new Date(at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 
@@ -55,7 +50,7 @@ const { data, error, status, loading, reload } = useLoad(
   () =>
     admin.log(props.login, {
       q: asked.value.q.trim() || undefined,
-      user: asked.value.user.trim().replace(/^@/, '') || undefined,
+      user: loginOf(asked.value.user) || undefined,
       since: iso(asked.value.since),
       until: iso(asked.value.until),
       order: asked.value.order === 'asc' ? 'asc' : undefined,
@@ -78,7 +73,7 @@ function reset() {
 }
 /** Shows the log around a span (a gap the coverage found), oldest first. */
 function showSpan(start: string, end: string) {
-  Object.assign(form, { since: local(start), until: local(Date.parse(end) + 60_000), order: 'asc' })
+  Object.assign(form, { since: localInput(start), until: localInput(Date.parse(end) + 60_000), order: 'asc' })
   search()
 }
 const older = () => data.value?.next_cursor && (cursors.value = [...cursors.value, data.value.next_cursor])

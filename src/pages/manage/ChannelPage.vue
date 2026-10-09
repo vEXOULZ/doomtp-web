@@ -259,5 +259,4 @@ async function part() {
 .small { font-size: 12px; }
 .intro { margin: 0 0 10px; }
 .tabs { margin: 16px 0 14px; }
-.tabs :deep([role='tablist']) { overflow-x: auto; }
 </style>

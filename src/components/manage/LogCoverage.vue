@@ -11,6 +11,7 @@ import { admin } from '@/lib/admin'
 import { channelSubject } from '@/lib/platform'
 import { useAct } from '@/lib/useAct'
 import { useLoad } from '@/lib/useLoad'
+import { dateTime } from '@/lib/format'
 
 const props = defineProps<{
   login: string
@@ -38,7 +39,6 @@ const REASON: Record<LogGap['reason'], string> = {
   between_sessions: 'While the bot was away',
   not_listening: 'Since the bot stopped listening',
 }
-const day = (at: string) => new Date(at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
 function span(g: LogGap): string {
   const min = Math.round((Date.parse(g.end) - Date.parse(g.start)) / 60_000)
   return min < 60 ? `${min} min` : min < 48 * 60 ? `${Math.round(min / 60)} h` : `${Math.round(min / 1440)} days`
@@ -74,14 +74,14 @@ const backfill = (g: LogGap) =>
     <p v-if="error" class="vx-muted small">{{ error }}</p>
     <template v-else-if="data">
       <p class="vx-muted small">
-        Listening {{ data.sessions.length }} {{ data.sessions.length === 1 ? 'time' : 'times' }} between {{ day(data.since) }} and
-        {{ day(data.until) }}.<template v-if="data.complete"> The log has every message Twitch let it see then.</template>
+        Listening {{ data.sessions.length }} {{ data.sessions.length === 1 ? 'time' : 'times' }} between {{ dateTime(data.since) }} and
+        {{ dateTime(data.until) }}.<template v-if="data.complete"> The log has every message Twitch let it see then.</template>
       </p>
       <ul v-if="data.gaps.length" class="gaps">
         <li v-for="g in data.gaps" :key="g.start">
           <div class="what">
             <strong>{{ REASON[g.reason] }}</strong>
-            <span class="vx-muted small">{{ day(g.start) }} → {{ day(g.end) }} · {{ span(g) }}</span>
+            <span class="vx-muted small">{{ dateTime(g.start) }} → {{ dateTime(g.end) }} · {{ span(g) }}</span>
             <VxChip :tone="filled(g).tone">{{ filled(g).text }}</VxChip>
             <RouterLink v-if="g.backfill?.job_id && isAdmin()" class="small" :to="`/manage/jobs/${g.backfill.job_id}`">job #{{ g.backfill.job_id }}</RouterLink>
           </div>

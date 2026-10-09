@@ -6,13 +6,14 @@ import ChatLine from '@/components/ChatLine.vue'
 import { can, isMe } from '@/lib/access'
 import { admin, type Ignored } from '@/lib/admin'
 import { useAct } from '@/lib/useAct'
+import { atName, loginOf } from '@/lib/format'
 
 const props = defineProps<{ login: string; sign: string; ignored: Ignored[]; reload: () => Promise<void> }>()
 const { busy, act } = useAct(props.reload)
 
 const ignoring = reactive({ login: '', reason: '', everywhere: false })
 async function ignore() {
-  const who = ignoring.login.trim().replace(/^@/, '')
+  const who = loginOf(ignoring.login)
   if (!who) return
   const ok = await act(
     'ignore',
@@ -23,7 +24,7 @@ async function ignore() {
   ignoring.login = ''
   ignoring.reason = ''
 }
-const name = (u: Ignored) => (u.login ? `@${u.login}` : u.userId)
+const name = (u: Ignored) => atName(u.login, u.userId)
 /** A moderator lifts ignores in this channel, an admin also bot-wide ones; anyone may lift their own self-ignore. */
 const mayLift = (u: Ignored) => (u.self && isMe(u.userId)) || (can('ignored.edit', props.login) && (!u.everywhere || can('ignored.everywhere')))
 const lifting = ref<Ignored | null>(null)
