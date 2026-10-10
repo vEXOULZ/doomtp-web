@@ -3,19 +3,20 @@
 // commands' `publisher.*`), or your runs in every channel, newest first.
 import { VxButton, VxCallout, VxChip, VxEmptyState, VxInput, VxSegmented, VxSkeleton, timeAgo } from '@vexoulz/ui'
 import { computed, ref } from 'vue'
+import { useResource } from '@vexoulz/ui/utils'
+import { errorText } from '@vexoulz/platform-web'
 import ChatLine from '@/components/ChatLine.vue'
 import { admin, type MyRun, type MyVariable } from '@/lib/admin'
 import { shown } from '@/lib/format'
-import { useLoad } from '@/lib/useLoad'
 
 const props = defineProps<{ show: 'variables' | 'runs' }>()
 
 const query = ref('')
 const limit = ref('50')
 const LIMITS = ['50', '200', '500'].map((v) => ({ value: v, label: v }))
-const { data, error, loading, reload } = useLoad(
+const { data, error, loading, reload } = useResource(
   async () => (props.show === 'variables' ? { variables: (await admin.myVariables()).variables } : { runs: (await admin.myRuns(Number(limit.value))).runs }),
-  () => `${props.show}:${limit.value}`,
+  { source: () => `${props.show}:${limit.value}` },
 )
 
 const fullName = (v: MyVariable) => `${v.namespace}.${v.name}`
@@ -41,7 +42,7 @@ const outcome = (r: MyRun): { label: string; tone: 'ok' | 'bad' | 'warn' } =>
       <VxButton :loading="loading" @click="reload">Refresh</VxButton>
     </div>
     <VxCallout v-if="error" tone="error" :title="`Couldn't load your ${show}`">
-      {{ error }}
+      {{ errorText(error) }}
       <template #actions><VxButton size="sm" @click="reload">Try again</VxButton></template>
     </VxCallout>
     <div v-else-if="!data" class="loading" aria-busy="true"><VxSkeleton v-for="i in 5" :key="i" h="38px" /></div>

@@ -4,17 +4,18 @@
 // set for the whole channel, one module or one command; a readout is a template.
 import { VxButton, VxCallout, VxDialog, VxEmptyState, VxField, VxInput, VxSegmented, VxSelect, VxSkeleton } from '@vexoulz/ui'
 import { computed, reactive, ref } from 'vue'
+import { useResource } from '@vexoulz/ui/utils'
+import { errorText } from '@vexoulz/platform-web'
 import ChatLine from '@/components/ChatLine.vue'
 import { can } from '@/lib/access'
 import { admin, CALLBACK_KINDS, type Callback } from '@/lib/admin'
 import { useAct } from '@/lib/useAct'
-import { useLoad } from '@/lib/useLoad'
 
 const props = defineProps<{ login: string; sign: string; modules: string[]; commands: string[] }>()
-const { data, error, reload } = useLoad(async () => {
+const { data, error, reload } = useResource(async () => {
   const [callbacks, echo] = await Promise.all([admin.callbacks(props.login), admin.customecho(props.login)])
   return { callbacks: callbacks.callbacks, echo: echo.customecho }
-}, () => props.login)
+}, { source: () => props.login })
 const { busy, act } = useAct(reload)
 const mayEdit = computed(() => can('commands.edit', props.login))
 
@@ -59,7 +60,7 @@ async function saveEcho() {
 <template>
   <section class="mtab">
     <VxCallout v-if="error" tone="error" title="Couldn't load the replies">
-      {{ error }}
+      {{ errorText(error) }}
       <template #actions><VxButton size="sm" @click="reload">Try again</VxButton></template>
     </VxCallout>
     <div v-else-if="!data" class="loading" aria-busy="true"><VxSkeleton v-for="i in 4" :key="i" h="38px" /></div>

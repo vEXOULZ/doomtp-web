@@ -4,12 +4,13 @@
 // command.
 import { VxButton, VxCallout, VxDialog, VxEmptyState, VxField, VxInput, VxProgress, VxSkeleton, timeAgo } from '@vexoulz/ui'
 import { computed, reactive, ref } from 'vue'
+import { useResource } from '@vexoulz/ui/utils'
+import { errorText } from '@vexoulz/platform-web'
 import { reachesRole } from '@/lib/access'
 import { admin, type Variable } from '@/lib/admin'
 import type { Role } from '@/lib/api'
 import { bytes, shown, typedValue } from '@/lib/format'
 import { useAct } from '@/lib/useAct'
-import { useLoad } from '@/lib/useLoad'
 import UserRef from '../UserRef.vue'
 
 const props = defineProps<{
@@ -18,10 +19,10 @@ const props = defineProps<{
   writeRole: string
   roles: Role[]
 }>()
-const { data, error, reload } = useLoad(async () => {
+const { data, error, reload } = useResource(async () => {
   const [variables, storage] = await Promise.all([admin.variables(props.login), admin.storage(props.login)])
   return { variables: variables.variables, storage }
-}, () => props.login)
+}, { source: () => props.login })
 const { busy, act } = useAct(reload)
 const mayWrite = computed(() => reachesRole(props.login, props.writeRole, props.roles))
 
@@ -49,7 +50,7 @@ const deleting = ref<string | null>(null)
 <template>
   <section class="mtab">
     <VxCallout v-if="error" tone="error" title="Couldn't load the variables">
-      {{ error }}
+      {{ errorText(error) }}
       <template #actions><VxButton size="sm" @click="reload">Try again</VxButton></template>
     </VxCallout>
     <div v-else-if="!data" class="loading" aria-busy="true"><VxSkeleton v-for="i in 5" :key="i" h="38px" /></div>

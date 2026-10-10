@@ -3,11 +3,12 @@
 // as one module. An internal member runs only when another command in the pack calls it.
 import { VxButton, VxCallout, VxCheckbox, VxChip, VxDialog, VxEmptyState, VxField, VxInput, VxSelect, VxSkeleton, VxSwitch } from '@vexoulz/ui'
 import { computed, reactive, ref } from 'vue'
+import { useResource } from '@vexoulz/ui/utils'
+import { errorText } from '@vexoulz/platform-web'
 import { admin, type MyPack } from '@/lib/admin'
 import { useAct } from '@/lib/useAct'
-import { useLoad } from '@/lib/useLoad'
 
-const { data, error, reload } = useLoad(async () => {
+const { data, error, reload } = useResource(async () => {
   const [packs, commands] = await Promise.all([admin.myPacks(), admin.myCommands()])
   return { packs: packs.packs.filter((p) => !p.system), commands: commands.commands.map((c) => c.name).sort() }
 })
@@ -37,7 +38,7 @@ const deleting = ref<MyPack | null>(null)
 <template>
   <section class="mtab">
     <VxCallout v-if="error" tone="error" title="Couldn't load your packs">
-      {{ error }}
+      {{ errorText(error) }}
       <template #actions><VxButton size="sm" @click="reload">Try again</VxButton></template>
     </VxCallout>
     <div v-else-if="!data" class="loading" aria-busy="true"><VxSkeleton v-for="i in 3" :key="i" h="38px" /></div>

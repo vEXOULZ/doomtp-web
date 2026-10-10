@@ -57,6 +57,9 @@ export async function request<T>(path: string, init: RequestInit = {}, { unscope
   return (method === 'GET' && !unscoped && auth.scope ? auth.scope(path, body) : body) as T
 }
 
+/** A failed request's HTTP status (0: the bot couldn't be reached), or null for anything else. */
+export const statusOf = (e: unknown): number | null => (e instanceof ProblemError ? e.status : null)
+
 const get = <T>(path: string) => request<T>(path)
 
 // ── site ──────────────────────────────────────────────────────────────────

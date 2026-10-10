@@ -2,16 +2,17 @@
 // The latest command and trigger runs in a channel: what ran, how it ended, and how long it took.
 import { VxButton, VxCallout, VxChip, VxEmptyState, VxInput, VxSegmented, VxSkeleton, timeAgo } from '@vexoulz/ui'
 import { computed, ref } from 'vue'
+import { useResource } from '@vexoulz/ui/utils'
+import { errorText } from '@vexoulz/platform-web'
 import ChatLine from '@/components/ChatLine.vue'
 import { admin, type Run } from '@/lib/admin'
-import { useLoad } from '@/lib/useLoad'
 
 const props = defineProps<{ login: string; sign: string }>()
 const LIMITS = [50, 100, 200, 500].map((n) => ({ value: String(n), label: String(n) }))
 const limit = ref('50')
-const { data, error, loading, reload } = useLoad(
+const { data, error, loading, reload } = useResource(
   async () => (await admin.runs(props.login, Number(limit.value))).runs,
-  () => [props.login, limit.value],
+  { source: () => [props.login, limit.value], resetOnSource: false },
 )
 
 const query = ref('')
@@ -32,7 +33,7 @@ const outcome = (r: Run): { label: string; tone: 'ok' | 'bad' | 'warn' } =>
       <VxButton :loading="loading" @click="reload">Refresh</VxButton>
     </div>
     <VxCallout v-if="error" tone="error" title="Couldn't load the runs">
-      {{ error }}
+      {{ errorText(error) }}
       <template #actions><VxButton size="sm" @click="reload">Try again</VxButton></template>
     </VxCallout>
     <div v-else-if="!data" class="loading" aria-busy="true"><VxSkeleton v-for="i in 6" :key="i" h="38px" /></div>

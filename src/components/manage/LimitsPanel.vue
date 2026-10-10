@@ -3,10 +3,11 @@
 // every owner, and overrides for one channel, publisher or chatter.
 import { VxButton, VxCallout, VxField, VxInput, VxSelect, VxSkeleton } from '@vexoulz/ui'
 import { computed, reactive, watch } from 'vue'
+import { useResource } from '@vexoulz/ui/utils'
+import { errorText } from '@vexoulz/platform-web'
 import { admin, OWNER_KINDS, type Limits, type LimitsPatch } from '@/lib/admin'
 import { bytes, count } from '@/lib/format'
 import { useAct } from '@/lib/useAct'
-import { useLoad } from '@/lib/useLoad'
 
 const FIELDS: { key: keyof Limits; label: string; size: boolean }[] = [
   { key: 'quota_bytes', label: 'Quota (bytes)', size: true },
@@ -16,7 +17,7 @@ const FIELDS: { key: keyof Limits; label: string; size: boolean }[] = [
 ]
 const show = (f: (typeof FIELDS)[number], v: number | null | undefined) => (v === null || v === undefined ? 'default' : f.size ? bytes(v) : String(v))
 
-const { data, error, reload } = useLoad(() => admin.variableLimits())
+const { data, error, reload } = useResource(() => admin.variableLimits())
 const { busy, act } = useAct(reload)
 
 // ── defaults: the form starts at what the bot has, and sends only what changed ──
@@ -61,7 +62,7 @@ async function saveOwner() {
 <template>
   <div class="mtab">
     <VxCallout v-if="error" tone="error" title="Couldn't load the storage limits">
-      {{ error }}
+      {{ errorText(error) }}
       <template #actions><VxButton size="sm" @click="reload">Try again</VxButton></template>
     </VxCallout>
     <div v-else-if="!data" class="loading" aria-busy="true"><VxSkeleton v-for="i in 3" :key="i" h="38px" /></div>

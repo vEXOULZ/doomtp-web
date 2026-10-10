@@ -4,15 +4,16 @@
 import { VxButton, VxCallout, VxChip, VxSkeleton, VxStatusDot } from '@vexoulz/ui'
 import { computed } from 'vue'
 import { AuditTable } from '@vexoulz/platform-web/vue'
+import { useResource } from '@vexoulz/ui/utils'
+import { errorText } from '@vexoulz/platform-web'
 import AuditActor from '@/components/AuditActor.vue'
 import ManageShell from '@/components/ManageShell.vue'
 import OwnChannelCard from '@/components/OwnChannelCard.vue'
 import { can, isAdmin, RANK, rankIn } from '@/lib/access'
 import { admin, health } from '@/lib/admin'
 import { session } from '@/lib/session'
-import { useLoad } from '@/lib/useLoad'
 
-const { data, error, reload } = useLoad(async () => {
+const { data, error, reload } = useResource(async () => {
   const [channels, audit, ready] = await Promise.all([
     admin.channels(),
     admin.audit(8),
@@ -40,7 +41,7 @@ const down = computed(() =>
   <ManageShell title="Overview">
     <OwnChannelCard />
     <VxCallout v-if="error" tone="error" title="Couldn't load your channels">
-      {{ error }}
+      {{ errorText(error) }}
       <template #actions><VxButton size="sm" @click="reload">Try again</VxButton></template>
     </VxCallout>
     <div v-else-if="!data" class="loading" aria-busy="true"><VxSkeleton v-for="i in 6" :key="i" h="38px" /></div>

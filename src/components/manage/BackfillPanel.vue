@@ -4,14 +4,15 @@
 // say), and cancels a job that hasn't started. Each is a `chat_backfill` job run: an admin follows it to its job page.
 import { VxButton, VxCallout, VxChip, VxEmptyState, VxField, timeAgo } from '@vexoulz/ui'
 import { computed, reactive, ref, watch } from 'vue'
+import { useResource } from '@vexoulz/ui/utils'
+import { errorText } from '@vexoulz/platform-web'
 import { can, isAdmin } from '@/lib/access'
 import { admin, type BackfillJob } from '@/lib/admin'
 import { useAct } from '@/lib/useAct'
-import { useLoad } from '@/lib/useLoad'
 import { dateTime, localInput } from '@/lib/format'
 
 const props = defineProps<{ login: string }>()
-const { data, error, reload } = useLoad(() => admin.backfill(props.login), () => props.login)
+const { data, error, reload } = useResource(() => admin.backfill(props.login), { source: () => props.login })
 const { busy, act } = useAct(reload)
 const mayRun = computed(() => can('backfill.run', props.login))
 
@@ -116,7 +117,7 @@ const result = (j: BackfillJob) =>
         >The day before the log began</button>
       </div>
     </form>
-    <VxCallout v-if="error" tone="error" title="Couldn't load the backfill jobs">{{ error }}</VxCallout>
+    <VxCallout v-if="error" tone="error" title="Couldn't load the backfill jobs">{{ errorText(error) }}</VxCallout>
     <VxEmptyState v-else-if="data && !data.jobs.length" title="No backfill jobs yet" />
     <div v-else-if="data" class="table-scroll">
       <table class="vx-table">

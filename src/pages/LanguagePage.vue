@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import { VxButton, VxCallout, VxSkeleton } from '@vexoulz/ui'
 import { computed, onMounted } from 'vue'
+import { useResource } from '@vexoulz/ui/utils'
+import { errorText } from '@vexoulz/platform-web'
 import ChatLine from '@/components/ChatLine.vue'
 import Cmd from '@/components/Cmd.vue'
 import DtpShell from '@/components/DtpShell.vue'
 import { api } from '@/lib/api'
 import { defaultSign, loadSite } from '@/lib/site'
-import { useLoad } from '@/lib/useLoad'
 
-const { data, error, reload } = useLoad(async () => {
+const { data, error, reload } = useResource(async () => {
   const [language, grammar] = await Promise.all([api.language(), api.grammar(), loadSite()])
   return { language, grammar }
 })
@@ -97,7 +98,7 @@ const limits = computed(() => {
       </ul>
 
       <VxCallout v-if="error" tone="error" title="Couldn't load the language details">
-        {{ error }}
+        {{ errorText(error) }}
         <template #actions><VxButton size="sm" @click="reload">Try again</VxButton></template>
       </VxCallout>
       <div v-else-if="!data" class="loading" aria-busy="true"><VxSkeleton v-for="i in 6" :key="i" h="28px" /></div>

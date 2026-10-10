@@ -1,16 +1,17 @@
 <script setup lang="ts">
 import { VxButton, VxCallout, VxSkeleton } from '@vexoulz/ui'
 import { computed } from 'vue'
+import { useResource } from '@vexoulz/ui/utils'
+import { errorText } from '@vexoulz/platform-web'
 import Cmd from '@/components/Cmd.vue'
 import CommandTable from '@/components/CommandTable.vue'
 import DtpShell from '@/components/DtpShell.vue'
 import { api } from '@/lib/api'
 import { referenceRows } from '@/lib/commands'
 import { defaultSign, loadSite } from '@/lib/site'
-import { useLoad } from '@/lib/useLoad'
 
 const sign = computed(defaultSign)
-const { data: rows, error, reload } = useLoad(async () => {
+const { data: rows, error, reload } = useResource(async () => {
   const [info, builtins, global, packs] = await Promise.all([loadSite(), api.commands(), api.globalCommands(), api.packs()])
   return referenceRows(builtins.commands, global.commands, packs.packs, info?.default_prefix ?? defaultSign())
 })
@@ -27,7 +28,7 @@ const { data: rows, error, reload } = useLoad(async () => {
       </p>
     </div>
     <VxCallout v-if="error" tone="error" title="Couldn't load the commands">
-      {{ error }}
+      {{ errorText(error) }}
       <template #actions><VxButton size="sm" @click="reload">Try again</VxButton></template>
     </VxCallout>
     <div v-else-if="!rows" class="loading" aria-busy="true"><VxSkeleton v-for="i in 8" :key="i" h="38px" /></div>

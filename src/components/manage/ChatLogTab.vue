@@ -8,8 +8,10 @@ import { loadBadges, loadChannelEmotes, toChatLine, type EmoteSet, type LogEntry
 import { ChatLine } from '@vexoulz/platform-web/vue'
 import { VxButton, VxCallout, VxCheckbox, VxEmptyState, VxField, VxInput, VxSelect, VxSkeleton } from '@vexoulz/ui'
 import { computed, reactive, ref, shallowRef, watch } from 'vue'
+import { useResource } from '@vexoulz/ui/utils'
+import { errorText } from '@vexoulz/platform-web'
+import { statusOf } from '@/lib/api'
 import { admin } from '@/lib/admin'
-import { useLoad } from '@/lib/useLoad'
 import LogCoverage from './LogCoverage.vue'
 import { localInput, loginOf } from '@/lib/format'
 
@@ -46,7 +48,7 @@ const cursors = ref<(string | undefined)[]>([undefined])
 const page = computed(() => cursors.value.length - 1)
 const rangeError = computed(() => (form.since && form.until && form.until <= form.since ? 'The end must come after the start.' : null))
 
-const { data, error, status, loading, reload } = useLoad(
+const { data, error, loading, reload } = useResource(
   () =>
     admin.log(props.login, {
       q: asked.value.q.trim() || undefined,
@@ -59,8 +61,10 @@ const { data, error, status, loading, reload } = useLoad(
       cursor: cursors.value[page.value],
       limit: PAGE,
     }),
-  () => [props.login, asked.value, cursors.value],
+  // A page turn keeps the page on screen (busy) until the next one is in.
+  { source: () => [props.login, asked.value, cursors.value], resetOnSource: false },
 )
+const status = computed(() => statusOf(error.value))
 
 function search() {
   if (!form.kinds.length || rangeError.value) return
@@ -168,7 +172,7 @@ const paging = computed(() => (asked.value.order === 'asc' ? { back: 'Earlier', 
       Its log is off, or its broadcaster or moderators keep it to moderators.
     </VxCallout>
     <VxCallout v-else-if="error" tone="error" title="Couldn't load the log">
-      {{ error }}
+      {{ errorText(error) }}
       <template #actions><VxButton size="sm" @click="reload">Try again</VxButton></template>
     </VxCallout>
     <div v-else-if="!data" class="loading" aria-busy="true"><VxSkeleton v-for="i in 8" :key="i" h="24px" /></div>

@@ -4,6 +4,8 @@
 // everywhere, and the commands and packs published everywhere.
 import { VxButton, VxCallout, VxChip, VxDialog, VxField, VxInput, VxSegmented, VxSkeleton } from '@vexoulz/ui'
 import { computed, reactive, ref } from 'vue'
+import { useResource } from '@vexoulz/ui/utils'
+import { errorText } from '@vexoulz/platform-web'
 import FilterTab from '@/components/manage/FilterTab.vue'
 import IgnoredTab from '@/components/manage/IgnoredTab.vue'
 import RulesTab from '@/components/manage/RulesTab.vue'
@@ -13,10 +15,9 @@ import { referenceRows } from '@/lib/commands'
 import type { CommandRow, LogLevel } from '@/lib/modules'
 import { useAct } from '@/lib/useAct'
 import { defaultSign, loadSite } from '@/lib/site'
-import { useLoad } from '@/lib/useLoad'
 import { atName, loginOf } from '@/lib/format'
 
-const { data, error, reload } = useLoad(async () => {
+const { data, error, reload } = useResource(async () => {
   const [admins, modules, commands, filters, ignored, roles, published, packs, channels, builtins, site] = await Promise.all([
     admin.admins(),
     admin.globalModules(),
@@ -124,7 +125,7 @@ function unpublish() {
     <h2 class="vx-eyebrow sec">Every channel</h2>
     <p class="vx-muted small">What every channel inherits, as the <code>global</code> forms of the chat commands.</p>
     <VxCallout v-if="error" tone="error" title="Couldn't load the bot-wide settings">
-      {{ error }}
+      {{ errorText(error) }}
       <template #actions><VxButton size="sm" @click="reload">Try again</VxButton></template>
     </VxCallout>
     <div v-else-if="!data" class="loading" aria-busy="true"><VxSkeleton v-for="i in 5" :key="i" h="38px" /></div>

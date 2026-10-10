@@ -4,15 +4,15 @@
 import { AuditBrowser, type AuditFilters } from '@vexoulz/platform-web/vue'
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useResource } from '@vexoulz/ui/utils'
 import AuditActor from '@/components/AuditActor.vue'
 import ManageShell from '@/components/ManageShell.vue'
 import '@/components/manage/tabs.css'
 import { admin } from '@/lib/admin'
 import { platform } from '@/lib/platform'
-import { useLoad } from '@/lib/useLoad'
 
 // Only to name channels the bot's entries don't; the log itself loads without it.
-const { data } = useLoad(async () => (await admin.channels()).channels)
+const { data } = useResource(async () => (await admin.channels()).channels)
 const scopeNames = computed(() => Object.fromEntries((data.value ?? []).map((c) => [c.channel_id, c.login])))
 
 const KEYS = ['action', 'target', 'actor', 'actor_kind', 'outcome'] as const

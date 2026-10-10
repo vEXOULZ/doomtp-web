@@ -3,12 +3,13 @@
 // secret the bot adds to each request (its value goes in and never comes back), and the rate limits.
 import { VxButton, VxCallout, VxCheckbox, VxChip, VxDialog, VxField, VxInput, VxRadioGroup, VxSkeleton, timeAgo } from '@vexoulz/ui'
 import { computed, reactive, ref, watch } from 'vue'
+import { useResource } from '@vexoulz/ui/utils'
+import { errorText } from '@vexoulz/platform-web'
 import { admin, type HttpHost, type HttpLimits } from '@/lib/admin'
 import { count } from '@/lib/format'
 import { useAct } from '@/lib/useAct'
-import { useLoad } from '@/lib/useLoad'
 
-const { data, error, reload } = useLoad(() => admin.httpHosts())
+const { data, error, reload } = useResource(() => admin.httpHosts())
 const { busy, act } = useAct(reload)
 
 // ── allow a host ──
@@ -65,7 +66,7 @@ const saveLimits = () => act('limits', () => admin.setHttpLimits(limitsPatch.val
 <template>
   <div class="mtab">
     <VxCallout v-if="error" tone="error" title="Couldn't load the HTTP hosts">
-      {{ error }}
+      {{ errorText(error) }}
       <template #actions><VxButton size="sm" @click="reload">Try again</VxButton></template>
     </VxCallout>
     <div v-else-if="!data" class="loading" aria-busy="true"><VxSkeleton v-for="i in 3" :key="i" h="38px" /></div>

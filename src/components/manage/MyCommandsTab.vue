@@ -5,14 +5,15 @@
 // command sign apply.
 import { VxButton, VxCallout, VxCheckbox, VxChip, VxDialog, VxEmptyState, VxField, VxInput, VxSelect, VxSkeleton, VxSwitch, timeAgo } from '@vexoulz/ui'
 import { computed, reactive, ref } from 'vue'
+import { useResource } from '@vexoulz/ui/utils'
+import { errorText } from '@vexoulz/platform-web'
 import ChatLine from '@/components/ChatLine.vue'
 import { admin, type MyCommand } from '@/lib/admin'
 import type { Param } from '@/lib/api'
 import { session } from '@/lib/session'
 import { useAct } from '@/lib/useAct'
-import { useLoad } from '@/lib/useLoad'
 
-const { data, error, reload } = useLoad(() => admin.myCommands())
+const { data, error, reload } = useResource(() => admin.myCommands())
 const { busy, act } = useAct(reload)
 
 /** Where a new command is written from: your own channel, else the first you moderate. */
@@ -94,7 +95,7 @@ async function dropParam(p: Param) {
 
 // ── versions ──
 const history = ref<string | null>(null)
-const versions = useLoad(async () => (history.value ? admin.commandVersions(history.value) : null), () => history.value)
+const versions = useResource(async () => (history.value ? admin.commandVersions(history.value) : null), { source: () => history.value })
 async function revert(version: number) {
   const name = history.value
   if (!name) return
@@ -121,7 +122,7 @@ async function saveLink() {
 <template>
   <section class="mtab">
     <VxCallout v-if="error" tone="error" title="Couldn't load your commands">
-      {{ error }}
+      {{ errorText(error) }}
       <template #actions><VxButton size="sm" @click="reload">Try again</VxButton></template>
     </VxCallout>
     <div v-else-if="!data" class="loading" aria-busy="true"><VxSkeleton v-for="i in 4" :key="i" h="38px" /></div>
@@ -262,7 +263,7 @@ async function saveLink() {
     </VxDialog>
 
     <VxDialog :open="history !== null" :title="`${history} · history`" width="680px" @update:open="(v: boolean) => { if (!v) history = null }">
-      <VxCallout v-if="versions.error.value" tone="error" title="Couldn't load its versions">{{ versions.error.value }}</VxCallout>
+      <VxCallout v-if="versions.error.value" tone="error" title="Couldn't load its versions">{{ errorText(versions.error.value) }}</VxCallout>
       <div v-else-if="!versions.data.value" class="loading"><VxSkeleton v-for="i in 3" :key="i" h="38px" /></div>
       <table v-else class="vx-table">
         <tbody>

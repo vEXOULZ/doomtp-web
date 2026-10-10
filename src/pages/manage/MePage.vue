@@ -5,6 +5,8 @@ import { VxButton, VxCallout, VxChip, VxSkeleton, VxTabs } from '@vexoulz/ui'
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { AuditTable } from '@vexoulz/platform-web/vue'
+import { useResource } from '@vexoulz/ui/utils'
+import { errorText } from '@vexoulz/platform-web'
 import AuditActor from '@/components/AuditActor.vue'
 import ManageShell from '@/components/ManageShell.vue'
 import OwnChannelCard from '@/components/OwnChannelCard.vue'
@@ -14,7 +16,6 @@ import MyPacksTab from '@/components/manage/MyPacksTab.vue'
 import '@/components/manage/tabs.css'
 import { admin } from '@/lib/admin'
 import { session } from '@/lib/session'
-import { useLoad } from '@/lib/useLoad'
 
 const route = useRoute()
 const router = useRouter()
@@ -37,9 +38,9 @@ const tab = computed({
   set: (value: string) => router.replace({ query: { ...route.query, tab: value === 'home' ? undefined : value } }),
 })
 
-const { data, error, reload } = useLoad(
+const { data, error, reload } = useResource(
   async () => (session.user && tab.value === 'activity' ? (await admin.audit(50, { actor: 'me' })).items : []),
-  () => tab.value,
+  { source: () => tab.value },
 )
 const own = computed(() => (session.ownChannel?.joined ? session.ownChannel.login : null))
 const moderated = computed(() =>
@@ -86,7 +87,7 @@ const moderated = computed(() =>
     <section v-else-if="tab === 'activity'">
       <p class="vx-muted">What you changed, in chat or here, in every channel.</p>
       <VxCallout v-if="error" tone="error" title="Couldn't load your changes">
-        {{ error }}
+        {{ errorText(error) }}
         <template #actions><VxButton size="sm" @click="reload">Try again</VxButton></template>
       </VxCallout>
       <div v-else-if="!data" class="loading" aria-busy="true"><VxSkeleton v-for="i in 4" :key="i" h="38px" /></div>

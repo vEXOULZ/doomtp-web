@@ -4,6 +4,7 @@
 import { VxButton, VxCallout, VxCheckbox, VxChip, VxDialog, VxEmptyState, VxField, VxInput, VxSkeleton, timeAgo, useToast } from '@vexoulz/ui'
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useResource } from '@vexoulz/ui/utils'
 import ManageShell from '@/components/ManageShell.vue'
 import BotGlobal from '@/components/manage/BotGlobal.vue'
 import HttpHostsPanel from '@/components/manage/HttpHostsPanel.vue'
@@ -12,12 +13,11 @@ import '@/components/manage/tabs.css'
 import { can } from '@/lib/access'
 import { admin, health, type ApiKey } from '@/lib/admin'
 import { errorText } from '@vexoulz/platform-web'
-import { useLoad } from '@/lib/useLoad'
 
 const toast = useToast()
 const router = useRouter()
 const allowed = computed(() => can('bot'))
-const { data, error, reload } = useLoad(async () => {
+const { data, error, reload } = useResource(async () => {
   if (!allowed.value) return null
   const [ready, keys] = await Promise.all([health(), admin.keys()])
   return { ready, keys: keys.keys }
@@ -107,7 +107,7 @@ async function revoke() {
   <ManageShell title="Bot">
     <VxEmptyState v-if="!allowed" code="403" title="Bot admins only" text="This page runs the bot itself: its health, joining channels and API keys." />
     <VxCallout v-else-if="error" tone="error" title="Couldn't load the bot's state">
-      {{ error }}
+      {{ errorText(error) }}
       <template #actions><VxButton size="sm" @click="reload">Try again</VxButton></template>
     </VxCallout>
     <div v-else-if="!data" class="loading" aria-busy="true"><VxSkeleton v-for="i in 8" :key="i" h="38px" /></div>

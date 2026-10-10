@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import { VxSkeleton } from '@vexoulz/ui'
 import { computed } from 'vue'
+import { useResource } from '@vexoulz/ui/utils'
 import ChatLine from '@/components/ChatLine.vue'
 import Cmd from '@/components/Cmd.vue'
 import DtpShell from '@/components/DtpShell.vue'
 import { api } from '@/lib/api'
 import { defaultSign } from '@/lib/site'
-import { useLoad } from '@/lib/useLoad'
 
 const p = computed(defaultSign)
-const { data: roles } = useLoad(() => api.roles())
+const { data: roles } = useResource(() => api.roles())
 // Lines of chat for a code block, each starting with the sign. `# …` comments stay plain text.
 const lines = (...rest: string[]) => rest.map((l) => `${p.value}${l}`)
 
