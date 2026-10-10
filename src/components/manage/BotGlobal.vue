@@ -158,7 +158,7 @@ function unpublish() {
         </div>
         <form v-if="data.admins.you_manage" class="row" @submit.prevent="addAdmin">
           <label class="sr-only" for="admin-login">Twitch login to make an admin</label>
-          <VxInput id="admin-login" v-model="adminLogin" placeholder="twitch login" mono />
+          <VxInput id="admin-login" v-model="adminLogin" placeholder="twitch login" mono grow width="12rem" max-width="20rem" />
           <VxButton type="submit" :loading="busy.has('admin')" :disabled="!adminLogin.trim()">Add admin</VxButton>
         </form>
       </template>
@@ -276,7 +276,6 @@ function unpublish() {
 .loading { display: grid; gap: 6px; }
 .pick { margin: 6px 0 14px; max-width: 100%; overflow-x: auto; }
 .row { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 6px; }
-.row :deep(.vx-input-wrap) { flex: 1 1 12rem; max-width: 20rem; }
 .end { text-align: right; }
 .nowrap { white-space: nowrap; }
 .publish { display: grid; gap: 12px; padding: 12px 14px; margin-top: 12px; max-width: 32rem; }

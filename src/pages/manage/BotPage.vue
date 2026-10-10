@@ -132,7 +132,7 @@ async function revoke() {
         <h2 class="vx-eyebrow sec">Join a channel</h2>
         <form class="row" @submit.prevent="join">
           <label class="sr-only" for="join-login">Channel to join</label>
-          <VxInput id="join-login" v-model="joinLogin" placeholder="channel login" mono />
+          <VxInput id="join-login" v-model="joinLogin" placeholder="channel login" mono grow width="14rem" max-width="20rem" />
           <VxButton type="submit" :loading="joining" :disabled="!joinLogin.trim()">Join channel</VxButton>
         </form>
         <p class="vx-muted small">The same as <code>join</code> in chat: the bot joins and subscribes to the channel's events.</p>
@@ -222,7 +222,6 @@ section { margin-bottom: 28px; }
 .sec { margin: 0 0 8px; }
 .small { font-size: 13px; margin: 0 0 8px; }
 .row { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 6px; }
-.row :deep(.vx-input-wrap) { flex: 1 1 14rem; max-width: 20rem; }
 .table-scroll > table { min-width: 34rem; }
 .detail { font-family: var(--vx-font-mono); font-size: 12px; overflow-wrap: anywhere; }
 .end { text-align: right; }

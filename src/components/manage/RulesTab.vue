@@ -193,8 +193,8 @@ async function save() {
             <div class="cds">
               <div v-for="c in cds" :key="c.role" class="cd">
                 <span class="vx-mono role">{{ c.role }}</span>
-                <label>each <VxInput v-model="c.user" type="number" :invalid="count(c.user) === null" :aria-label="`${c.role}: seconds each chatter waits`" /></label>
-                <label>shared <VxInput v-model="c.tier" type="number" :invalid="count(c.tier) === null" :aria-label="`${c.role}: seconds everyone waits`" /></label>
+                <label>each <VxInput v-model="c.user" type="number" width="6rem" :invalid="count(c.user) === null" :aria-label="`${c.role}: seconds each chatter waits`" /></label>
+                <label>shared <VxInput v-model="c.tier" type="number" width="6rem" :invalid="count(c.tier) === null" :aria-label="`${c.role}: seconds everyone waits`" /></label>
                 <VxButton size="sm" variant="ghost" @click="removeCd(c.role)">Remove</VxButton>
               </div>
               <div v-if="cdRoles.length" class="cd">
@@ -237,7 +237,6 @@ async function save() {
 .cd { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
 .cd .role { min-width: 7rem; }
 .cd label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--vx-muted); }
-.cd label :deep(.vx-input) { width: 6rem; }
 .clear { display: grid; gap: 8px; padding: 12px; border-color: var(--vx-bad); }
 .clear-actions { display: flex; gap: 8px; }
 .clear-open { margin-right: auto; }
