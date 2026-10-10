@@ -5,11 +5,11 @@
 import { VxButton, VxCallout, VxDialog, VxEmptyState, VxField, VxInput, VxProgress, VxSkeleton, timeAgo } from '@vexoulz/ui'
 import { computed, reactive, ref } from 'vue'
 import { useResource } from '@vexoulz/ui/utils'
-import { errorText } from '@vexoulz/platform-web'
+import { bytes, errorText } from '@vexoulz/platform-web'
 import { reachesRole } from '@/lib/access'
 import { admin, type Variable } from '@/lib/admin'
 import type { Role } from '@/lib/api'
-import { bytes, shown, typedValue } from '@/lib/format'
+import { shown, typedValue } from '@/lib/format'
 import { useAct } from '@/lib/useAct'
 import UserRef from '../UserRef.vue'
 

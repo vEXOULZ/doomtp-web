@@ -4,9 +4,9 @@
 import { VxButton, VxCallout, VxField, VxInput, VxSelect, VxSkeleton } from '@vexoulz/ui'
 import { computed, reactive, watch } from 'vue'
 import { useResource } from '@vexoulz/ui/utils'
-import { errorText } from '@vexoulz/platform-web'
+import { bytes, errorText } from '@vexoulz/platform-web'
 import { admin, OWNER_KINDS, type Limits, type LimitsPatch } from '@/lib/admin'
-import { bytes, count } from '@/lib/format'
+import { count } from '@/lib/format'
 import { useAct } from '@/lib/useAct'
 
 const FIELDS: { key: keyof Limits; label: string; size: boolean }[] = [
