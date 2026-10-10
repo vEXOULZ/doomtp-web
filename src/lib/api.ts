@@ -1,19 +1,7 @@
 // The bot's JSON API (doomtp-bot, /api/v1, and /api/v2 for the audit), served on this site's origin. Only the parts these pages read.
 // Fields are added on the bot's side, never renamed (ADR-0016), so optional ones here are the newer ones.
 
-export class ApiError extends Error {
-  constructor(
-    readonly status: number,
-    message: string,
-    /** Seconds, from Retry-After (a rate-limited login). */
-    readonly retryAfter: number | null = null,
-  ) {
-    super(message)
-  }
-}
-
-/** The text to show for a caught error. */
-export const errorMessage = (e: unknown): string => (e instanceof Error ? e.message : String(e))
+import { ProblemError } from '@vexoulz/platform-web'
 
 /** A request whose answer doesn't change while the page is open (the bot's built-in catalogues): made once, and
  *  again only after a failure. */
@@ -44,33 +32,24 @@ const HARMLESS = (method: string, path: string) =>
   (method === 'DELETE' && path === '/session')
 
 /** `unscoped`: the answer as the bot gave it, even while previewing (the "View as" picker's own reads). `v2`: from
- *  /api/v2 (ADR-0027), whose errors are problem details, with the message in `detail` as well. */
+ *  /api/v2 (ADR-0027). A failure is a ProblemError either way: v1's `detail` reads the same. */
 export async function request<T>(path: string, init: RequestInit = {}, { unscoped = false, v2 = false } = {}): Promise<T> {
   const headers = new Headers(init.headers)
   const method = (init.method ?? 'GET').toUpperCase()
   if (method !== 'GET' && method !== 'HEAD' && !HARMLESS(method, path)) {
     const blocked = auth.blocks?.()
-    if (blocked) throw new ApiError(403, blocked)
+    if (blocked) throw new ProblemError(403, { detail: blocked })
   }
   if (method !== 'GET' && auth.csrf) headers.set('X-CSRF-Token', auth.csrf)
   let response: Response
   try {
     response = await fetch(`/api/${v2 ? 'v2' : 'v1'}${path}`, { credentials: 'same-origin', ...init, headers })
   } catch {
-    throw new ApiError(0, "Couldn't reach the bot.")
+    throw new ProblemError(0, { detail: "Couldn't reach the bot." })
   }
   if (!response.ok) {
-    let detail = `${response.status} ${response.statusText}`
-    try {
-      const body = (await response.json()) as { detail?: unknown }
-      if (typeof body.detail === 'string') detail = body.detail
-      else if (Array.isArray(body.detail)) detail = body.detail.map((d: { msg?: string }) => d.msg).filter(Boolean).join('; ') || detail
-    } catch {
-      /* not JSON: keep the status line */
-    }
     if (response.status === 401) auth.onUnauthorized?.()
-    const retry = Number(response.headers.get('retry-after'))
-    throw new ApiError(response.status, detail, Number.isFinite(retry) && retry > 0 ? retry : null)
+    throw await ProblemError.from(response)
   }
   if (response.status === 204) return undefined as T
   const text = await response.text()

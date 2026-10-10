@@ -9,7 +9,8 @@ import { useRoute } from 'vue-router'
 import ChatLine from '@/components/ChatLine.vue'
 import { reachesRole } from '@/lib/access'
 import { admin, type Grant } from '@/lib/admin'
-import { errorMessage, type Pack, type Role } from '@/lib/api'
+import { errorText } from '@vexoulz/platform-web'
+import { type Pack, type Role } from '@/lib/api'
 import { CUSTOM_MODULE, type PublishedRow } from '@/lib/modules'
 import { session } from '@/lib/session'
 import { useAct } from '@/lib/useAct'
@@ -100,7 +101,7 @@ async function setGrant(g: Grant, variable: string, on: boolean) {
   const run = () => (on ? admin.grant(props.login, g.name, variable) : admin.ungrant(props.login, g.name, variable))
   await act(`g:${g.name}:${variable}`, run, `${props.sign}${g.name} ${on ? 'may' : 'may no longer'} write channel.${variable}`)
 }
-const errText = (e: unknown) => errorMessage(e)
+const errText = errorText
 </script>
 
 <template>

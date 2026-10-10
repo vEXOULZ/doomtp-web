@@ -5,7 +5,7 @@ import { VxButton, VxCallout, VxDialog, VxField, VxSelect } from '@vexoulz/ui'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { admin, type Channel, type ChannelRoles } from '@/lib/admin'
-import { errorMessage } from '@/lib/api'
+import { errorText } from '@vexoulz/platform-web'
 import { mayViewAs, previewing, viewAs } from '@/lib/session'
 import { describe, picker, type Preview, type PreviewRole } from '@/lib/viewAs'
 
@@ -49,7 +49,7 @@ watch(
     try {
       channels.value = (await admin.channels(true)).channels.sort((a, b) => a.login.localeCompare(b.login))
     } catch (e) {
-      error.value = errorMessage(e)
+      error.value = errorText(e)
     }
   },
 )
@@ -63,7 +63,7 @@ watch(
       const got = await admin.roles(channel, true)
       if (form.channel === channel) roles.value = got
     } catch (e) {
-      error.value = errorMessage(e)
+      error.value = errorText(e)
     }
   },
 )

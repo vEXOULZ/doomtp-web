@@ -7,7 +7,7 @@ import { computed, reactive, ref } from 'vue'
 import ChatLine from '@/components/ChatLine.vue'
 import { can, rankIn } from '@/lib/access'
 import { admin, TRIGGER_EVENTS, type Trigger, type TriggerBody } from '@/lib/admin'
-import { errorMessage } from '@/lib/api'
+import { errorText } from '@vexoulz/platform-web'
 import { LOG_LEVELS } from '@/lib/modules'
 import { onOff, useAct } from '@/lib/useAct'
 
@@ -139,7 +139,7 @@ async function test() {
     tested.value = { text, matches: (await admin.testTriggers(props.login, text)).matches }
   } catch (e) {
     tested.value = null
-    toast.show(errorMessage(e), { kind: 'error', duration: 5000 })
+    toast.show(errorText(e), { kind: 'error', duration: 5000 })
   } finally {
     testing.value = false
   }

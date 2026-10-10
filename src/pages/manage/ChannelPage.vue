@@ -26,7 +26,8 @@ import '@/components/manage/tabs.css'
 import { can, manages } from '@/lib/access'
 import { admin, readIgnored, type Channel } from '@/lib/admin'
 import { platform } from '@/lib/platform'
-import { api, errorMessage } from '@/lib/api'
+import { errorText } from '@vexoulz/platform-web'
+import { api } from '@/lib/api'
 import { builtinRow, customRow } from '@/lib/commands'
 import { commandRows, moduleRows, publishedRows } from '@/lib/modules'
 import { CONNECT_URL, refresh, session } from '@/lib/session'
@@ -141,7 +142,7 @@ async function part() {
     await refresh() // a broadcaster who sent the bot away no longer manages the channel
     router.push('/manage')
   } catch (e) {
-    toast.show(errorMessage(e), { kind: 'error', duration: 5000 })
+    toast.show(errorText(e), { kind: 'error', duration: 5000 })
   } finally {
     busy.delete('part')
   }

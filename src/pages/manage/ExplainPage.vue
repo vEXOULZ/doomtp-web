@@ -9,7 +9,8 @@ import ManageShell from '@/components/ManageShell.vue'
 import ExplainReport from '@/components/ExplainReport.vue'
 import { can } from '@/lib/access'
 import { admin, EXPLAIN_BADGES } from '@/lib/admin'
-import { api, errorMessage, type ExplainReport as Report } from '@/lib/api'
+import { errorText } from '@vexoulz/platform-web'
+import { api, type ExplainReport as Report } from '@/lib/api'
 import { useLoad } from '@/lib/useLoad'
 
 const route = useRoute()
@@ -56,7 +57,7 @@ async function submit() {
     checkedAs.value = asOthers.value ? form.as_user.trim() : ''
     router.replace({ query: { channel: form.channel } })
   } catch (e) {
-    error.value = errorMessage(e)
+    error.value = errorText(e)
   } finally {
     busy.value = false
   }

@@ -1,7 +1,7 @@
 // Loads a page's data, and again whenever `source` changes (a route param). Keeps the error for a callout. The data
 // is replaced whole, never changed in place, so it isn't made deeply reactive.
 import { ref, shallowRef, type Ref, watch, type WatchSource } from 'vue'
-import { ApiError, errorMessage } from './api'
+import { ProblemError, errorText } from '@vexoulz/platform-web'
 import { revealPendingHash } from './hash'
 
 export function useLoad<T>(load: () => Promise<T>, source?: WatchSource) {
@@ -24,8 +24,8 @@ export function useLoad<T>(load: () => Promise<T>, source?: WatchSource) {
     } catch (e) {
       if (mine !== run) return
       data.value = null
-      error.value = errorMessage(e)
-      status.value = e instanceof ApiError ? e.status : null
+      error.value = errorText(e)
+      status.value = e instanceof ProblemError ? e.status : null
     } finally {
       if (mine === run) loading.value = false
     }

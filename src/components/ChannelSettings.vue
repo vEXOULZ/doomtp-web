@@ -4,7 +4,7 @@ import { VxButton, VxField, VxInput, VxSegmented, VxSelect, VxStepper, VxSwitch,
 import { computed, reactive, shallowRef, watch } from 'vue'
 import { can } from '@/lib/access'
 import { admin, type Channel, type ChannelPatch } from '@/lib/admin'
-import { errorMessage } from '@/lib/api'
+import { errorText } from '@vexoulz/platform-web'
 
 const props = defineProps<{ channel: Channel; roles: string[] }>()
 const emit = defineEmits<{ saved: [channel: Channel] }>()
@@ -65,7 +65,7 @@ async function save() {
     toast.show('Settings saved')
     emit('saved', channel)
   } catch (e) {
-    state.error = errorMessage(e)
+    state.error = errorText(e)
   } finally {
     state.busy = false
   }

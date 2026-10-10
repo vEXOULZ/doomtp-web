@@ -1,9 +1,9 @@
 <script setup lang="ts">
+import { ProblemError } from '@vexoulz/platform-web'
 import { VxButton, VxCallout, VxField, VxInput, VxTwitchGlyph } from '@vexoulz/ui'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import DtpShell from '@/components/DtpShell.vue'
-import { ApiError } from '@/lib/api'
 import { ensure, login, realSession as session, SIGNIN_ERRORS, twitchLoginUrl } from '@/lib/session'
 
 const route = useRoute()
@@ -42,11 +42,11 @@ async function submit() {
     password.value = ''
     router.replace(next.value)
   } catch (e) {
-    if (e instanceof ApiError && e.status === 401) error.value = 'Wrong password.'
-    else if (e instanceof ApiError && e.status === 429)
-      error.value = `Too many attempts. Try again in ${e.retryAfter ? `${Math.ceil(e.retryAfter / 60)} min` : 'a few minutes'}.`
-    else if (e instanceof ApiError && e.status === 404) error.value = 'The bot has no admin password set.'
-    else if (e instanceof ApiError && e.status === 403)
+    const status = e instanceof ProblemError ? e.status : null
+    if (status === 401) error.value = 'Wrong password.'
+    else if (e instanceof ProblemError && status === 429) error.value = `Too many attempts. ${e.retryAfterText()}`
+    else if (status === 404) error.value = 'The bot has no admin password set.'
+    else if (status === 403)
       error.value = "The admin password only works from the bot's local network. Sign in with Twitch instead."
     else error.value = `Couldn't reach the bot${e instanceof Error ? ` (${e.message})` : ''}.`
   } finally {

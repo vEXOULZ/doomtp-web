@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { can, isAdmin, manages, rankIn } from '../src/lib/access'
 import type { Session } from '../src/lib/admin'
 import { admin } from '../src/lib/admin'
-import { ApiError } from '../src/lib/api'
+import { ProblemError } from '@vexoulz/platform-web'
 import { previewing, realSession, refresh, session, viewAs } from '../src/lib/session'
 
 async function signIn(s: Partial<Session>) {
@@ -70,7 +70,7 @@ describe('view as', () => {
     viewAs({ role: 'moderator', channel: 'bob', rank: 80 })
     const fetch = vi.fn().mockImplementation(async () => new Response('{}', { status: 200 }))
     vi.stubGlobal('fetch', fetch)
-    await expect(admin.setModule('bob', 'fun', true)).rejects.toThrow(ApiError)
+    await expect(admin.setModule('bob', 'fun', true)).rejects.toThrow(ProblemError)
     await expect(admin.setModule('bob', 'fun', true)).rejects.toThrow(/Read-only while viewing as a moderator of #bob/)
     expect(fetch).not.toHaveBeenCalled()
     await admin.channels()

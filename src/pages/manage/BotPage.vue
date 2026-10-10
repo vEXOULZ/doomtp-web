@@ -11,7 +11,7 @@ import LimitsPanel from '@/components/manage/LimitsPanel.vue'
 import '@/components/manage/tabs.css'
 import { can } from '@/lib/access'
 import { admin, health, type ApiKey } from '@/lib/admin'
-import { ApiError, errorMessage } from '@/lib/api'
+import { errorText } from '@vexoulz/platform-web'
 import { useLoad } from '@/lib/useLoad'
 
 const toast = useToast()
@@ -45,7 +45,7 @@ async function join() {
     toast.show(`Joined #${login}`)
     router.push(`/manage/channels/${encodeURIComponent(login)}`)
   } catch (e) {
-    toast.show(`Couldn't join #${login}: ${errorMessage(e)}`, { kind: 'error', duration: 5000 })
+    toast.show(`Couldn't join #${login}: ${errorText(e)}`, { kind: 'error', duration: 5000 })
   } finally {
     joining.value = false
   }
@@ -70,7 +70,7 @@ async function createKey() {
     keyWrite.value = false
     await reload()
   } catch (e) {
-    keyError.value = e instanceof ApiError && e.status === 400 ? e.message : errorMessage(e)
+    keyError.value = errorText(e)
   } finally {
     keyBusy.value = false
   }
@@ -96,7 +96,7 @@ async function revoke() {
     revoking.value = null
     await reload()
   } catch (e) {
-    toast.show(`Couldn't revoke: ${errorMessage(e)}`, { kind: 'error', duration: 5000 })
+    toast.show(`Couldn't revoke: ${errorText(e)}`, { kind: 'error', duration: 5000 })
   } finally {
     revokeBusy.value = false
   }
