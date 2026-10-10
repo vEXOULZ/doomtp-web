@@ -1,12 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { can, isAdmin, manages, mayAddOwn, mayUpgrade, ownBanned, RANK, rankIn, reachesRole } from '../src/lib/access'
+import { can, isAdmin, manages, mayAddOwn, mayUpgrade, ownBanned, rankIn, reachesRole } from '../src/lib/access'
 import type { Session } from '../src/lib/admin'
 import { bounceOnce, refresh } from '../src/lib/session'
+import { stubBot } from './bot'
 
 /** Signs the app's session in as the bot would answer GET /session. */
 async function signIn(s: Partial<Session>) {
   const body: Session = { authenticated: true, csrf: 't', expires_at: null, admin_enabled: false, twitch_login: true, ...s }
-  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(body), { status: 200 })))
+  stubBot(body)
   await refresh()
 }
 
@@ -63,7 +64,7 @@ describe('can', () => {
 
   it('reads an older bot that lists only channels as moderator of each', async () => {
     await signIn({ role: 'moderator', user: USER, channels: ['bob'] })
-    expect(rankIn('bob')).toBe(RANK.moderator)
+    expect(rankIn('bob')).toBe(80)
     expect(can('channel.part', 'bob')).toBe(false)
     expect(mayAddOwn()).toBe(false)
   })

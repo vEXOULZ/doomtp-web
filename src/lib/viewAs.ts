@@ -1,19 +1,32 @@
 // "View as", for bot admins: preview the site as someone signed out, a plain user, or someone with a given rank in one
-// channel (a moderator, the broadcaster, or one of the channel's custom roles). Only what the pages show changes; the
-// bot still sees an admin, so the site refuses every change while previewing (lib/session.ts). Kept per tab.
+// channel (a moderator, the broadcaster, or one of the channel's custom roles). The bot does the previewing (ADR-0030):
+// every call carries `X-View-As` (header() here), the bot answers as it would answer that viewer, and refuses every
+// change. Kept per tab.
 import { reactive } from 'vue'
 
 export type PreviewRole = 'signed-out' | 'user' | 'moderator' | 'broadcaster' | 'custom'
 export interface Preview {
   role: PreviewRole
-  /** The channel the rank applies in; null for signed out and a plain user. */
+  /** The channel the role is in; null for signed out and a plain user. */
   channel: string | null
-  /** Chat's rank there: 80 a moderator, 100 the broadcaster, a custom role's own. */
-  rank: number
+  /** A custom role's rank (the bot takes the role as its rank). */
+  rank?: number
   /** A custom role's name. */
   name?: string
-  /** The previewed broadcaster's tier (their channel's real one). */
-  tier?: string | null
+}
+
+/** The `X-View-As` value the bot takes for a preview. */
+export function header(p: Preview): string {
+  switch (p.role) {
+    case 'signed-out':
+    case 'user':
+      return p.role
+    case 'moderator':
+    case 'broadcaster':
+      return `${p.role}@${p.channel}`
+    case 'custom':
+      return `${p.rank}@${p.channel}`
+  }
 }
 
 /** "a moderator of #chan", for the banner and the refusal. */
@@ -39,7 +52,10 @@ const ROLES: PreviewRole[] = ['signed-out', 'user', 'moderator', 'broadcaster', 
 export function loadPreview(): Preview | null {
   try {
     const p = JSON.parse(sessionStorage.getItem(KEY) ?? 'null') as Preview | null
-    if (!p || !ROLES.includes(p.role) || typeof p.rank !== 'number') return null
+    if (!p || !ROLES.includes(p.role)) return null
+    const needsChannel = p.role !== 'signed-out' && p.role !== 'user'
+    if (needsChannel && typeof p.channel !== 'string') return null
+    if (p.role === 'custom' && typeof p.rank !== 'number') return null
     return p
   } catch {
     return null

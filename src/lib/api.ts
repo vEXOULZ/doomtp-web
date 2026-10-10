@@ -19,27 +19,27 @@ function once<T>(load: () => Promise<T>): () => Promise<T> {
 export const auth = {
   csrf: null as string | null,
   onUnauthorized: null as (() => void) | null,
-  /** Why changes are refused right now (an admin viewing the site as someone else), or null. */
-  blocks: null as (() => string | null) | null,
-  /** Narrows a read the bot scoped to the caller to what a previewed role would get back (lib/session.ts). */
-  scope: null as ((path: string, body: unknown) => unknown) | null,
+  /** The `X-View-As` value while an admin previews the site as someone else (lib/session.ts), or null. */
+  viewAs: null as (() => string | null) | null,
 }
 
-/** Writes that change nothing (explain, and the trigger, filter and automod test boxes) or only end the session, and so
- *  still go through while changes are refused. */
-const HARMLESS = (method: string, path: string) =>
-  (method === 'POST' && (path === '/parse' || path.startsWith('/explain') || path.endsWith('/test'))) ||
-  (method === 'DELETE' && path === '/session')
+/** Sets the preview's `X-View-As` on a call (bot ADR-0030): the bot then answers as that viewer would be answered, and
+ *  refuses every change. */
+export function previewHeader(headers: Headers) {
+  const as = auth.viewAs?.()
+  if (as && !headers.has('X-View-As')) headers.set('X-View-As', as)
+}
 
-/** `unscoped`: the answer as the bot gave it, even while previewing (the "View as" picker's own reads). `v2`: from
- *  /api/v2 (ADR-0027). A failure is a ProblemError either way: v1's `detail` reads the same. */
+/** Whether a 401 means the session ended: under a signed-out preview the bot answers 401 for what that viewer can't
+ *  read, and says so with `X-View-As` on the answer. */
+export const sessionEnded = (res: Response) => res.status === 401 && !res.headers.has('X-View-As')
+
+/** `unscoped`: as the admin, without the preview's header (the session itself, and the "View as" picker's reads).
+ *  `v2`: from /api/v2 (ADR-0027). A failure is a ProblemError either way: v1's `detail` reads the same. */
 export async function request<T>(path: string, init: RequestInit = {}, { unscoped = false, v2 = false } = {}): Promise<T> {
   const headers = new Headers(init.headers)
   const method = (init.method ?? 'GET').toUpperCase()
-  if (method !== 'GET' && method !== 'HEAD' && !HARMLESS(method, path)) {
-    const blocked = auth.blocks?.()
-    if (blocked) throw new ProblemError(403, { detail: blocked })
-  }
+  if (!unscoped) previewHeader(headers)
   if (method !== 'GET' && auth.csrf) headers.set('X-CSRF-Token', auth.csrf)
   let response: Response
   try {
@@ -48,13 +48,12 @@ export async function request<T>(path: string, init: RequestInit = {}, { unscope
     throw new ProblemError(0, { detail: "Couldn't reach the bot." })
   }
   if (!response.ok) {
-    if (response.status === 401) auth.onUnauthorized?.()
+    if (sessionEnded(response)) auth.onUnauthorized?.()
     throw await ProblemError.from(response)
   }
   if (response.status === 204) return undefined as T
   const text = await response.text()
-  const body: unknown = text ? JSON.parse(text) : undefined
-  return (method === 'GET' && !unscoped && auth.scope ? auth.scope(path, body) : body) as T
+  return (text ? JSON.parse(text) : undefined) as T
 }
 
 /** A failed request's HTTP status (0: the bot couldn't be reached), or null for anything else. */

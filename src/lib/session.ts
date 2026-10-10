@@ -2,9 +2,10 @@
 // shows as soon as someone is signed in; the router guard awaits it on /manage pages. A 401 from any call made with
 // the session drops it, and the next step lands on the sign-in page.
 import { reactive, readonly } from 'vue'
-import { admin, type AuditEntry, type Channel, type ChannelRoles, type OwnChannel, type Session, type SessionRole } from './admin'
+import { admin, type OwnChannel, type Session, type SessionRole } from './admin'
 import { auth } from './api'
-import { describe, loadPreview, savePreview, type Preview } from './viewAs'
+import { loadRanks } from './ranks'
+import { header, loadPreview, savePreview, type Preview } from './viewAs'
 
 const state = reactive({
   checked: false,
@@ -32,83 +33,50 @@ const state = reactive({
 export const realSession = readonly(state)
 
 // ── view as (admins) ──
-// An admin can preview the site as another role (lib/viewAs.ts). The pages read `session`, which then reports that
-// role; the bot still treats the admin as an admin, so every change is refused here while previewing.
-const preview = reactive({ as: loadPreview() })
+// An admin can preview the site as another role (lib/viewAs.ts). The bot does the previewing (ADR-0030): every call
+// carries the preview's X-View-As, so the bot answers as it would answer that viewer and refuses every change, and
+// GET /session with it gives the session that viewer would have, which the pages then read.
+const preview = reactive({ as: null as Preview | null, session: null as Session | null })
 const realAdmin = () => state.authenticated && (state.role === 'admin' || state.role === null)
 /** Whether the real session may preview other roles. */
 export const mayViewAs = realAdmin
-/** What the site is previewed as, or null (never for anyone but an admin). */
-export const previewing = (): Preview | null => (realAdmin() ? preview.as : null)
+/** What the site is previewed as, or null (never for anyone but an admin, and only once the bot has answered). */
+export const previewing = (): Preview | null => (realAdmin() && preview.session ? preview.as : null)
 /** Changes with every preview, so the pages can load again as the new role (App.vue keys the page on it). */
 export const previewKey = () => JSON.stringify(previewing())
-export function viewAs(p: Preview | null) {
+/** Starts, changes or (with null) ends a preview. The bot works out the previewed session first: one it refuses (a
+ *  channel it doesn't know) leaves the current preview as it was, and throws. */
+export async function viewAs(p: Preview | null): Promise<void> {
+  const found = p ? await admin.previewSession(header(p)) : null
   preview.as = p
+  preview.session = found
   savePreview(p)
 }
-auth.blocks = () => {
+auth.viewAs = () => {
   const p = previewing()
-  return p ? `Read-only while viewing as ${describe(p)}. Exit the preview to change anything.` : null
+  return p ? header(p) : null
 }
 
-// The bot answers some reads by who asks: every channel, and every change, for an admin. While previewing, those are
-// narrowed to what the previewed role would get: its channels, and the changes in them (or its own, elsewhere).
-auth.scope = (path, body) => {
-  const p = previewing()
-  if (!p) return body
-  const mine = new Set(projected(p).channels ?? [])
-  if (path === '/channels') {
-    const b = body as { channels?: Channel[] }
-    if (!Array.isArray(b?.channels)) return body
-    return { ...b, channels: b.channels.filter((c) => mine.has(c.login.toLowerCase())) }
-  }
-  if (path === '/audit' || path.startsWith('/audit?')) {
-    const b = body as { items?: AuditEntry[] }
-    if (!Array.isArray(b?.items)) return body
-    const own = (e: AuditEntry) => !!state.user && e.actor_kind === 'user' && e.actor_id === state.user.id
-    return {
-      ...b,
-      items: b.items.filter((e) => (e.scope_name && mine.has(e.scope_name.toLowerCase())) || own(e)),
-    }
-  }
-  const roles = /^\/channels\/([^/?]+)\/roles$/.exec(path)
-  if (roles) return { ...(body as ChannelRoles), your_rank: projected(p).channelRanks?.[decodeURIComponent(roles[1]!).toLowerCase()] ?? 0 }
-  return body
-}
+/** The previewed session while previewing, else null. */
+const shown = (): Session | null => (previewing() ? preview.session : null)
 
-/** The session a preview stands for: what that role's own session would say. */
-function projected(p: Preview) {
-  const channel = p.channel
-  const listed = channel !== null && p.rank >= 80 // the bot lists a channel for its moderators and broadcaster
-  const broadcaster = p.role === 'broadcaster' && channel !== null
-  return {
-    authenticated: p.role !== 'signed-out',
-    role: (p.role === 'signed-out' ? null : listed ? 'moderator' : 'user') as SessionRole | null,
-    channels: p.role === 'signed-out' ? null : listed ? [channel] : [],
-    channelRoles:
-      p.role === 'signed-out' ? null : listed ? { [channel]: broadcaster ? ('broadcaster' as const) : ('moderator' as const) } : {},
-    channelRanks: p.role === 'signed-out' ? null : channel !== null ? { [channel]: p.rank } : {},
-    ownChannel: broadcaster ? { login: channel, joined: true, status: 'joined', tier: p.tier ?? 'full' } : null,
-  }
-}
-
-/** The session the pages see: the real one, or the one a preview stands for. */
+/** The session the pages see: the real one, or the one the bot gave for the preview. */
 export const session = {
   get checked() { return state.checked },
   get enabled() { return state.enabled },
   get twitchLogin() { return state.twitchLogin },
   get expiresAt() { return state.expiresAt },
   get notice() { return state.notice },
-  get authenticated() { const p = previewing(); return p ? projected(p).authenticated : state.authenticated },
-  get role() { const p = previewing(); return p ? projected(p).role : state.role },
-  get user() { const p = previewing(); return p && p.role === 'signed-out' ? null : state.user },
-  get channels(): readonly string[] | null { const p = previewing(); return p ? projected(p).channels : state.channels },
+  get authenticated() { const s = shown(); return s ? s.authenticated : state.authenticated },
+  get role(): SessionRole | null { const s = shown(); return s ? (s.role ?? null) : state.role },
+  get user(): Readonly<{ id: string; login: string }> | null { const s = shown(); return s ? (s.user ?? null) : state.user },
+  get channels(): readonly string[] | null { const s = shown(); return s ? (s.channels ?? null) : state.channels },
   get channelRoles(): Readonly<Record<string, 'broadcaster' | 'moderator'>> | null {
-    const p = previewing()
-    return p ? projected(p).channelRoles : state.channelRoles
+    const s = shown()
+    return s ? (s.channel_roles ?? null) : state.channelRoles
   },
-  get channelRanks(): Readonly<Record<string, number>> | null { const p = previewing(); return p ? projected(p).channelRanks : state.channelRanks },
-  get ownChannel(): Readonly<OwnChannel> | null { const p = previewing(); return p ? projected(p).ownChannel : state.ownChannel },
+  get channelRanks(): Readonly<Record<string, number>> | null { const s = shown(); return s ? (s.channel_ranks ?? null) : state.channelRanks },
+  get ownChannel(): Readonly<OwnChannel> | null { const s = shown(); return s ? (s.own_channel ?? null) : state.ownChannel },
 }
 
 function apply(s: Session) {
@@ -135,6 +103,7 @@ function clear() {
   state.channelRoles = null
   state.channelRanks = null
   state.ownChannel = null
+  preview.session = null
   auth.csrf = null
 }
 
@@ -152,10 +121,11 @@ auth.onUnauthorized = () => {
 }
 
 let pending: Promise<void> | null = null
-/** Loads the session once; later calls share the answer. */
+/** Loads the session once, with chat's ranks and an admin's preview (this tab's, after a reload); later calls share
+ *  the answer. */
 export function ensure(): Promise<void> {
   if (state.checked) return Promise.resolve()
-  pending ??= admin
+  const real = admin
     .session()
     .then(apply)
     .catch(() => {
@@ -163,8 +133,17 @@ export function ensure(): Promise<void> {
       state.checked = true
       state.authenticated = false
     })
+  pending ??= Promise.all([real, loadRanks()])
+    .then(restorePreview)
     .finally(() => (pending = null))
   return pending
+}
+
+/** Asks the bot for the preview's session again (or this tab's stored one); a preview it refuses now ends. */
+async function restorePreview(): Promise<void> {
+  const p = preview.as ?? loadPreview()
+  if (!p || !realAdmin()) return
+  await viewAs(p).catch(() => viewAs(null))
 }
 
 /** Asks the bot again, after something that changes what the session manages (adding the bot to a channel). */

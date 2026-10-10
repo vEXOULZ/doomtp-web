@@ -32,6 +32,8 @@ export interface Session {
   channel_ranks?: Record<string, number> | null
   /** The signed-in user's own channel: whether the bot is in it, and at what tier. Null for the admin password. */
   own_channel?: OwnChannel | null
+  /** The preview this answers for (`X-View-As`, bot ADR-0030), when an admin asked as someone else. */
+  view_as?: string
 }
 
 /** `user` manages no channel; `moderator` manages the ones in `channels`; `admin` manages the bot. */
@@ -244,9 +246,12 @@ export interface Health {
 export const EXPLAIN_BADGES = ['subscriber', 'vip', 'moderator', 'lead_moderator'] as const
 
 export const admin = {
-  session: () => request<Session>('/session'),
-  login: (password: string) => request<Session>('/session', json('POST', { password })),
-  logout: () => request<unknown>('/session', json('DELETE')),
+  /** The real session, whatever is being previewed. */
+  session: () => request<Session>('/session', {}, { unscoped: true }),
+  /** The session an admin's preview stands for, as the bot works it out (`X-View-As`, ADR-0030). */
+  previewSession: (viewAs: string) => request<Session>('/session', { headers: { 'X-View-As': viewAs } }, { unscoped: true }),
+  login: (password: string) => request<Session>('/session', json('POST', { password }), { unscoped: true }),
+  logout: () => request<unknown>('/session', json('DELETE'), { unscoped: true }),
   /** Adds the bot to the signed-in user's own channel at once (ADR-0026). */
   joinOwn: () => request<{ login: string; channel_id: string }>('/me/channel', json('POST')),
 

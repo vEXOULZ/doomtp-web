@@ -9,7 +9,8 @@ import { errorText } from '@vexoulz/platform-web'
 import AuditActor from '@/components/AuditActor.vue'
 import ManageShell from '@/components/ManageShell.vue'
 import OwnChannelCard from '@/components/OwnChannelCard.vue'
-import { can, isAdmin, RANK, rankIn } from '@/lib/access'
+import { can, isAdmin, rankIn } from '@/lib/access'
+import { rankOf } from '@/lib/ranks'
 import { admin, health } from '@/lib/admin'
 import { session } from '@/lib/session'
 
@@ -28,7 +29,7 @@ function role(login: string): string {
   const own = session.channelRoles?.[login]
   const rank = rankIn(login)
   if (own === 'broadcaster') return 'broadcaster'
-  return rank > RANK.moderator ? `moderator (rank ${rank})` : 'moderator'
+  return rank > (rankOf('moderator') ?? rank) ? `moderator (rank ${rank})` : 'moderator'
 }
 const down = computed(() =>
   Object.entries(data.value?.ready?.components ?? {})

@@ -2,19 +2,20 @@
 // the session has the rank chat would give it there (moderator, broadcaster, raised by any custom role it holds);
 // the admin password and bot admins have the bot-admin rank everywhere. Everyone signed in has their personal area.
 // The bot enforces all of this; the pages only avoid offering what it would refuse.
+import { rankOf } from './ranks'
 import { session } from './session'
 
-/** Chat's built-in ranks (GET /roles), the ones the web gates on. */
-export const RANK = { everyone: 0, moderator: 80, broadcaster: 100, bot_admin: 1000 } as const
+/** The built-in roles the web gates on; their ranks come from the bot (GET /roles, lib/ranks.ts). */
+type GateRole = 'moderator' | 'broadcaster'
 
 type Need =
   | { scope: 'personal' } // anyone signed in, about themselves
-  | { scope: 'channel'; rank: number } // at least this rank in the channel
+  | { scope: 'channel'; role: GateRole } // at least this role's rank in the channel
   | { scope: 'bot' } // a bot admin
 
 const personal: Need = { scope: 'personal' }
 const bot: Need = { scope: 'bot' }
-const channel = (rank: number): Need => ({ scope: 'channel', rank })
+const channel = (role: GateRole): Need => ({ scope: 'channel', role })
 
 /** Everything a page can gate on, and what it needs. */
 const NEEDS = {
@@ -24,27 +25,27 @@ const NEEDS = {
   audit: personal,
   'channel.add-own': personal,
   // a channel's day-to-day, as its moderators run it in chat
-  'channel.view': channel(RANK.moderator),
-  'modules.toggle': channel(RANK.moderator),
-  'commands.edit': channel(RANK.moderator),
-  'publications.toggle': channel(RANK.moderator),
-  'triggers.edit': channel(RANK.moderator),
-  'filter.edit': channel(RANK.moderator),
-  'ignored.edit': channel(RANK.moderator),
-  'settings.chat': channel(RANK.moderator),
-  'settings.backfill': channel(RANK.moderator),
-  'settings.public-log': channel(RANK.moderator),
-  'explain.as': channel(RANK.moderator),
-  runs: channel(RANK.moderator),
-  messages: channel(RANK.moderator),
-  variables: channel(RANK.moderator),
-  'channel.audit': channel(RANK.moderator),
+  'channel.view': channel('moderator'),
+  'modules.toggle': channel('moderator'),
+  'commands.edit': channel('moderator'),
+  'publications.toggle': channel('moderator'),
+  'triggers.edit': channel('moderator'),
+  'filter.edit': channel('moderator'),
+  'ignored.edit': channel('moderator'),
+  'settings.chat': channel('moderator'),
+  'settings.backfill': channel('moderator'),
+  'settings.public-log': channel('moderator'),
+  'explain.as': channel('moderator'),
+  runs: channel('moderator'),
+  messages: channel('moderator'),
+  variables: channel('moderator'),
+  'channel.audit': channel('moderator'),
   // what chat keeps for the broadcaster
-  'settings.logging': channel(RANK.broadcaster),
-  'settings.roles': channel(RANK.broadcaster),
-  'backfill.run': channel(RANK.broadcaster),
-  'channel.part': channel(RANK.broadcaster),
-  'channel.upgrade': channel(RANK.broadcaster),
+  'settings.logging': channel('broadcaster'),
+  'settings.roles': channel('broadcaster'),
+  'backfill.run': channel('broadcaster'),
+  'channel.part': channel('broadcaster'),
+  'channel.upgrade': channel('broadcaster'),
   // the bot itself
   'ignored.everywhere': bot,
   'channel.join': bot,
@@ -62,19 +63,19 @@ export const isAdmin = () => session.authenticated && (session.role === 'admin' 
 /** The session's chat rank in a channel: 0 where it manages nothing. */
 export function rankIn(login: string): number {
   if (!session.authenticated) return 0
-  if (isAdmin()) return RANK.bot_admin
+  if (isAdmin()) return rankOf('bot_admin') ?? Infinity
   const key = login.toLowerCase()
   const rank = session.channelRanks?.[key]
   if (rank !== undefined) return rank
   const role = session.channelRoles?.[key]
-  if (role) return RANK[role]
+  if (role) return rankOf(role) ?? 0
   // A bot from before channel ranks lists the channels only, all as a moderator.
-  return session.channels?.includes(key) ? RANK.moderator : 0
+  return session.channels?.includes(key) ? (rankOf('moderator') ?? 0) : 0
 }
 
 /** The highest rank the session has in any channel (what a page without one channel may offer). */
 function bestRank(): number {
-  if (isAdmin()) return RANK.bot_admin
+  if (isAdmin()) return rankOf('bot_admin') ?? Infinity
   return Math.max(0, ...(session.channels ?? []).map(rankIn))
 }
 
@@ -85,8 +86,8 @@ export const reaches = (login: string, rank: number) => rankIn(login) >= rank
  *  /roles). A custom role the list doesn't rank counts as a moderator's: the bot decides either way. */
 export function reachesRole(login: string, role: string | null | undefined, roles: { name: string; rank: number }[]): boolean {
   if (!role) return can('channel.view', login)
-  const rank = roles.find((r) => r.name === role)?.rank ?? RANK.moderator
-  return rankIn(login) >= rank
+  const rank = roles.find((r) => r.name === role)?.rank ?? rankOf('moderator')
+  return rank !== undefined && rankIn(login) >= rank
 }
 
 /** Whether the session may do `action`, in channel `login` for a channel action (without one: in any channel). */
@@ -95,7 +96,10 @@ export function can(action: Action, login?: string): boolean {
   const need: Need = NEEDS[action]
   if (need.scope === 'personal') return true
   if (need.scope === 'bot') return isAdmin()
-  return (login === undefined ? bestRank() : rankIn(login)) >= need.rank
+  if (isAdmin()) return true // every channel, at the bot-admin rank
+  // Until the bot has said what the role's rank is, nothing that needs it is offered.
+  const rank = rankOf(need.role)
+  return rank !== undefined && (login === undefined ? bestRank() : rankIn(login)) >= rank
 }
 
 /** Whether this session manages a channel (an admin every one). */
