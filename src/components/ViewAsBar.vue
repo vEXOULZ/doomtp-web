@@ -5,7 +5,8 @@ import { VxButton, VxCallout, VxDialog, VxField, VxSelect } from '@vexoulz/ui'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { admin, type Channel, type ChannelRoles } from '@/lib/admin'
-import { errorMessage } from '@/lib/api'
+import { errorText } from '@vexoulz/platform-web'
+import { customRank } from '@/lib/ranks'
 import { mayViewAs, previewing, viewAs } from '@/lib/session'
 import { describe, picker, type Preview, type PreviewRole } from '@/lib/viewAs'
 
@@ -29,11 +30,10 @@ const error = ref<string | null>(null)
 const channelOptions = computed(() =>
   (channels.value ?? []).map((c) => ({ value: c.login, label: `#${c.login}`, sub: c.banned ? 'banned' : c.tier })),
 )
-// The channel's roles below the broadcaster, less the two the other choices already cover (a bot-level role isn't one
-// a channel gives, and can't be previewed from the site).
+// The channel's roles at a custom role's rank (the bot's /roles range), less moderator, which the other choice covers.
 const roleOptions = computed(() =>
   (roles.value?.roles ?? [])
-    .filter((r) => r.rank < 100 && r.name !== 'moderator')
+    .filter((r) => customRank(r.rank) && r.name !== 'moderator')
     .map((r) => ({ value: r.name, label: r.name, sub: `rank ${r.rank}${r.global ? ' · global' : ''}` })),
 )
 
@@ -49,7 +49,7 @@ watch(
     try {
       channels.value = (await admin.channels(true)).channels.sort((a, b) => a.login.localeCompare(b.login))
     } catch (e) {
-      error.value = errorMessage(e)
+      error.value = errorText(e)
     }
   },
 )
@@ -63,31 +63,39 @@ watch(
       const got = await admin.roles(channel, true)
       if (form.channel === channel) roles.value = got
     } catch (e) {
-      error.value = errorMessage(e)
+      error.value = errorText(e)
     }
   },
 )
 
 const chosen = computed<Preview | null>(() => {
-  if (!needsChannel.value) return { role: form.role, channel: null, rank: 0 }
+  if (!needsChannel.value) return { role: form.role, channel: null }
   const channel = form.channel
   if (!channel) return null
-  if (form.role === 'moderator') return { role: 'moderator', channel, rank: 80 }
-  if (form.role === 'broadcaster') {
-    return { role: 'broadcaster', channel, rank: 100, tier: channels.value?.find((c) => c.login === channel)?.tier ?? null }
-  }
+  if (form.role === 'moderator' || form.role === 'broadcaster') return { role: form.role, channel }
   const role = roles.value?.roles.find((r) => r.name === form.custom)
   return role ? { role: 'custom', channel, rank: role.rank, name: role.name } : null
 })
 
-function start(close: () => void) {
+// The bot works out the previewed session first; one it refuses keeps the picker open with its reason. A new preview
+// remounts the page and this bar with it (App.vue keys it), so the picker closes through its shared state.
+const starting = ref(false)
+async function start() {
   if (!chosen.value) return
-  viewAs(chosen.value)
-  close()
-  settle()
+  starting.value = true
+  error.value = null
+  try {
+    await viewAs(chosen.value)
+    picker.open = false
+    settle()
+  } catch (e) {
+    error.value = errorText(e)
+  } finally {
+    starting.value = false
+  }
 }
 function exit() {
-  viewAs(null)
+  void viewAs(null)
 }
 // A signed-out preview has no Manage pages (the router guard sends them home); leave the one open now too.
 function settle() {
@@ -99,7 +107,7 @@ function settle() {
   <template v-if="mayViewAs()">
     <VxCallout v-if="previewing()" tone="warn" class="bar" :title="`Viewing as ${describe(previewing()!)}`">
       <div class="row">
-        <span>Read-only: the site shows what they'd see, and refuses changes until you exit.</span>
+        <span>Read-only: the bot answers as it would answer them, and refuses changes until you exit.</span>
         <span class="actions">
           <VxButton size="sm" @click="picker.open = true">Change</VxButton>
           <VxButton size="sm" variant="primary" @click="exit">Exit preview</VxButton>
@@ -110,8 +118,7 @@ function settle() {
     <VxDialog v-model:open="picker.open" title="View the site as…">
       <form class="pick" @submit.prevent>
         <p class="vx-muted small">
-          Pages show what that role would see. The bot still knows you as an admin, so nothing can be changed while
-          previewing.
+          The bot answers every page as it would answer that role, and refuses changes while you preview.
         </p>
         <VxField label="Role">
           <template #default="{ id }">
@@ -137,11 +144,11 @@ function settle() {
             <p v-else class="vx-muted small">Loading its roles…</p>
           </template>
         </VxField>
-        <VxCallout v-if="error" tone="error" title="Couldn't load">{{ error }}</VxCallout>
+        <VxCallout v-if="error" tone="error" title="Couldn't preview">{{ error }}</VxCallout>
       </form>
       <template #actions="{ close }">
         <VxButton v-if="previewing()" @click="exit(); close()">Exit preview</VxButton>
-        <VxButton variant="primary" :disabled="!chosen" @click="start(close)">View as</VxButton>
+        <VxButton variant="primary" :disabled="!chosen" :loading="starting" @click="start">View as</VxButton>
       </template>
     </VxDialog>
   </template>

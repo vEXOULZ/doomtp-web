@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { VxButton, VxCallout, VxSkeleton } from '@vexoulz/ui'
+import { computed } from 'vue'
+import { useResource } from '@vexoulz/ui/utils'
+import { errorText } from '@vexoulz/platform-web'
 import DtpShell from '@/components/DtpShell.vue'
 import ExplainReport from '@/components/ExplainReport.vue'
-import { api } from '@/lib/api'
-import { useLoad } from '@/lib/useLoad'
+import { api, statusOf } from '@/lib/api'
 
 const props = defineProps<{ token: string }>()
-const { data: report, error, status, reload } = useLoad(() => api.explainReport(props.token), () => props.token)
+const { data: report, error, reload } = useResource(() => api.explainReport(props.token), { source: () => props.token })
+const status = computed(() => statusOf(error.value))
 </script>
 
 <template>
@@ -21,7 +24,7 @@ const { data: report, error, status, reload } = useLoad(() => api.explainReport(
         </p>
       </template>
       <VxCallout v-else-if="error" tone="error" title="Couldn't load the report">
-        {{ error }}
+        {{ errorText(error) }}
         <template #actions><VxButton size="sm" @click="reload">Try again</VxButton></template>
       </VxCallout>
       <div v-else-if="!report" class="loading" aria-busy="true"><VxSkeleton v-for="i in 4" :key="i" h="38px" /></div>

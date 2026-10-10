@@ -6,7 +6,7 @@ import { VxButton, VxCallout, useToast } from '@vexoulz/ui'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { mayAddOwn, mayUpgrade, ownBanned } from '@/lib/access'
-import { errorMessage } from '@/lib/api'
+import { errorText } from '@vexoulz/platform-web'
 import { CONNECT_URL, joinOwnChannel, session } from '@/lib/session'
 
 const toast = useToast()
@@ -24,7 +24,7 @@ async function add() {
     toast.show(`The bot joined #${login}`)
     router.push(`/manage/channels/${encodeURIComponent(login)}`)
   } catch (e) {
-    error.value = errorMessage(e)
+    error.value = errorText(e)
   } finally {
     busy.value = false
   }

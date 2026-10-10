@@ -2,15 +2,16 @@
 import { VxButton, VxCallout, VxChip, VxEmptyState, VxSkeleton, VxTabs } from '@vexoulz/ui'
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useResource } from '@vexoulz/ui/utils'
+import { errorText } from '@vexoulz/platform-web'
 import Cmd from '@/components/Cmd.vue'
 import ChatLogTab from '@/components/manage/ChatLogTab.vue'
 import '@/components/manage/tabs.css'
 import CommandTable from '@/components/CommandTable.vue'
 import DtpShell from '@/components/DtpShell.vue'
 import { manages } from '@/lib/access'
-import { api } from '@/lib/api'
+import { api, statusOf } from '@/lib/api'
 import { channelRows } from '@/lib/commands'
-import { useLoad } from '@/lib/useLoad'
 
 const props = defineProps<{ login: string }>()
 const route = useRoute()
@@ -25,14 +26,15 @@ const tab = computed({
   set: (value: string) => router.replace({ query: { ...route.query, tab: value === 'commands' ? undefined : value } }),
 })
 
-const { data, error, status, reload } = useLoad(async () => {
+const { data, error, reload } = useResource(async () => {
   const [channel, publications, packs] = await Promise.all([
     api.channel(props.login),
     api.publications(props.login),
     api.channelPacks(props.login),
   ])
   return { channel, rows: channelRows(publications.publications, packs.packs), packs: packs.packs }
-}, () => props.login)
+}, { source: () => props.login })
+const status = computed(() => statusOf(error.value))
 
 const sign = computed(() => data.value?.channel.prefix ?? '')
 const here = computed(() => data.value?.channel.active && data.value.channel.status === 'joined')
@@ -44,7 +46,7 @@ const here = computed(() => data.value?.channel.active && data.value.channel.sta
       <template #actions><VxButton to="/" variant="primary">Channels</VxButton></template>
     </VxEmptyState>
     <VxCallout v-else-if="error" tone="error" title="Couldn't load this channel">
-      {{ error }}
+      {{ errorText(error) }}
       <template #actions><VxButton size="sm" @click="reload">Try again</VxButton></template>
     </VxCallout>
     <div v-else-if="!data" class="loading" aria-busy="true">

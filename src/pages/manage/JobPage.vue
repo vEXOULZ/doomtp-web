@@ -3,18 +3,18 @@
 import { JobDetail } from '@vexoulz/platform-web/vue'
 import { VxCallout } from '@vexoulz/ui'
 import { computed } from 'vue'
+import { useResource } from '@vexoulz/ui/utils'
 import ManageShell from '@/components/ManageShell.vue'
 import { can } from '@/lib/access'
 import { platform } from '@/lib/platform'
 import { admin } from '@/lib/admin'
-import { useLoad } from '@/lib/useLoad'
 
 const props = defineProps<{ id: string }>()
 const jobId = computed(() => Number(props.id))
 const allowed = computed(() => can('bot'))
 
 // Only to name the channel a `channel:<id>` subject is; the job loads without it.
-const { data: channels } = useLoad(async () => (allowed.value ? (await admin.channels()).channels : []))
+const { data: channels } = useResource(async () => (allowed.value ? (await admin.channels()).channels : []))
 const channelOf = (subject: string | null) => {
   const id = subject?.startsWith('channel:') ? subject.slice('channel:'.length) : null
   return id ? (channels.value?.find((c) => c.channel_id === id)?.login ?? null) : null

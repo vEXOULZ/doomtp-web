@@ -3,11 +3,12 @@
 // linked for trying requests; this page is the one that matches the site.
 import { VxButton, VxCallout, VxSkeleton } from '@vexoulz/ui'
 import { computed } from 'vue'
+import { useResource } from '@vexoulz/ui/utils'
+import { errorText } from '@vexoulz/platform-web'
 import DtpShell from '@/components/DtpShell.vue'
 import { codeRuns, readOpenApi } from '@/lib/openapi'
-import { useLoad } from '@/lib/useLoad'
 
-const { data, error, reload } = useLoad(async () => {
+const { data, error, reload } = useResource(async () => {
   const res = await fetch('/openapi.json', { headers: { accept: 'application/json' } })
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
   const doc = (await res.json()) as Record<string, unknown>
@@ -47,7 +48,7 @@ const idOf = (key: string) => key.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g,
       </ul>
 
       <VxCallout v-if="error" tone="error" title="Couldn't load the API description">
-        {{ error }}
+        {{ errorText(error) }}
         <template #actions><VxButton size="sm" @click="reload">Try again</VxButton></template>
       </VxCallout>
       <div v-else-if="!data" class="loading" aria-busy="true"><VxSkeleton v-for="i in 8" :key="i" h="38px" /></div>

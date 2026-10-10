@@ -5,7 +5,7 @@ import { VxButton, VxChip, VxDialog, VxEmptyState, VxField, VxInput, VxSelect, V
 import { computed, reactive, ref } from 'vue'
 import { can } from '@/lib/access'
 import { admin, type FilterBody, type FilterEntry, type FilterPatch, type FilterTest } from '@/lib/admin'
-import { errorMessage } from '@/lib/api'
+import { errorText } from '@vexoulz/platform-web'
 import { onOff, useAct } from '@/lib/useAct'
 
 const props = defineProps<{
@@ -71,7 +71,7 @@ async function test() {
     tested.value = await admin.testFilter(props.login, sample.value)
   } catch (e) {
     tested.value = null
-    toast.show(errorMessage(e), { kind: 'error', duration: 5000 })
+    toast.show(errorText(e), { kind: 'error', duration: 5000 })
   } finally {
     testing.value = false
   }

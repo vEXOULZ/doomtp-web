@@ -5,16 +5,17 @@
 import { VxButton, VxCallout, VxCheckbox, VxField, VxInput, VxSelect, VxSkeleton } from '@vexoulz/ui'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useResource } from '@vexoulz/ui/utils'
 import ManageShell from '@/components/ManageShell.vue'
 import ExplainReport from '@/components/ExplainReport.vue'
 import { can } from '@/lib/access'
 import { admin, EXPLAIN_BADGES } from '@/lib/admin'
-import { api, errorMessage, type ExplainReport as Report } from '@/lib/api'
-import { useLoad } from '@/lib/useLoad'
+import { errorText } from '@vexoulz/platform-web'
+import { api, type ExplainReport as Report } from '@/lib/api'
 
 const route = useRoute()
 const router = useRouter()
-const { data: channels, error: loadError, reload } = useLoad(async () => (await api.site()).channels)
+const { data: channels, error: loadError, reload } = useResource(async () => (await api.site()).channels)
 
 const form = reactive({
   channel: typeof route.query.channel === 'string' ? route.query.channel : '',
@@ -56,7 +57,7 @@ async function submit() {
     checkedAs.value = asOthers.value ? form.as_user.trim() : ''
     router.replace({ query: { channel: form.channel } })
   } catch (e) {
-    error.value = errorMessage(e)
+    error.value = errorText(e)
   } finally {
     busy.value = false
   }
@@ -72,7 +73,7 @@ async function submit() {
       roles, the broadcaster and bot admins are looked up as in chat.
     </p>
     <VxCallout v-if="loadError" tone="error" title="Couldn't load the channels">
-      {{ loadError }}
+      {{ errorText(loadError) }}
       <template #actions><VxButton size="sm" @click="reload">Try again</VxButton></template>
     </VxCallout>
     <VxSkeleton v-else-if="!channels" h="160px" />

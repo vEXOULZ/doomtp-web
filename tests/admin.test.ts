@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { admin, readIgnored } from '../src/lib/admin'
-import { ApiError, auth, request } from '../src/lib/api'
+import { ProblemError } from '@vexoulz/platform-web'
+import { auth, request } from '../src/lib/api'
 
 describe('request', () => {
   afterEach(() => {
@@ -29,7 +30,7 @@ describe('request', () => {
     stub(new Response(JSON.stringify({ detail: [{ msg: 'too long' }, { msg: 'bad zone' }] }), { status: 422 }))
     await expect(request('/channels/x', { method: 'PATCH' })).rejects.toThrow('too long; bad zone')
     stub(new Response(JSON.stringify({ detail: 'not signed in' }), { status: 401 }))
-    await expect(request('/keys')).rejects.toBeInstanceOf(ApiError)
+    await expect(request('/keys')).rejects.toBeInstanceOf(ProblemError)
     expect(onUnauthorized).toHaveBeenCalledOnce()
   })
 
@@ -48,7 +49,14 @@ describe('request', () => {
 
   it('keeps Retry-After on a 429', async () => {
     stub(new Response('{}', { status: 429, headers: { 'retry-after': '30' } }))
-    await expect(request('/session', { method: 'POST' })).rejects.toMatchObject({ status: 429, retryAfter: 30 })
+    const e = await request('/session', { method: 'POST' }).catch((e: unknown) => e)
+    expect(e).toMatchObject({ status: 429, retryAfter: 30 })
+    expect((e as ProblemError).retryAfterText()).toBe('Try again in 1 min.')
+  })
+
+  it("says the bot couldn't be reached when fetch itself fails", async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
+    await expect(request('/site')).rejects.toMatchObject({ status: 0, message: "Couldn't reach the bot." })
   })
 })
 

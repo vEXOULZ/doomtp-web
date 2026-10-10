@@ -5,6 +5,7 @@
 import { VxButton, VxCallout, VxChip, VxDialog, VxSkeleton, VxTabs, useToast } from '@vexoulz/ui'
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useResource } from '@vexoulz/ui/utils'
 import ManageShell from '@/components/ManageShell.vue'
 import ChannelSettings from '@/components/ChannelSettings.vue'
 import ChatLine from '@/components/ChatLine.vue'
@@ -26,13 +27,13 @@ import '@/components/manage/tabs.css'
 import { can, manages } from '@/lib/access'
 import { admin, readIgnored, type Channel } from '@/lib/admin'
 import { platform } from '@/lib/platform'
-import { api, errorMessage } from '@/lib/api'
+import { errorText } from '@vexoulz/platform-web'
+import { api, statusOf } from '@/lib/api'
 import { builtinRow, customRow } from '@/lib/commands'
 import { commandRows, moduleRows, publishedRows } from '@/lib/modules'
 import { CONNECT_URL, refresh, session } from '@/lib/session'
 import { defaultSign, loadSite } from '@/lib/site'
 import { useAct, onOff } from '@/lib/useAct'
-import { useLoad } from '@/lib/useLoad'
 
 const props = defineProps<{ login: string }>()
 const route = useRoute()
@@ -42,7 +43,7 @@ const toast = useToast()
 // A moderator's session lists their channels: another channel's page would only be refused, so it isn't loaded.
 const notMine = computed(() => !manages(props.login))
 
-const { data, error, status, reload } = useLoad(
+const { data, error, reload } = useResource(
   async () => {
     if (notMine.value) return null
     const [channel, modules, commands, packs, publications, triggers, filters, ignored, roles, builtins, site] = await Promise.all([
@@ -82,9 +83,8 @@ const { data, error, status, reload } = useLoad(
       // A channel setting can require any built-in role up to the broadcaster.
       roles: roles.roles.filter((r) => r.rank <= 100).map((r) => r.name),
     }
-  },
-  () => props.login,
-)
+  }, { source: () => props.login })
+const status = computed(() => statusOf(error.value))
 const sign = computed(() => data.value?.channel.prefix ?? '!')
 
 // ── tabs, kept in the URL so a tab can be linked ──
@@ -141,7 +141,7 @@ async function part() {
     await refresh() // a broadcaster who sent the bot away no longer manages the channel
     router.push('/manage')
   } catch (e) {
-    toast.show(errorMessage(e), { kind: 'error', duration: 5000 })
+    toast.show(errorText(e), { kind: 'error', duration: 5000 })
   } finally {
     busy.delete('part')
   }
@@ -161,7 +161,7 @@ async function part() {
       <template #actions><RouterLink to="/manage" class="vx-btn is-sm">Your channels</RouterLink></template>
     </VxCallout>
     <VxCallout v-else-if="error" tone="error" :title="status === 404 ? `The bot doesn't know #${login}` : `Couldn't load #${login}`">
-      {{ error }}
+      {{ errorText(error) }}
       <template #actions>
         <RouterLink v-if="status === 404" to="/manage" class="vx-btn is-sm">All channels</RouterLink>
         <VxButton v-else size="sm" @click="reload">Try again</VxButton>

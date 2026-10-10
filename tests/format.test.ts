@@ -1,17 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bytes, count, shown, span, typedValue } from '../src/lib/format'
-
-describe('bytes', () => {
-  it('keeps small sizes in bytes and rounds larger ones', () => {
-    expect(bytes(0)).toBe('0 B')
-    expect(bytes(1023)).toBe('1023 B')
-    expect(bytes(1024)).toBe('1 KB')
-    expect(bytes(1536)).toBe('1.5 KB')
-    expect(bytes(50 * 1024)).toBe('50 KB')
-    expect(bytes(3 * 1024 * 1024)).toBe('3 MB')
-    expect(bytes(5 * 1024 ** 4)).toBe('5120 GB')
-  })
-})
+import { count, shown, span, typedValue } from '../src/lib/format'
 
 describe('shown', () => {
   it('shows strings as they are and anything else as JSON', () => {

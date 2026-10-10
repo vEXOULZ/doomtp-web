@@ -1,6 +1,7 @@
 // What every page's chrome needs from the bot (version, default sign, whether admin exists), loaded once.
 import { reactive } from 'vue'
-import { api, errorMessage, type Site } from './api'
+import { errorText } from '@vexoulz/platform-web'
+import { api, type Site } from './api'
 
 export const site = reactive<{ info: Site | null; error: string | null }>({ info: null, error: null })
 
@@ -11,7 +12,7 @@ export function loadSite(): Promise<Site | null> {
   loading ??= api.site().then(
     (info) => (site.info = info),
     (e: unknown) => {
-      site.error = errorMessage(e)
+      site.error = errorText(e)
       loading = null // let the next page try again
       return null
     },

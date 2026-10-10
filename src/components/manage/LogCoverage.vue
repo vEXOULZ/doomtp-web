@@ -6,11 +6,12 @@
 import type { LogGap } from '@vexoulz/platform-web/chat'
 import { VxButton, VxChip } from '@vexoulz/ui'
 import { computed } from 'vue'
+import { useResource } from '@vexoulz/ui/utils'
+import { errorText } from '@vexoulz/platform-web'
 import { can, isAdmin } from '@/lib/access'
 import { admin } from '@/lib/admin'
 import { channelSubject } from '@/lib/platform'
 import { useAct } from '@/lib/useAct'
-import { useLoad } from '@/lib/useLoad'
 import { dateTime } from '@/lib/format'
 
 const props = defineProps<{
@@ -27,9 +28,9 @@ const window = computed(() => ({
   since: new Date(props.since ? Date.parse(props.since) : Date.now() - WEEK).toISOString(),
   until: props.until ? new Date(props.until).toISOString() : undefined,
 }))
-const { data, error, reload } = useLoad(
+const { data, error, reload } = useResource(
   () => admin.coverage(props.login, window.value.since, window.value.until),
-  () => [props.login, window.value],
+  { source: () => [props.login, window.value], resetOnSource: false },
 )
 const { busy, act } = useAct(reload)
 const mayRun = computed(() => can('backfill.run', props.login))
@@ -71,7 +72,7 @@ const backfill = (g: LogGap) =>
         backfill jobs
       </RouterLink>
     </summary>
-    <p v-if="error" class="vx-muted small">{{ error }}</p>
+    <p v-if="error" class="vx-muted small">{{ errorText(error) }}</p>
     <template v-else-if="data">
       <p class="vx-muted small">
         Listening {{ data.sessions.length }} {{ data.sessions.length === 1 ? 'time' : 'times' }} between {{ dateTime(data.since) }} and

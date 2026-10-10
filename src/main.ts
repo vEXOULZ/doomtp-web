@@ -43,7 +43,7 @@ const router = createRouter({
   ],
   scrollBehavior: (to, from, saved) => {
     if (saved) return saved
-    // Anchors (#grammar, #variables): a page that renders after its data loads is scrolled by useLoad instead.
+    // Anchors (#grammar, #variables): a page that renders after its data loads is scrolled once the anchor appears (lib/hash.ts).
     if (to.hash) return hashPosition(to.hash)
     return to.path !== from.path ? { top: 0 } : undefined
   },

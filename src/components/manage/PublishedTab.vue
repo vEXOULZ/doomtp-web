@@ -6,14 +6,15 @@
 import { VxButton, VxCallout, VxCheckbox, VxChip, VxDialog, VxEmptyState, VxField, VxInput, VxSegmented, VxSelect, VxSwitch, useToast } from '@vexoulz/ui'
 import { computed, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
+import { useResource } from '@vexoulz/ui/utils'
 import ChatLine from '@/components/ChatLine.vue'
 import { reachesRole } from '@/lib/access'
 import { admin, type Grant } from '@/lib/admin'
-import { errorMessage, type Pack, type Role } from '@/lib/api'
+import { errorText } from '@vexoulz/platform-web'
+import { type Pack, type Role } from '@/lib/api'
 import { CUSTOM_MODULE, type PublishedRow } from '@/lib/modules'
 import { session } from '@/lib/session'
 import { useAct } from '@/lib/useAct'
-import { useLoad } from '@/lib/useLoad'
 import { loginOf } from '@/lib/format'
 
 const props = defineProps<{
@@ -35,7 +36,7 @@ const mayGrant = computed(() => reachesRole(props.login, props.grantRole, props.
 /** Publishing names the publisher, so it takes a Twitch sign-in (not the admin password). */
 const hasUser = computed(() => !!session.user)
 
-const grants = useLoad(async () => (await admin.grants(props.login)).grants, () => props.login)
+const grants = useResource(async () => (await admin.grants(props.login)).grants, { source: () => props.login })
 const reloadAll = async () => {
   await Promise.all([props.reload(), grants.reload()])
 }
@@ -51,7 +52,7 @@ const packOwner = (p: Pack) => {
 }
 
 // ── publishing: one of your commands (or aliases), your pack, or a pack someone shared ──
-const mine = useLoad(async () => {
+const mine = useResource(async () => {
   if (!session.user) return { commands: [], packs: [] }
   const [commands, packs] = await Promise.all([admin.myCommands(), admin.myPacks()])
   return {
@@ -100,7 +101,7 @@ async function setGrant(g: Grant, variable: string, on: boolean) {
   const run = () => (on ? admin.grant(props.login, g.name, variable) : admin.ungrant(props.login, g.name, variable))
   await act(`g:${g.name}:${variable}`, run, `${props.sign}${g.name} ${on ? 'may' : 'may no longer'} write channel.${variable}`)
 }
-const errText = (e: unknown) => errorMessage(e)
+const errText = errorText
 </script>
 
 <template>
@@ -189,7 +190,7 @@ const errText = (e: unknown) => errorMessage(e)
       <ChatLine :lines="`${sign}cc grant <name> <variable>`" :sign="sign" /> does in chat<template v-if="!mayGrant">
       (for {{ grantRole }} and up)</template>.
     </p>
-    <VxCallout v-if="grants.error.value" tone="error" title="Couldn't load the grants">{{ grants.error.value }}</VxCallout>
+    <VxCallout v-if="grants.error.value" tone="error" title="Couldn't load the grants">{{ errorText(grants.error.value) }}</VxCallout>
     <VxEmptyState v-else-if="grants.data.value && !grants.data.value.length" title="Nothing to grant" text="No command published here writes channel variables." />
     <div v-else-if="grants.data.value" class="table-scroll vx-panel">
       <table class="vx-table">

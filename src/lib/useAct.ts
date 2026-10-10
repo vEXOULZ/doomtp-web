@@ -2,7 +2,7 @@
 // and the form that asked keeps what was typed. `busy` holds the keys of the changes still running.
 import { useToast } from '@vexoulz/ui'
 import { reactive } from 'vue'
-import { errorMessage } from './api'
+import { errorText } from '@vexoulz/platform-web'
 
 export function useAct(reload: () => Promise<unknown> | void) {
   const toast = useToast()
@@ -17,7 +17,7 @@ export function useAct(reload: () => Promise<unknown> | void) {
       await reload()
       return true
     } catch (e) {
-      toast.show(errorMessage(e), { kind: 'error', duration: 5000 })
+      toast.show(errorText(e), { kind: 'error', duration: 5000 })
       return false
     } finally {
       busy.delete(key)

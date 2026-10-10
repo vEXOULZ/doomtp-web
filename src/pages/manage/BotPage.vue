@@ -4,6 +4,7 @@
 import { VxButton, VxCallout, VxCheckbox, VxChip, VxDialog, VxEmptyState, VxField, VxInput, VxSkeleton, timeAgo, useToast } from '@vexoulz/ui'
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useResource } from '@vexoulz/ui/utils'
 import ManageShell from '@/components/ManageShell.vue'
 import BotGlobal from '@/components/manage/BotGlobal.vue'
 import HttpHostsPanel from '@/components/manage/HttpHostsPanel.vue'
@@ -11,13 +12,12 @@ import LimitsPanel from '@/components/manage/LimitsPanel.vue'
 import '@/components/manage/tabs.css'
 import { can } from '@/lib/access'
 import { admin, health, type ApiKey } from '@/lib/admin'
-import { ApiError, errorMessage } from '@/lib/api'
-import { useLoad } from '@/lib/useLoad'
+import { errorText } from '@vexoulz/platform-web'
 
 const toast = useToast()
 const router = useRouter()
 const allowed = computed(() => can('bot'))
-const { data, error, reload } = useLoad(async () => {
+const { data, error, reload } = useResource(async () => {
   if (!allowed.value) return null
   const [ready, keys] = await Promise.all([health(), admin.keys()])
   return { ready, keys: keys.keys }
@@ -45,7 +45,7 @@ async function join() {
     toast.show(`Joined #${login}`)
     router.push(`/manage/channels/${encodeURIComponent(login)}`)
   } catch (e) {
-    toast.show(`Couldn't join #${login}: ${errorMessage(e)}`, { kind: 'error', duration: 5000 })
+    toast.show(`Couldn't join #${login}: ${errorText(e)}`, { kind: 'error', duration: 5000 })
   } finally {
     joining.value = false
   }
@@ -70,7 +70,7 @@ async function createKey() {
     keyWrite.value = false
     await reload()
   } catch (e) {
-    keyError.value = e instanceof ApiError && e.status === 400 ? e.message : errorMessage(e)
+    keyError.value = errorText(e)
   } finally {
     keyBusy.value = false
   }
@@ -96,7 +96,7 @@ async function revoke() {
     revoking.value = null
     await reload()
   } catch (e) {
-    toast.show(`Couldn't revoke: ${errorMessage(e)}`, { kind: 'error', duration: 5000 })
+    toast.show(`Couldn't revoke: ${errorText(e)}`, { kind: 'error', duration: 5000 })
   } finally {
     revokeBusy.value = false
   }
@@ -107,7 +107,7 @@ async function revoke() {
   <ManageShell title="Bot">
     <VxEmptyState v-if="!allowed" code="403" title="Bot admins only" text="This page runs the bot itself: its health, joining channels and API keys." />
     <VxCallout v-else-if="error" tone="error" title="Couldn't load the bot's state">
-      {{ error }}
+      {{ errorText(error) }}
       <template #actions><VxButton size="sm" @click="reload">Try again</VxButton></template>
     </VxCallout>
     <div v-else-if="!data" class="loading" aria-busy="true"><VxSkeleton v-for="i in 8" :key="i" h="38px" /></div>
@@ -132,7 +132,7 @@ async function revoke() {
         <h2 class="vx-eyebrow sec">Join a channel</h2>
         <form class="row" @submit.prevent="join">
           <label class="sr-only" for="join-login">Channel to join</label>
-          <VxInput id="join-login" v-model="joinLogin" placeholder="channel login" mono />
+          <VxInput id="join-login" v-model="joinLogin" placeholder="channel login" mono grow width="14rem" max-width="20rem" />
           <VxButton type="submit" :loading="joining" :disabled="!joinLogin.trim()">Join channel</VxButton>
         </form>
         <p class="vx-muted small">The same as <code>join</code> in chat: the bot joins and subscribes to the channel's events.</p>
@@ -222,7 +222,6 @@ section { margin-bottom: 28px; }
 .sec { margin: 0 0 8px; }
 .small { font-size: 13px; margin: 0 0 8px; }
 .row { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 6px; }
-.row :deep(.vx-input-wrap) { flex: 1 1 14rem; max-width: 20rem; }
 .table-scroll > table { min-width: 34rem; }
 .detail { font-family: var(--vx-font-mono); font-size: 12px; overflow-wrap: anywhere; }
 .end { text-align: right; }

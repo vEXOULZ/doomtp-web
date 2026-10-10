@@ -1,19 +1,7 @@
 // The bot's JSON API (doomtp-bot, /api/v1, and /api/v2 for the audit), served on this site's origin. Only the parts these pages read.
 // Fields are added on the bot's side, never renamed (ADR-0016), so optional ones here are the newer ones.
 
-export class ApiError extends Error {
-  constructor(
-    readonly status: number,
-    message: string,
-    /** Seconds, from Retry-After (a rate-limited login). */
-    readonly retryAfter: number | null = null,
-  ) {
-    super(message)
-  }
-}
-
-/** The text to show for a caught error. */
-export const errorMessage = (e: unknown): string => (e instanceof Error ? e.message : String(e))
+import { ProblemError } from '@vexoulz/platform-web'
 
 /** A request whose answer doesn't change while the page is open (the bot's built-in catalogues): made once, and
  *  again only after a failure. */
@@ -31,52 +19,45 @@ function once<T>(load: () => Promise<T>): () => Promise<T> {
 export const auth = {
   csrf: null as string | null,
   onUnauthorized: null as (() => void) | null,
-  /** Why changes are refused right now (an admin viewing the site as someone else), or null. */
-  blocks: null as (() => string | null) | null,
-  /** Narrows a read the bot scoped to the caller to what a previewed role would get back (lib/session.ts). */
-  scope: null as ((path: string, body: unknown) => unknown) | null,
+  /** The `X-View-As` value while an admin previews the site as someone else (lib/session.ts), or null. */
+  viewAs: null as (() => string | null) | null,
 }
 
-/** Writes that change nothing (explain, and the trigger, filter and automod test boxes) or only end the session, and so
- *  still go through while changes are refused. */
-const HARMLESS = (method: string, path: string) =>
-  (method === 'POST' && (path === '/parse' || path.startsWith('/explain') || path.endsWith('/test'))) ||
-  (method === 'DELETE' && path === '/session')
+/** Sets the preview's `X-View-As` on a call (bot ADR-0030): the bot then answers as that viewer would be answered, and
+ *  refuses every change. */
+export function previewHeader(headers: Headers) {
+  const as = auth.viewAs?.()
+  if (as && !headers.has('X-View-As')) headers.set('X-View-As', as)
+}
 
-/** `unscoped`: the answer as the bot gave it, even while previewing (the "View as" picker's own reads). `v2`: from
- *  /api/v2 (ADR-0027), whose errors are problem details, with the message in `detail` as well. */
+/** Whether a 401 means the session ended: under a signed-out preview the bot answers 401 for what that viewer can't
+ *  read, and says so with `X-View-As` on the answer. */
+export const sessionEnded = (res: Response) => res.status === 401 && !res.headers.has('X-View-As')
+
+/** `unscoped`: as the admin, without the preview's header (the session itself, and the "View as" picker's reads).
+ *  `v2`: from /api/v2 (ADR-0027). A failure is a ProblemError either way: v1's `detail` reads the same. */
 export async function request<T>(path: string, init: RequestInit = {}, { unscoped = false, v2 = false } = {}): Promise<T> {
   const headers = new Headers(init.headers)
   const method = (init.method ?? 'GET').toUpperCase()
-  if (method !== 'GET' && method !== 'HEAD' && !HARMLESS(method, path)) {
-    const blocked = auth.blocks?.()
-    if (blocked) throw new ApiError(403, blocked)
-  }
+  if (!unscoped) previewHeader(headers)
   if (method !== 'GET' && auth.csrf) headers.set('X-CSRF-Token', auth.csrf)
   let response: Response
   try {
     response = await fetch(`/api/${v2 ? 'v2' : 'v1'}${path}`, { credentials: 'same-origin', ...init, headers })
   } catch {
-    throw new ApiError(0, "Couldn't reach the bot.")
+    throw new ProblemError(0, { detail: "Couldn't reach the bot." })
   }
   if (!response.ok) {
-    let detail = `${response.status} ${response.statusText}`
-    try {
-      const body = (await response.json()) as { detail?: unknown }
-      if (typeof body.detail === 'string') detail = body.detail
-      else if (Array.isArray(body.detail)) detail = body.detail.map((d: { msg?: string }) => d.msg).filter(Boolean).join('; ') || detail
-    } catch {
-      /* not JSON: keep the status line */
-    }
-    if (response.status === 401) auth.onUnauthorized?.()
-    const retry = Number(response.headers.get('retry-after'))
-    throw new ApiError(response.status, detail, Number.isFinite(retry) && retry > 0 ? retry : null)
+    if (sessionEnded(response)) auth.onUnauthorized?.()
+    throw await ProblemError.from(response)
   }
   if (response.status === 204) return undefined as T
   const text = await response.text()
-  const body: unknown = text ? JSON.parse(text) : undefined
-  return (method === 'GET' && !unscoped && auth.scope ? auth.scope(path, body) : body) as T
+  return (text ? JSON.parse(text) : undefined) as T
 }
+
+/** A failed request's HTTP status (0: the bot couldn't be reached), or null for anything else. */
+export const statusOf = (e: unknown): number | null => (e instanceof ProblemError ? e.status : null)
 
 const get = <T>(path: string) => request<T>(path)
 

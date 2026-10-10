@@ -4,19 +4,20 @@
 // session may touch (`manageable`): roles ranked below its own, any of them for the broadcaster.
 import { VxButton, VxCallout, VxChip, VxDialog, VxEmptyState, VxField, VxInput, VxSelect, VxSkeleton, VxStepper, timeAgo } from '@vexoulz/ui'
 import { computed, reactive, ref } from 'vue'
+import { useResource } from '@vexoulz/ui/utils'
+import { errorText } from '@vexoulz/platform-web'
 import { can } from '@/lib/access'
 import { admin } from '@/lib/admin'
 import { api } from '@/lib/api'
 import { useAct } from '@/lib/useAct'
-import { useLoad } from '@/lib/useLoad'
 import UserRef from '../UserRef.vue'
 import { loginOf } from '@/lib/format'
 
 const props = defineProps<{ login: string; sign: string }>()
-const { data, error, reload } = useLoad(async () => {
+const { data, error, reload } = useResource(async () => {
   const [roles, all] = await Promise.all([admin.roles(props.login), api.roles()])
   return { ...roles, range: all.custom_rank_range }
-}, () => props.login)
+}, { source: () => props.login })
 const { busy, act } = useAct(reload)
 const mayEdit = computed(() => can('commands.edit', props.login))
 
@@ -62,7 +63,7 @@ const expires = (at: number | null) => (at ? `until ${new Date(at).toLocaleStrin
 <template>
   <section class="mtab">
     <VxCallout v-if="error" tone="error" title="Couldn't load the roles">
-      {{ error }}
+      {{ errorText(error) }}
       <template #actions><VxButton size="sm" @click="reload">Try again</VxButton></template>
     </VxCallout>
     <div v-else-if="!data" class="loading" aria-busy="true"><VxSkeleton v-for="i in 4" :key="i" h="38px" /></div>

@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import { VxButton, VxCallout, VxSkeleton } from '@vexoulz/ui'
 import { computed, onMounted } from 'vue'
+import { useResource } from '@vexoulz/ui/utils'
+import { errorText } from '@vexoulz/platform-web'
 import ChatLine from '@/components/ChatLine.vue'
 import Cmd from '@/components/Cmd.vue'
 import DtpShell from '@/components/DtpShell.vue'
 import { api } from '@/lib/api'
 import { defaultSign, loadSite } from '@/lib/site'
-import { useLoad } from '@/lib/useLoad'
 
-const { data, error, reload } = useLoad(async () => {
+const { data, error, reload } = useResource(async () => {
   const [language, grammar] = await Promise.all([api.language(), api.grammar(), loadSite()])
   return { language, grammar }
 })
@@ -97,7 +98,7 @@ const limits = computed(() => {
       </ul>
 
       <VxCallout v-if="error" tone="error" title="Couldn't load the language details">
-        {{ error }}
+        {{ errorText(error) }}
         <template #actions><VxButton size="sm" @click="reload">Try again</VxButton></template>
       </VxCallout>
       <div v-else-if="!data" class="loading" aria-busy="true"><VxSkeleton v-for="i in 6" :key="i" h="28px" /></div>
@@ -204,18 +205,26 @@ const limits = computed(() => {
 .list { line-height: 2; }
 .loading { display: flex; flex-direction: column; gap: 8px; margin: 12px 0; }
 
-/* The editor draws with the bot's own variable names; give it this site's colours. */
+/* The bot's editor, themed through its --dtb-* properties (doomtp-bot web-editor/README.md, "Theming"). */
 .editor {
-  --panel: var(--vx-surface);
-  --ink: var(--vx-ink);
-  --line: var(--vx-line);
-  --muted: var(--vx-muted);
-  --accent: var(--vx-accent);
-  --bg: var(--vx-bg);
-  --ok: var(--vx-ok);
-  --bad: var(--vx-bad);
+  --dtb-bg: var(--vx-surface);
+  --dtb-raised: var(--vx-surface-2);
+  --dtb-ink: var(--vx-ink);
+  --dtb-muted: var(--vx-muted);
+  --dtb-line: var(--vx-line);
+  --dtb-accent: var(--vx-accent);
+  --dtb-accent-ink: var(--vx-bg);
+  --dtb-ok: var(--vx-ok);
+  --dtb-bad: var(--vx-bad);
+  --dtb-font: var(--vx-font-mono);
+  --dtb-font-size: 14px;
+  --dtb-small-font-size: 13px;
+  --dtb-radius: var(--vx-radius-sm);
+  --dtb-gap: 8px;
+  --dtb-control-height: var(--vx-ctl);
   margin: 0 0 8px;
 }
+/* The textarea it upgrades, as it looks before the script loads (or without it). */
 .editor textarea {
   width: 100%;
   padding: 10px 12px;
@@ -226,38 +235,6 @@ const limits = computed(() => {
   border: 1px solid var(--vx-line);
   border-radius: var(--vx-radius-sm);
   resize: vertical;
-}
-.editor :deep(.dtb-editor) {
-  font-family: var(--vx-font-mono);
-  font-size: 14px;
-  border: 1px solid var(--vx-line);
-  border-radius: var(--vx-radius-sm);
-  overflow: hidden;
-}
-.editor :deep(.dtb-editor .cm-editor) { background: var(--vx-surface); }
-.editor :deep(.dtb-editor .cm-content) { font-family: var(--vx-font-mono); }
-.editor :deep(.dtb-explain) {
-  margin-top: 8px;
-  height: var(--vx-ctl);
-  padding: 0 12px;
-  font: inherit;
-  font-size: 13px;
-  color: var(--vx-ink);
-  background: var(--vx-surface-2);
-  border: 1px solid var(--vx-line);
-  border-radius: var(--vx-radius-sm);
-  cursor: pointer;
-}
-.editor :deep(.dtb-explain:hover) { border-color: var(--vx-accent); }
-.editor :deep(.dtb-report) {
-  margin-top: 8px;
-  padding: 10px 12px;
-  white-space: pre-wrap;
-  font-family: var(--vx-font-mono);
-  font-size: 13px;
-  background: var(--vx-surface-2);
-  border: 1px solid var(--vx-line);
-  border-radius: var(--vx-radius-sm);
 }
 
 .railroad { margin: 0 0 16px; }
