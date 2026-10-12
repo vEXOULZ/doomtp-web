@@ -36,10 +36,13 @@
 .dtb-raw { opacity: 0.8; }
 .dtb-error { text-decoration: underline wavy var(--vx-bad); }
 
+/* Anchors land a header's height plus a gap below the top, whether the browser, the router or lib/hash.ts scrolls. */
+html { scroll-padding-top: calc(var(--vx-head-h) + 16px); }
+
 /* ---------- Documentation pages ---------- */
 .doc { max-width: 52rem; }
 .doc h1.vx-display { font-size: 30px; margin: 0 0 10px; }
-.doc h2.vx-display { font-size: 22px; margin: 36px 0 12px; scroll-margin-top: calc(var(--vx-head-h) + 16px); }
+.doc h2.vx-display { font-size: 22px; margin: 36px 0 12px; }
 .doc h3 { font-family: var(--vx-font-mono); font-weight: 500; font-size: 15px; margin: 22px 0 8px; }
 .doc p, .doc ul { margin: 0 0 12px; }
 .doc ul { padding-left: 1.2em; }
