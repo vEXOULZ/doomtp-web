@@ -2,7 +2,7 @@ import '@vexoulz/ui/fonts.css'
 import '@vexoulz/ui/style.css'
 import '@vexoulz/platform-web/style.css'
 import './styles.css'
-import './styles/platform.css'
+import '@vexoulz/ui/platform.css'
 
 import { createPlatformUi } from '@vexoulz/platform-web/vue'
 import { VxBuild, useToast } from '@vexoulz/ui'
