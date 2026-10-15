@@ -228,7 +228,7 @@ async function part() {
         :commands="data.commands.map((c) => c.name)"
       />
       <RolesTab v-else-if="tab === 'roles'" :login="login" :sign="sign" />
-      <VariablesTab v-else-if="tab === 'variables'" :login="login" :write-role="data.channel.roles.channel_var_write" :roles="data.allRoles" />
+      <VariablesTab v-else-if="tab === 'variables'" :login="login" :write-role="data.channel.roles.channel_var_write" :admin-role="data.channel.roles.var_admin" :roles="data.allRoles" />
       <RunsTab v-else-if="tab === 'runs'" :login="login" :sign="sign" />
       <ChatLogTab v-else-if="tab === 'log'" :login="login" :logging="data.channel.log_enabled" :public-log="data.channel.public_log" :channel-id="data.channel.channel_id" />
       <section v-else-if="tab === 'audit'">
