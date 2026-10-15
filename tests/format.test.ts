@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { count, shown, span, typedValue } from '../src/lib/format'
+import { count, shown, span, typedValue, uptime } from '../src/lib/format'
 
 describe('shown', () => {
   it('shows strings as they are and anything else as JSON', () => {
@@ -41,5 +41,15 @@ describe('span', () => {
     expect(span(5400)).toBe('90m')
     expect(span(172800)).toBe('2d')
     expect(span(0)).toBe('0s')
+  })
+})
+
+describe('uptime', () => {
+  it('says a running time in its two largest units', () => {
+    expect(uptime(0)).toBe('0s')
+    expect(uptime(45)).toBe('45s')
+    expect(uptime(7500)).toBe('2h 5m')
+    expect(uptime(280_000)).toBe('3d 5h')
+    expect(uptime(3600)).toBe('1h')
   })
 })

@@ -31,6 +31,20 @@ export function span(seconds: number): string {
   return `${seconds}s`
 }
 
+/** A running time in its two largest units: 45 → "45s", 7500 → "2h 5m", 280000 → "3d 5h". */
+export function uptime(seconds: number): string {
+  const parts: string[] = []
+  let left = Math.max(0, Math.floor(seconds))
+  for (const [unit, size] of [['d', 86400], ['h', 3600], ['m', 60], ['s', 1]] as const) {
+    if (left >= size || (unit === 's' && !parts.length)) {
+      parts.push(`${Math.floor(left / size)}${unit}`)
+      left %= size
+    }
+    if (parts.length === 2) break
+  }
+  return parts.join(' ')
+}
+
 /** A Twitch login as typed: trimmed, without a leading `@`. */
 export const loginOf = (typed: string) => typed.trim().replace(/^@/, '')
 

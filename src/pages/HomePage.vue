@@ -1,13 +1,20 @@
 <script setup lang="ts">
 import { VxButton, VxCallout, VxChip, VxSkeleton } from '@vexoulz/ui'
 import { computed } from 'vue'
+import { usePoll } from '@vexoulz/ui/utils'
 import ChatLine from '@/components/ChatLine.vue'
 import Cmd from '@/components/Cmd.vue'
 import DtpShell from '@/components/DtpShell.vue'
+import StatsPanel from '@/components/StatsPanel.vue'
+import { api } from '@/lib/api'
 import { defaultSign, loadSite, site } from '@/lib/site'
 
 const sign = computed(defaultSign)
 const tries = computed(() => [`${sign.value}ping`, `${sign.value}random 1-100 | echo you rolled {_1}!`, `${sign.value}help`])
+
+// The bot's own counts, kept fresh while the page is open; the bot recounts every 30 seconds. A bot before
+// doomtp-bot #176 has none, and the section stays hidden.
+const { data: stats } = usePoll(() => api.stats(), 30_000)
 
 const START = [
   { to: '/docs/features', title: 'Features', text: 'Every part of the bot: permissions, cooldowns, custom commands, packs, variables, triggers, timers, the word filter, logging and the API.' },
@@ -46,6 +53,11 @@ const START = [
         <span class="vx-muted small">{{ c.text }}</span>
       </RouterLink>
     </div>
+
+    <template v-if="stats">
+      <h2 class="vx-display sec">Right now</h2>
+      <StatsPanel :counts="stats" :build="stats" />
+    </template>
 
     <h2 class="vx-display sec">Channels</h2>
     <VxCallout v-if="site.error" tone="error" title="Couldn't load the channels">

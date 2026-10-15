@@ -189,8 +189,34 @@ export interface ExplainReport {
   would_send?: string | null
 }
 
+// ── the bot's own counts (doomtp-bot #176) ─────────────────────────────────
+/** Over the last minute, hour and day. */
+export interface Windows {
+  minute: number
+  hour: number
+  day: number
+}
+export interface Counts {
+  messages_logged: Windows
+  messages_sent: Windows
+  runs_day: { ok: number; failed: number; cancelled: number }
+  /** When the bot counted, epoch ms: the counts are kept for 30 seconds. */
+  at: number
+}
+export interface BotStats extends Counts {
+  version: string
+  /** The tag it was built from, or its branch when it isn't a release; null from a checkout. */
+  release: string | null
+  commit: string | null
+  started_at: number
+  uptime_s: number
+  channels: number
+}
+
 export const api = {
   site: () => get<Site>('/site'),
+  stats: () => get<BotStats>('/stats'),
+  channelStats: (login: string) => get<Counts & { channel: string }>(`/channels/${encodeURIComponent(login)}/stats`),
   channel: (login: string) => get<ChannelSummary>(`/site/channels/${encodeURIComponent(login)}`),
   roles: once(() => get<{ roles: Role[]; custom_rank_range: [number, number] }>('/roles')),
   commands: once(() => get<{ syntax_version: string; commands: Builtin[] }>('/commands')),

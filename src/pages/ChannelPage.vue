@@ -9,6 +9,7 @@ import ChatLogTab from '@/components/manage/ChatLogTab.vue'
 import '@/components/manage/tabs.css'
 import CommandTable from '@/components/CommandTable.vue'
 import DtpShell from '@/components/DtpShell.vue'
+import StatsPanel from '@/components/StatsPanel.vue'
 import { manages } from '@/lib/access'
 import { api, statusOf } from '@/lib/api'
 import { channelRows } from '@/lib/commands'
@@ -35,6 +36,8 @@ const { data, error, reload } = useResource(async () => {
   return { channel, rows: channelRows(publications.publications, packs.packs), packs: packs.packs }
 }, { source: () => props.login })
 const status = computed(() => statusOf(error.value))
+// The channel's counts, read apart from the page: a bot before doomtp-bot #176 has none, and the page stays.
+const { data: counts } = useResource(() => api.channelStats(props.login), { source: () => props.login })
 
 const sign = computed(() => data.value?.channel.prefix ?? '')
 const here = computed(() => data.value?.channel.active && data.value.channel.status === 'joined')
@@ -88,6 +91,11 @@ const here = computed(() => data.value?.channel.active && data.value.channel.sta
       <p v-else class="vx-muted">
         Nothing published here yet. A moderator can offer one with <Cmd t="cc publish <name>" :sign="sign" />.
       </p>
+
+      <template v-if="counts">
+        <h2 class="vx-display">Activity here</h2>
+        <StatsPanel :counts="counts" />
+      </template>
       </template>
     </div>
   </DtpShell>
