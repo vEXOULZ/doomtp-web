@@ -19,6 +19,9 @@ export interface ChannelCommand {
   /** Twitch permissions it needs, and those the bot doesn't have here. */
   requires?: string[]
   missing?: string[]
+  /** A custom command published here or in a pack (bots from 0.11 on): its rules are set here, but it turns on and off
+   *  with its publication (Published tab) or its pack's module (Modules tab). */
+  custom?: boolean
 }
 
 export interface CommandRow extends ChannelCommand {
