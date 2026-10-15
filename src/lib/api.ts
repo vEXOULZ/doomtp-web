@@ -123,7 +123,8 @@ export interface Pack {
   name: string
   summary: string | null
   scope: 'global' | 'channel'
-  commands: CustomCommand[]
+  /** `internal`: only the pack's own commands call it, and chat can't type it. Sent by doomtp-bot from #173 on. */
+  commands: (CustomCommand & { internal?: boolean })[]
 }
 export interface Publication extends CustomCommand {
   published_as: string

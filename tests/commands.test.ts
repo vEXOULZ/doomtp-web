@@ -42,4 +42,16 @@ describe('command rows', () => {
     expect(filterRows(rows, '  ').length).toBe(2)
     expect(filterRows(rows, 'RNG').map((r) => r.name)).toEqual(['random'])
   })
+
+  it("marks a pack's internal helpers and lists them after the commands chat can type", () => {
+    const packs: Pack[] = [{
+      name: 'quotes', summary: null, scope: 'global',
+      commands: [{ ...custom('quote_add'), internal: true }, { ...custom('quote'), internal: false }],
+    }]
+    const rows = channelRows([], packs)
+    expect(rows.map((r) => [r.name, r.internal])).toEqual([['quote', false], ['quote_add', true]])
+    expect(filterRows(rows, 'internal').map((r) => r.name)).toEqual(['quote_add'])
+    // An older bot sends no flag: nothing is marked.
+    expect(channelRows([], [{ ...packs[0]!, commands: [custom('quote_add')] }])[0]!.internal).toBe(false)
+  })
 })

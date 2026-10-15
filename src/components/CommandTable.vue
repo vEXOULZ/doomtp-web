@@ -59,9 +59,12 @@ function toggle(key: string) {
             :aria-expanded="open.has(row.key)"
             @click="toggle(row.key)"
           >
-            <ChatLine class="name" role="cell" :lines="`${sign}${row.usage}`" :sign="sign" />
+            <ChatLine class="name" :class="{ internal: row.internal }" role="cell" :lines="row.internal ? row.usage : `${sign}${row.usage}`" :sign="sign" />
             <span class="vx-muted module" role="cell">{{ row.module }}</span>
-            <span role="cell"><VxChip :tone="row.role === 'everyone' ? 'default' : 'accent'">{{ row.role }}</VxChip></span>
+            <span role="cell">
+              <VxChip v-if="row.internal" title="Only this pack's own commands call it; chat can't type it">internal</VxChip>
+              <VxChip v-else :tone="row.role === 'everyone' ? 'default' : 'accent'">{{ row.role }}</VxChip>
+            </span>
             <span class="summary" role="cell">{{ row.summary }}<span v-if="slots.note" class="note"><slot name="note" :row="row"></slot></span></span>
           </button>
           <div v-if="slots.actions" class="actions"><slot name="actions" :row="row"></slot></div>
@@ -69,6 +72,9 @@ function toggle(key: string) {
 
         <div v-if="open.has(row.key)" class="detail">
           <p v-if="row.description">{{ row.description }}</p>
+          <p v-if="row.internal" class="vx-muted">
+            Internal to the <strong>{{ row.module }}</strong> pack: only its own commands call it, so it can't be typed in chat.
+          </p>
           <template v-if="row.kind !== 'built-in'">
             <p class="vx-muted">
               A custom command by <strong>@{{ row.owner }}</strong> (v{{ row.version }})<template v-if="row.kind === 'derived'">,
@@ -77,7 +83,7 @@ function toggle(key: string) {
             <ChatLine :lines="row.body" :sign="sign" context="body" block />
           </template>
           <div class="chips">
-            <VxChip k="needs">{{ row.role }}</VxChip>
+            <VxChip v-if="!row.internal" k="needs">{{ row.role }}</VxChip>
             <VxChip v-if="row.aliases.length" k="also">{{ row.aliases.join(', ') }}</VxChip>
             <VxChip v-if="row.alwaysOn" tone="ok">always on</VxChip>
             <VxChip v-if="row.fixedPolicy">no cooldown, no role</VxChip>
@@ -138,6 +144,7 @@ button.row { cursor: pointer; }
 /* Beats the pages' inline-code pill (.doc code): the name is the row, not a snippet in text. */
 .name { font-family: var(--vx-font-mono); font-size: 13px; overflow-wrap: anywhere; padding: 0; background: none; border: 0; }
 .module { font-size: 13px; }
+.name.internal { color: var(--vx-muted); }
 .summary { color: var(--vx-ink); }
 .detail { padding: 12px 14px 16px; border-bottom: 1px solid var(--vx-line); display: flex; flex-direction: column; gap: 10px; }
 .detail p { margin: 0; }
