@@ -2,19 +2,31 @@
 // Your own custom commands, as `cc` manages them in chat: write one, edit its body, summary and parameters, share
 // it, look back through its versions and revert, delete it; and your aliases for other people's commands.
 // A command is written "from" a channel, as `cc add` is typed in one: that channel's create role, filter and
-// command sign apply.
-import { VxButton, VxCallout, VxCheckbox, VxChip, VxDialog, VxEmptyState, VxField, VxInput, VxSelect, VxSkeleton, VxSwitch, timeAgo } from '@vexoulz/ui'
-import { computed, reactive, ref } from 'vue'
+// command sign apply. Publishing one (or an alias) in a channel is `cc publish` typed there: its publish role applies.
+import { VxButton, VxCallout, VxCheckbox, VxChip, VxDialog, VxEmptyState, VxField, VxInput, VxSelect, VxSkeleton, VxSwitch, timeAgo, useToast } from '@vexoulz/ui'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useResource } from '@vexoulz/ui/utils'
 import { errorText } from '@vexoulz/platform-web'
 import ChatLine from '@/components/ChatLine.vue'
 import { admin, type MyCommand } from '@/lib/admin'
 import type { Param } from '@/lib/api'
+import { isAdmin } from '@/lib/access'
 import { session } from '@/lib/session'
+import { site } from '@/lib/site'
 import { useAct } from '@/lib/useAct'
 
+const route = useRoute()
+const router = useRouter()
+const toast = useToast()
 const { data, error, reload } = useResource(() => admin.myCommands())
 const { busy, act } = useAct(reload)
+
+/** The channels the session may publish in: the ones it runs (every channel, for an admin). */
+const channels = computed(() =>
+  (isAdmin() ? (site.info?.channels ?? []).map((c) => c.login) : [...(session.channels ?? [])]).sort(),
+)
+const channelOptions = computed(() => channels.value.map((c) => ({ value: c, label: `#${c}` })))
 
 /** Where a new command is written from: your own channel, else the first you moderate. */
 const homeChannel = computed(() => {
@@ -27,16 +39,54 @@ const where = (c: MyCommand) =>
   (c.publications ?? []).map((p) => (p.channel === 'global' ? `everywhere as ${p.name}` : `#${p.channel}${p.name !== c.name ? ` as ${p.name}` : ''}`))
 
 // ── writing a new one ──
-const draft = reactive({ open: false, name: '', channel: '', body: '', summary: '' })
-function openNew() {
-  Object.assign(draft, { open: true, name: '', channel: homeChannel.value, body: '', summary: '' })
+const draft = reactive({ open: false, name: '', channel: '', body: '', summary: '', publish: true })
+function openNew(channel?: string) {
+  Object.assign(draft, { open: true, name: '', channel: channel ?? homeChannel.value, body: '', summary: '', publish: true })
 }
+// The Published tab sends people here with `?new=<channel>` to write one for that channel.
+onMounted(() => {
+  const from = route.query.new
+  if (typeof from !== 'string') return
+  openNew(from || undefined)
+  router.replace({ query: { ...route.query, new: undefined } })
+})
 const draftOk = computed(() => NAME.test(clean(draft.name)) && !!draft.channel.trim() && !!draft.body.trim())
 async function create() {
   if (!draftOk.value) return
   const name = clean(draft.name)
-  const body = { name, body: draft.body.trim(), summary: draft.summary.trim() || undefined, channel: clean(draft.channel) }
-  if (await act('new', () => admin.createCommand(body), `${name} created`)) draft.open = false
+  const channel = clean(draft.channel)
+  const body = { name, body: draft.body.trim(), summary: draft.summary.trim() || undefined, channel }
+  if (!draft.publish) {
+    if (await act('new', () => admin.createCommand(body), `${name} created`)) draft.open = false
+    return
+  }
+  // `cc add` then `cc publish` in the same channel: if the publish is refused, the command still exists.
+  let made = false
+  const run = async () => {
+    await admin.createCommand(body)
+    made = true
+    await admin.publish(channel, name)
+  }
+  if (await act('new', run, `${name} created and published in #${channel}`)) draft.open = false
+  else if (made) {
+    draft.open = false
+    toast.show(`${name} was created, but not published in #${channel}`, { kind: 'info', duration: 6000 })
+    await reload()
+  }
+}
+
+// ── publishing one of yours (or an alias) in a channel, as `cc publish <name> [as <name>]` there ──
+const pub = reactive({ open: false, command: '', channel: '', as: '' })
+function openPublish(command: string) {
+  const taken = new Set((data.value?.commands.find((c) => c.name === command)?.publications ?? []).map((p) => p.channel))
+  Object.assign(pub, { open: true, command, channel: channels.value.find((c) => !taken.has(c)) ?? homeChannel.value, as: '' })
+}
+const pubOk = computed(() => !!clean(pub.channel) && (!pub.as.trim() || NAME.test(clean(pub.as))))
+async function publish() {
+  if (!pubOk.value) return
+  const channel = clean(pub.channel)
+  const as = clean(pub.as) || undefined
+  if (await act('pub', () => admin.publish(channel, pub.command, as), `Published ${as ?? pub.command} in #${channel}`)) pub.open = false
 }
 
 // ── editing: body, summary and sharing in one PATCH; parameters one at a time ──
@@ -132,7 +182,7 @@ async function saveLink() {
           The commands you wrote, the same as <ChatLine lines="!cc list" sign="!" /> in chat. They run wherever
           they're published; share one and others can link it or publish it too.
         </p>
-        <VxButton variant="primary" size="sm" @click="openNew">New command</VxButton>
+        <VxButton variant="primary" size="sm" @click="openNew()">New command</VxButton>
       </div>
       <VxEmptyState v-if="!data.commands.length" title="No commands yet" text="Write one here, or with !cc add in a channel the bot is in." />
       <div v-else class="table-scroll vx-panel">
@@ -149,10 +199,11 @@ async function saveLink() {
               <td class="vx-mono vx-muted">v{{ c.version }}</td>
               <td class="small">
                 <div v-for="w in where(c)" :key="w">{{ w }}</div>
-                <span v-if="!where(c).length" class="vx-muted">nowhere yet</span>
+                <span v-if="!where(c).length" class="vx-muted">nowhere yet: chat can't run it until it's published</span>
                 <div v-if="c.links" class="vx-muted">{{ c.links }} linked</div>
               </td>
               <td class="end">
+                <VxButton size="sm" variant="ghost" :disabled="!channels.length" @click="openPublish(c.name)">Publish</VxButton>
                 <VxButton size="sm" variant="ghost" @click="openEdit(c)">Edit</VxButton>
                 <VxButton size="sm" variant="ghost" @click="history = c.name">History</VxButton>
                 <VxButton size="sm" variant="ghost" @click="deleting = c">Delete</VxButton>
@@ -180,6 +231,7 @@ async function saveLink() {
               <td class="vx-mono">{{ l.name }}<div v-if="l.summary" class="vx-muted small">{{ l.summary }}</div></td>
               <td class="vx-muted">@{{ l.owner }}</td>
               <td class="end">
+                <VxButton size="sm" variant="ghost" :disabled="!channels.length" @click="openPublish(l.alias)">Publish</VxButton>
                 <VxButton size="sm" variant="ghost" :loading="busy.has(`ul:${l.alias}`)" @click="act(`ul:${l.alias}`, () => admin.unlink(l.alias), `${l.alias} unlinked`)">Unlink</VxButton>
               </td>
             </tr>
@@ -202,6 +254,7 @@ async function saveLink() {
         <VxField label="Summary" help="Optional: one line for help and lists.">
           <template #default="{ id }"><VxInput :id="id" v-model="draft.summary" /></template>
         </VxField>
+        <VxCheckbox v-model="draft.publish" :label="`Publish it in #${clean(draft.channel) || 'that channel'} too, so chat there can run it`" />
       </form>
       <template #actions="{ close }">
         <VxButton @click="close">Cancel</VxButton>
@@ -291,6 +344,21 @@ async function saveLink() {
           :loading="busy.has('del')"
           @click="act('del', () => admin.deleteCommand(deleting!.name), `${deleting!.name} deleted`).then(() => (deleting = null))"
         >Delete</VxButton>
+      </template>
+    </VxDialog>
+
+    <VxDialog v-model:open="pub.open" :title="`Publish ${pub.command}`" width="520px">
+      <form id="pub-cmd" class="dialog-form" @submit.prevent="publish">
+        <VxField label="Channel" help="Where chat may run it. That channel's publish role applies, as for cc publish typed there.">
+          <template #default="{ id }"><VxSelect :id="id" v-model="pub.channel" :options="channelOptions" width="100%" /></template>
+        </VxField>
+        <VxField label="Publish as" help="Optional: another name for it there.">
+          <template #default="{ id }"><VxInput :id="id" v-model="pub.as" mono :placeholder="pub.command" :invalid="!!pub.as.trim() && !NAME.test(clean(pub.as))" /></template>
+        </VxField>
+      </form>
+      <template #actions="{ close }">
+        <VxButton @click="close">Cancel</VxButton>
+        <VxButton type="submit" form="pub-cmd" variant="primary" :loading="busy.has('pub')" :disabled="!pubOk">Publish</VxButton>
       </template>
     </VxDialog>
 
