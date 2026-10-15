@@ -150,8 +150,13 @@ export interface Trigger {
   run_as_rank: number
   /** Sent by bots from ADR-0026 on. */
   log_level?: string
+  /** ADR-0031: seconds before it fires again in the channel, and for the same chatter; 0 is none. */
+  cooldown_s?: number
+  user_cooldown_s?: number
   created_by?: string | null
 }
+/** Triggers with nobody behind them: they take only the channel-wide cooldown (ADR-0031). */
+export const NO_CHATTER: readonly string[] = ['timer', 'cron', 'stream_online', 'stream_offline']
 export const TRIGGER_EVENTS = [
   'redemption', 'raid', 'sub', 'resub', 'gift_sub', 'cheer', 'follow', 'stream_online', 'stream_offline',
 ] as const
@@ -163,6 +168,8 @@ export interface TriggerBody {
   /** At most the creator's own rank, which is the default. */
   run_as_rank?: number
   log_level?: string
+  cooldown_s?: number
+  user_cooldown_s?: number
 }
 
 export interface Variable {
@@ -515,6 +522,8 @@ export interface TriggerPatch {
   schedule?: Record<string, unknown>
   run_as_rank?: number
   log_level?: string
+  cooldown_s?: number
+  user_cooldown_s?: number
 }
 export interface FilterBody {
   pattern: string
