@@ -11,7 +11,7 @@ import { can } from '@/lib/access'
 import { admin } from '@/lib/admin'
 import { bareRow, type CommandRow as RefRow } from '@/lib/commands'
 import { count } from '@/lib/format'
-import { LOG_LEVELS, type CommandRow, type CommandRulePatch } from '@/lib/modules'
+import { CUSTOM_MODULE, LOG_LEVELS, type CommandRow, type CommandRulePatch } from '@/lib/modules'
 import { onOff, useAct } from '@/lib/useAct'
 
 const props = defineProps<{
@@ -141,11 +141,12 @@ async function save() {
       The rules every channel starts from; a channel's own rule for a command wins over the one here.
     </p>
     <p v-else class="vx-muted intro">
-      Every built-in command chat can run here, and who may. The same as
-      <ChatLine :lines="`${sign}cmd disable <name>`" :sign="sign" /> in chat; a command whose module is off stays off
-      whatever it says here. Custom commands are on the
-      <RouterLink :to="{ query: { tab: 'commands' } }">Published</RouterLink> tab, and your own unpublished ones on
-      <RouterLink :to="{ path: '/manage/me', query: { tab: 'commands' } }">My commands</RouterLink>.
+      Every command chat can run here, and who may. The same as
+      <ChatLine :lines="`${sign}cmd disable <name>`" :sign="sign" />, <ChatLine :lines="`${sign}perm`" :sign="sign" /> and
+      <ChatLine :lines="`${sign}cooldown`" :sign="sign" /> in chat; a command whose module is off stays off whatever it
+      says here. A custom command turns on and off on the <RouterLink :to="{ query: { tab: 'commands' } }">Published</RouterLink>
+      tab (or with its pack, on <RouterLink :to="{ query: { tab: 'modules' } }">Modules</RouterLink>); your unpublished
+      ones are on <RouterLink :to="{ path: '/manage/me', query: { tab: 'commands' } }">My commands</RouterLink>.
     </p>
     <CommandTable :rows="rows" :sign="sign" actions-label="On">
       <template #note="{ row }">
@@ -156,7 +157,12 @@ async function save() {
         >needs {{ ruleOf(row).missing!.join(', ') }}</VxChip>
       </template>
       <template #actions="{ row }">
-        <span v-if="!ruleOf(row).toggleable" class="vx-muted small nowrap">always on</span>
+        <RouterLink
+          v-if="ruleOf(row).custom"
+          :to="{ query: { tab: ruleOf(row).module === CUSTOM_MODULE ? 'commands' : 'modules' } }"
+          class="small nowrap"
+        >{{ ruleOf(row).module === CUSTOM_MODULE ? 'on Published' : 'with its pack' }}</RouterLink>
+        <span v-else-if="!ruleOf(row).toggleable" class="vx-muted small nowrap">always on</span>
         <VxSwitch
           v-else
           :model-value="ruleOf(row).enabled"
@@ -167,7 +173,8 @@ async function save() {
       </template>
       <template #detail="{ row }">
         <div class="chips">
-          <VxChip k="on here">{{ ruleOf(row).toggleable ? onOff(ruleOf(row).enabled) : 'always' }}</VxChip>
+          <VxChip v-if="ruleOf(row).custom" k="custom">{{ ruleOf(row).module === CUSTOM_MODULE ? 'published here' : `in the ${ruleOf(row).module} pack` }}</VxChip>
+          <VxChip v-else k="on here">{{ ruleOf(row).toggleable ? onOff(ruleOf(row).enabled) : 'always' }}</VxChip>
           <VxChip v-if="ruleOf(row).log_level" k="log level">{{ ruleOf(row).log_level }}</VxChip>
           <VxChip v-if="ruleOf(row).requires?.length" k="Twitch permission">{{ ruleOf(row).requires!.join(', ') }}</VxChip>
         </div>
@@ -176,7 +183,7 @@ async function save() {
 
     <VxDialog :open="editing !== null" :title="editing ? `${sign}${editing.name} here` : ''" @update:open="(v: boolean) => { if (!v) editing = null }">
       <form v-if="editing" id="rule-form" class="dialog-form" @submit.prevent="save">
-        <VxField v-if="editing.toggleable" :label="`On (now ${onOff(editing.enabled)})`" help="Default follows the module and the bot-wide setting.">
+        <VxField v-if="editing.toggleable && !editing.custom" :label="`On (now ${onOff(editing.enabled)})`" help="Default follows the module and the bot-wide setting.">
           <template #default><VxSegmented v-model="rule.enabled" :options="ENABLED_OPTIONS" label="Command on or off" /></template>
         </VxField>
         <VxField v-if="!editing.fixedPolicy" :label="`Who may run it (now ${who(editing)})`" :help="editing.allowed_roles?.length ? 'Picking a role replaces the list of roles above.' : undefined">
