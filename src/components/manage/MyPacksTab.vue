@@ -1,12 +1,14 @@
 <script setup lang="ts">
 // Your packs, as `pack` manages them in chat: a named set of your commands that is published and turned on and off
-// as one module. An internal member runs only when another command in the pack calls it.
+// as one module. An internal member runs only when another command in the pack calls it. A pack's own triggers
+// (ADR-0032) run wherever it is published.
 import { VxButton, VxCallout, VxCheckbox, VxChip, VxDialog, VxEmptyState, VxField, VxInput, VxSelect, VxSkeleton, VxSwitch } from '@vexoulz/ui'
 import { computed, reactive, ref } from 'vue'
 import { useResource } from '@vexoulz/ui/utils'
 import { errorText } from '@vexoulz/platform-web'
 import { admin, type MyPack } from '@/lib/admin'
 import { useAct } from '@/lib/useAct'
+import PackTriggers from './PackTriggers.vue'
 
 const { data, error, reload } = useResource(async () => {
   const [packs, commands] = await Promise.all([admin.myPacks(), admin.myCommands()])
@@ -44,8 +46,9 @@ const deleting = ref<MyPack | null>(null)
     <div v-else-if="!data" class="loading" aria-busy="true"><VxSkeleton v-for="i in 3" :key="i" h="38px" /></div>
     <template v-else>
       <p class="vx-muted intro">
-        A pack is a set of your commands published as one module, which a channel turns on and off as a whole. Publish
-        one from a channel's Published tab. Sharing it lets others publish it too, once every command in it is shared.
+        A pack is a set of your commands published as one module, which a channel turns on and off as a whole. Its
+        triggers run on their own wherever it is published. Publish one from a channel's Published tab. Sharing it lets
+        others publish it too, once every command in it is shared.
       </p>
       <VxEmptyState v-if="!data.packs.length" title="No packs yet" text="Create one below." />
       <div v-for="p in data.packs" :key="p.id" class="pack vx-panel">
@@ -89,6 +92,7 @@ const deleting = ref<MyPack | null>(null)
           <VxCheckbox v-model="addFor(p).internal" label="Internal" />
           <VxButton type="submit" size="sm" :loading="busy.has(`add:${p.name}`)" :disabled="!addFor(p).command">Add</VxButton>
         </form>
+        <PackTriggers v-if="p.triggers" :pack="p" :reload="reload" />
       </div>
 
       <form class="add vx-form-row vx-panel" @submit.prevent="create">

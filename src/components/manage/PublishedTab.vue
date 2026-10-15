@@ -53,11 +53,13 @@ const packOwner = (p: Pack) => {
 
 // ── publishing: one of your commands (or aliases), your pack, or a pack someone shared ──
 const mine = useResource(async () => {
-  if (!session.user) return { commands: [], packs: [], notHere: [] }
+  if (!session.user) return { commands: [], packs: [], triggers: {} as Record<string, string[]>, notHere: [] }
   const [commands, packs] = await Promise.all([admin.myCommands(), admin.myPacks()])
   return {
     commands: [...commands.commands.map((c) => c.name), ...commands.linked.map((l) => l.alias)].sort(),
     packs: packs.packs.filter((p) => !p.system).map((p) => p.name),
+    /** Each of your packs' trigger keys (ADR-0032): publishing a pack sets them going here. */
+    triggers: Object.fromEntries(packs.packs.map((p) => [p.name, (p.triggers ?? []).map((t) => t.key)])) as Record<string, string[]>,
     /** Your own commands chat here can't run yet: published neither here nor everywhere. */
     notHere: commands.commands
       .filter((c) => !(c.publications ?? []).some((p) => p.channel === props.login || p.channel === 'global'))
@@ -78,16 +80,21 @@ const ready = computed(() => (pub.what === 'command' ? !!pub.command : pub.what 
 async function publish() {
   if (!ready.value) return
   let needs: Record<string, string[]> | undefined
+  let triggers: string[] | undefined
   const run = async () => {
     const answer =
       pub.what === 'command'
         ? await admin.publish(props.login, pub.command, pub.as.trim() || undefined)
         : await admin.publishPack(props.login, pub.pack.trim(), pub.what === 'shared' ? loginOf(pub.owner) : undefined)
     needs = (answer as { needs_grants?: Record<string, string[]> }).needs_grants
+    triggers = (answer as { triggers?: string[] }).triggers
   }
   const label = pub.what === 'command' ? `${props.sign}${pub.as.trim() || pub.command}` : pub.pack.trim()
   if (!(await act('pub', run, `Published ${label} in #${props.login}`))) return
   pub.open = false
+  if (triggers?.length) {
+    toast.show(`Its triggers (${triggers.join(', ')}) now run here on their own. The ${label} module on the Modules tab turns them off.`, { duration: 8000 })
+  }
   const missing = Object.entries(needs ?? {}).filter(([, vars]) => vars.length)
   if (missing.length) {
     toast.show(`It writes channel variables it isn't granted yet: ${missing.map(([c, v]) => `${c} (${v.join(', ')})`).join('; ')}. Grant them below.`, { duration: 8000 })
@@ -257,7 +264,11 @@ const errText = errorText
             <template #default="{ id }"><VxInput :id="id" v-model="pub.as" mono :placeholder="pub.command" /></template>
           </VxField>
         </template>
-        <VxField v-else-if="pub.what === 'pack'" label="Your pack">
+        <VxField
+          v-else-if="pub.what === 'pack'"
+          label="Your pack"
+          :help="mine.data.value?.triggers[pub.pack]?.length ? `Its triggers (${mine.data.value.triggers[pub.pack]!.join(', ')}) will run here on their own.` : undefined"
+        >
           <template #default="{ id }">
             <VxSelect :id="id" v-model="pub.pack" :options="(mine.data.value?.packs ?? []).map((c) => ({ value: c, label: c }))" width="100%" />
           </template>
