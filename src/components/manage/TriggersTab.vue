@@ -1,12 +1,13 @@
 <script setup lang="ts">
 // A channel's triggers and timers: listeners on chat, Twitch events, timers and crons. Added, turned on or off and
 // edited and deleted as `trigger` and `timer` do in chat; one runs at its creator's rank at most. A listener's
-// pattern can be tried on a line of chat first.
+// pattern can be tried on a line of chat first. Its cooldowns (ADR-0031) are one for the whole channel and one per
+// chatter, as `listen|event|timer cooldown` sets them; triggers with no chatter take only the first.
 import { VxButton, VxCheckbox, VxChip, VxDialog, VxEmptyState, VxField, VxInput, VxRadioGroup, VxSelect, VxStepper, VxSwitch, useToast } from '@vexoulz/ui'
 import { computed, reactive, ref } from 'vue'
 import ChatLine from '@/components/ChatLine.vue'
 import { can, rankIn } from '@/lib/access'
-import { admin, TRIGGER_EVENTS, type Trigger, type TriggerBody } from '@/lib/admin'
+import { admin, NO_CHATTER, TRIGGER_EVENTS, type Trigger, type TriggerBody } from '@/lib/admin'
 import { errorText } from '@vexoulz/platform-web'
 import { LOG_LEVELS } from '@/lib/modules'
 import { onOff, useAct } from '@/lib/useAct'
@@ -26,6 +27,8 @@ const conditions = (t: Trigger) =>
   [t.schedule.only_live && 'only live', t.schedule.min_chat_lines && `${t.schedule.min_chat_lines}+ lines`, t.schedule.jitter_s && `±${t.schedule.jitter_s}s`]
     .filter(Boolean)
     .join(' · ')
+const cooldowns = (t: Trigger) =>
+  [t.cooldown_s && `${every(t.cooldown_s)} cooldown`, t.user_cooldown_s && `${every(t.user_cooldown_s)} per chatter`].filter(Boolean).join(' · ')
 const deleting = ref<number | null>(null)
 
 // ── the new-trigger form: its fields follow the kind picked ──
@@ -52,6 +55,8 @@ const blank = () => ({
   minLines: 0,
   runAs: Math.min(maxRank.value, 1000),
   log: 'output',
+  cooldown: 0,
+  userCooldown: 0,
 })
 const form = reactive(blank())
 const creating = ref(false)
@@ -78,6 +83,8 @@ function openEdit(t: Trigger) {
     minLines: typeof t.schedule.min_chat_lines === 'number' ? t.schedule.min_chat_lines : 0,
     runAs: Math.min(t.run_as_rank, maxRank.value),
     log: t.log_level ?? 'output',
+    cooldown: t.cooldown_s ?? 0,
+    userCooldown: t.user_cooldown_s ?? 0,
   })
   editing.value = t
   creating.value = true
@@ -93,10 +100,18 @@ const eventOptions = computed(() =>
 const UNITS = [{ value: 's', label: 'seconds' }, { value: 'm', label: 'minutes' }, { value: 'h', label: 'hours' }]
 const LOGS = LOG_LEVELS.map((l) => ({ value: l, label: l }))
 
+/** Whether the kind picked has a chatter to hold to a cooldown of their own. */
+const hasChatter = computed(() => !NO_CHATTER.includes(form.kind === 'event' ? form.event : form.kind))
 const body = computed<TriggerBody | null>(() => {
   const expr = form.expr.trim()
   if (!expr) return null
-  const base = { expr, run_as_rank: form.runAs, log_level: form.log }
+  const base = {
+    expr,
+    run_as_rank: form.runAs,
+    log_level: form.log,
+    cooldown_s: form.cooldown,
+    user_cooldown_s: hasChatter.value ? form.userCooldown : 0,
+  }
   const timing = { ...(form.onlyLive ? { only_live: true } : {}), ...(form.minLines ? { min_chat_lines: form.minLines } : {}) }
   switch (form.kind) {
     case 'listener':
@@ -168,6 +183,7 @@ const toast = useToast()
               {{ matches(t) }}
               <div v-if="t.match.name" class="small">named {{ t.match.name }}</div>
               <div v-if="conditions(t)" class="small">{{ conditions(t) }}</div>
+              <div v-if="cooldowns(t)" class="small">{{ cooldowns(t) }}</div>
             </td>
             <td class="wrap"><ChatLine :lines="t.expr" :sign="sign" context="body" /></td>
             <td class="vx-muted nowrap">rank {{ t.run_as_rank }}</td>
@@ -242,6 +258,17 @@ const toast = useToast()
         <VxField label="Expression" help="What it runs, as a custom command's body.">
           <template #default="{ id }"><VxInput :id="id" v-model="form.expr" mono placeholder="echo hi {$chatter.display}" /></template>
         </VxField>
+        <div class="cooldowns">
+          <VxField label="Cooldown" help="Seconds before it fires again anywhere in the channel. 0 is none.">
+            <template #default="{ id }"><VxStepper :id="id" v-model="form.cooldown" :min="0" :max="86400" :step="5" /></template>
+          </VxField>
+          <VxField
+            label="Per chatter"
+            :help="hasChatter ? 'Seconds before the same chatter sets it off again. 0 is none.' : 'Nobody sets this one off, so only the channel cooldown applies.'"
+          >
+            <template #default="{ id }"><VxStepper :id="id" v-model="form.userCooldown" :min="0" :max="86400" :step="5" :disabled="!hasChatter" /></template>
+          </VxField>
+        </div>
         <VxField label="Runs as rank" :help="`What it may do: at most your own rank here (${maxRank}).`">
           <template #default="{ id }"><VxStepper :id="id" v-model="form.runAs" :min="0" :max="maxRank" :step="10" /></template>
         </VxField>
@@ -271,5 +298,6 @@ const toast = useToast()
 
 <style scoped>
 .every { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.cooldowns { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
 .test .result { flex-basis: 100%; display: grid; gap: 4px; overflow-wrap: anywhere; }
 </style>
