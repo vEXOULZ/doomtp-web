@@ -131,7 +131,7 @@ export function referenceRows(
   return [
     ...builtins.map((b) => builtinRow(b, defaultPrefix)),
     ...global.map((c) => customRow(c.published_as, c, 'custom', 'derived')),
-    ...packs.flatMap((p) => p.commands.map((c) => customRow(c.name, c, p.name, 'derived'))),
+    ...packs.flatMap((p) => p.commands.map((c) => customRow(c.name, c, p.name, 'derived', c.role ?? 'everyone'))),
   ].sort(byModuleThenName)
 }
 
@@ -141,7 +141,7 @@ export function channelRows(publications: Publication[], packs: Pack[]): Command
     ...publications
       .filter((p) => p.status === 'active')
       .map((p) => customRow(p.published_as, p, 'custom', 'published', p.required_role ?? 'everyone')),
-    ...packs.flatMap((p) => p.commands.map((c) => customRow(c.name, c, p.name, 'published'))),
+    ...packs.flatMap((p) => p.commands.map((c) => customRow(c.name, c, p.name, 'published', c.role ?? 'everyone'))),
   ].sort(byModuleThenName)
 }
 

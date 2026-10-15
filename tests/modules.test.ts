@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Pack, Publication } from '../src/lib/api'
-import { commandRows, moduleRows, publishedRows } from '../src/lib/modules'
+import { commandRows, moduleRows, publishedRows, underFloor } from '../src/lib/modules'
 
 const cmd = (id: string, name: string) => ({ id, name, owner: 'alice', summary: null, body: '', version: 1, shareable: false })
 const packs: Pack[] = [
@@ -65,5 +65,15 @@ describe('commandRows', () => {
       ['echo', false, true],
       ['ping', true, false],
     ])
+  })
+})
+
+describe('underFloor', () => {
+  it("keeps a rule from going under a pack member's rank, and leaves a channel's own roles to the bot", () => {
+    expect(underFloor('vip', 'moderator')).toBe(true)
+    expect(underFloor('broadcaster', 'moderator')).toBe(false)
+    expect(underFloor('moderator', 'moderator')).toBe(false)
+    expect(underFloor('regulars', 'moderator')).toBe(false)
+    expect(underFloor('everyone', null)).toBe(false)
   })
 })
