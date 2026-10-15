@@ -13,6 +13,8 @@ export interface ChannelCommand {
   required_role?: string
   /** When set, exactly these roles may run it instead. */
   allowed_roles?: string[] | null
+  /** The rank its pack sets (ADR-0033): no rule here goes under it. Sent by doomtp-bot from #175 on. */
+  min_role?: string | null
   cooldowns?: Record<string, { tier_s: number; user_s: number }>
   /** What the bot logs when it runs here (bots from ADR-0026 on). */
   log_level?: LogLevel
@@ -40,6 +42,22 @@ export function commandRows(commands: ChannelCommand[], builtins: Pick<Builtin, 
   return commands
     .map((c) => ({ ...c, toggleable: byName.get(c.name)?.toggleable ?? true, fixedPolicy: byName.get(c.name)?.fixed_policy ?? false }))
     .sort((a, b) => a.name.localeCompare(b.name))
+}
+
+/** The built-in roles' ranks, as the bot has them. A channel's own roles rank between everyone and broadcaster. */
+export const BUILTIN_RANKS: Record<string, number> = {
+  everyone: 0,
+  subscriber: 20,
+  vip: 60,
+  moderator: 80,
+  lead_moderator: 90,
+  broadcaster: 100,
+}
+
+/** Would a rule naming `role` go under the rank the command's pack sets? Unknown to us (a channel's own role): the bot decides. */
+export function underFloor(role: string, floor: string | null | undefined): boolean {
+  if (!floor || !(role in BUILTIN_RANKS) || !(floor in BUILTIN_RANKS)) return false
+  return BUILTIN_RANKS[role] < BUILTIN_RANKS[floor]
 }
 
 export const LOG_LEVELS = ['off', 'errors', 'output', 'invocations', 'all'] as const

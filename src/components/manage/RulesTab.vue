@@ -11,7 +11,7 @@ import { can } from '@/lib/access'
 import { admin } from '@/lib/admin'
 import { bareRow, type CommandRow as RefRow } from '@/lib/commands'
 import { count } from '@/lib/format'
-import { CUSTOM_MODULE, LOG_LEVELS, type CommandRow, type CommandRulePatch } from '@/lib/modules'
+import { CUSTOM_MODULE, LOG_LEVELS, underFloor, type CommandRow, type CommandRulePatch } from '@/lib/modules'
 import { onOff, useAct } from '@/lib/useAct'
 
 const props = defineProps<{
@@ -108,11 +108,16 @@ const ENABLED_OPTIONS = [
   { value: 'off', label: 'Off' },
   { value: DEFAULT, label: 'Default' },
 ]
+// A pack member's rank is a floor (ADR-0033): the roles under it aren't offered.
+const ruleRoles = computed(() => props.roles.filter((r) => !underFloor(r, editing.value?.min_role)))
+const floorNote = computed(() =>
+  editing.value?.min_role ? `Its ${editing.value.module} pack sets ${editing.value.min_role} and up: a channel can only raise it.` : undefined,
+)
 const roleChoices = computed(() => {
   const current = editing.value?.required_role
   return [
     { value: KEEP, label: 'As is' },
-    ...props.roles.map((r) => ({ value: r, label: `${r} and up` })),
+    ...ruleRoles.value.map((r) => ({ value: r, label: `${r} and up` })),
     ...(current && !props.roles.includes(current) ? [{ value: current, label: `${current} and up` }] : []),
     { value: DEFAULT, label: 'Default (bot-wide or built-in)' },
   ]
@@ -186,14 +191,14 @@ async function save() {
         <VxField v-if="editing.toggleable && !editing.custom" :label="`On (now ${onOff(editing.enabled)})`" help="Default follows the module and the bot-wide setting.">
           <template #default><VxSegmented v-model="rule.enabled" :options="ENABLED_OPTIONS" label="Command on or off" /></template>
         </VxField>
-        <VxField v-if="!editing.fixedPolicy" :label="`Who may run it (now ${who(editing)})`" :help="editing.allowed_roles?.length ? 'Picking a role replaces the list of roles above.' : undefined">
+        <VxField v-if="!editing.fixedPolicy" :label="`Who may run it (now ${who(editing)})`" :help="editing.allowed_roles?.length ? 'Picking a role replaces the list of roles above.' : floorNote">
           <template #default="{ id }"><VxSelect :id="id" v-model="rule.role" :options="roleChoices" width="100%" /></template>
         </VxField>
         <VxField v-if="!editing.fixedPolicy" label="Only certain roles" :help="rule.allowed === 'list' ? 'Exactly these roles may run it, whatever their rank. Pick at least one.' : 'Instead of a rank, name exactly which roles may run it.'">
           <template #default>
             <VxSegmented v-model="rule.allowed" :options="ALLOWED_OPTIONS" label="Only certain roles" />
             <div v-if="rule.allowed === 'list'" class="only">
-              <VxCheckbox v-for="r in roles" :key="r" :model-value="rule.only.includes(r)" :label="r" @update:model-value="(on: boolean) => toggleOnly(r, on)" />
+              <VxCheckbox v-for="r in ruleRoles" :key="r" :model-value="rule.only.includes(r)" :label="r" @update:model-value="(on: boolean) => toggleOnly(r, on)" />
             </div>
           </template>
         </VxField>

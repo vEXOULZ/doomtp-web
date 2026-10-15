@@ -506,8 +506,9 @@ export const admin = {
   createPack: (name: string, summary: string) => request<unknown>('/me/packs', json('POST', { name, summary })),
   sharePack: (name: string, shareable: boolean) => request<unknown>(`/me/packs/${encodeURIComponent(name)}`, json('PATCH', { shareable })),
   deletePack: (name: string) => request<unknown>(`/me/packs/${encodeURIComponent(name)}`, json('DELETE')),
-  addToPack: (pack: string, command: string, internal = false) =>
-    request<unknown>(`/me/packs/${encodeURIComponent(pack)}/commands/${encodeURIComponent(command)}`, json('PUT', { internal })),
+  /** Adds it, and sets what's given: `internal`, and `role`, the rank it needs wherever the pack is published (ADR-0033). */
+  addToPack: (pack: string, command: string, set: { internal?: boolean; role?: string } = {}) =>
+    request<unknown>(`/me/packs/${encodeURIComponent(pack)}/commands/${encodeURIComponent(command)}`, json('PUT', set)),
   removeFromPack: (pack: string, command: string) =>
     request<unknown>(`/me/packs/${encodeURIComponent(pack)}/commands/${encodeURIComponent(command)}`, json('DELETE')),
   setPackTrigger: (pack: string, key: string, body: PackTriggerBody) =>
@@ -645,7 +646,8 @@ export interface MyPack {
   name: string
   summary: string | null
   system: boolean
-  commands: { name: string; internal: boolean; shareable: boolean }[]
+  /** `role`: the rank it needs wherever the pack is published (ADR-0033); left out by bots before doomtp-bot #175. */
+  commands: { name: string; internal: boolean; role?: string; shareable: boolean }[]
   shareable: boolean
   /** Channel logins, or `global`. */
   published: string[]
