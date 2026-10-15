@@ -11,6 +11,8 @@ export interface CommandRow {
   usage: string
   module: string
   kind: RowKind
+  /** A pack's helper: only its pack's own commands call it, so it can't be typed in chat. */
+  internal: boolean
   role: string
   summary: string
   description: string
@@ -41,6 +43,7 @@ export function builtinRow(spec: Builtin, defaultPrefix: string, prefix = defaul
     usage: spec.usage,
     module: spec.module,
     kind: 'built-in',
+    internal: false,
     role: spec.required_role,
     summary,
     description,
@@ -57,7 +60,14 @@ export function builtinRow(spec: Builtin, defaultPrefix: string, prefix = defaul
   }
 }
 
-export function customRow(name: string, command: CustomCommand, module: string, kind: RowKind, role = 'everyone'): CommandRow {
+export function customRow(
+  name: string,
+  command: CustomCommand & { internal?: boolean },
+  module: string,
+  kind: RowKind,
+  role = 'everyone',
+): CommandRow {
+  const internal = command.internal === true
   const summary = command.summary || `custom command by @${command.owner}`
   return {
     key: `${kind}:${module}:${name}`,
@@ -65,6 +75,7 @@ export function customRow(name: string, command: CustomCommand, module: string, 
     usage: name,
     module,
     kind,
+    internal,
     role,
     summary,
     description: '',
@@ -77,7 +88,7 @@ export function customRow(name: string, command: CustomCommand, module: string, 
     owner: command.owner,
     version: command.version,
     body: command.body,
-    search: [name, module, summary, command.owner, command.body].join(' ').toLowerCase(),
+    search: [name, module, summary, command.owner, command.body, internal ? 'internal' : ''].join(' ').toLowerCase(),
   }
 }
 
@@ -89,6 +100,7 @@ export function bareRow(name: string, module: string, summary: string): CommandR
     usage: name,
     module,
     kind: 'built-in',
+    internal: false,
     role: 'everyone',
     summary,
     description: '',
@@ -105,8 +117,9 @@ export function bareRow(name: string, module: string, summary: string): CommandR
   }
 }
 
+/** By module, the commands chat can type before their pack's internal helpers, then by name. */
 const byModuleThenName = (a: CommandRow, b: CommandRow) =>
-  a.module.localeCompare(b.module) || a.name.localeCompare(b.name)
+  a.module.localeCompare(b.module) || Number(a.internal) - Number(b.internal) || a.name.localeCompare(b.name)
 
 /** The command reference: every built-in, plus what is published for every channel (ADR-0012). */
 export function referenceRows(
@@ -118,7 +131,7 @@ export function referenceRows(
   return [
     ...builtins.map((b) => builtinRow(b, defaultPrefix)),
     ...global.map((c) => customRow(c.published_as, c, 'custom', 'derived')),
-    ...packs.flatMap((p) => p.commands.map((c) => customRow(c.name, c, p.name, 'derived'))),
+    ...packs.flatMap((p) => p.commands.map((c) => customRow(c.name, c, p.name, 'derived', c.role ?? 'everyone'))),
   ].sort(byModuleThenName)
 }
 
@@ -128,7 +141,7 @@ export function channelRows(publications: Publication[], packs: Pack[]): Command
     ...publications
       .filter((p) => p.status === 'active')
       .map((p) => customRow(p.published_as, p, 'custom', 'published', p.required_role ?? 'everyone')),
-    ...packs.flatMap((p) => p.commands.map((c) => customRow(c.name, c, p.name, 'published'))),
+    ...packs.flatMap((p) => p.commands.map((c) => customRow(c.name, c, p.name, 'published', c.role ?? 'everyone'))),
   ].sort(byModuleThenName)
 }
 

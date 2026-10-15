@@ -123,7 +123,11 @@ export interface Pack {
   name: string
   summary: string | null
   scope: 'global' | 'channel'
-  commands: CustomCommand[]
+  /**
+   * `internal`: only the pack's own commands call it, and chat can't type it. Sent by doomtp-bot from #173 on.
+   * `role`: the rank the pack sets on it, which no channel goes under (ADR-0033, doomtp-bot #175).
+   */
+  commands: (CustomCommand & { internal?: boolean; role?: string })[]
 }
 export interface Publication extends CustomCommand {
   published_as: string

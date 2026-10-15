@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // Your packs, as `pack` manages them in chat: a named set of your commands that is published and turned on and off
 // as one module. An internal member runs only when another command in the pack calls it. A pack's own triggers
-// (ADR-0032) run wherever it is published.
+// (ADR-0032) run wherever it is published. Each member's rank (ADR-0033) is the least a channel can require of it.
 import { VxButton, VxCallout, VxCheckbox, VxChip, VxDialog, VxEmptyState, VxField, VxInput, VxSelect, VxSkeleton, VxSwitch } from '@vexoulz/ui'
 import { computed, reactive, ref } from 'vue'
 import { useResource } from '@vexoulz/ui/utils'
@@ -24,14 +24,21 @@ async function create() {
   if (await act('new', () => admin.createPack(name.value, draft.summary.trim()), `Pack ${name.value} created`)) Object.assign(draft, { name: '', summary: '' })
 }
 
-const adding = reactive<Record<string, { command: string; internal: boolean }>>({})
-const addFor = (p: MyPack) => (adding[p.name] ??= { command: '', internal: false })
+const adding = reactive<Record<string, { command: string; internal: boolean; role: string }>>({})
+const addFor = (p: MyPack) => (adding[p.name] ??= { command: '', internal: false, role: 'everyone' })
+// The ranks a pack can set: the built-in ones, since a channel's own roles don't exist in the others.
+const RANKS = ['everyone', 'subscriber', 'vip', 'moderator', 'lead_moderator', 'broadcaster'].map((r) => ({
+  value: r,
+  label: r === 'everyone' ? 'Everyone' : `${r} and up`,
+}))
+const ranked = (on: string, name: string, pack: string) =>
+  on === 'everyone' ? `${name} is open to everyone` : `${name} needs ${on} wherever ${pack} is published`
 const choices = (p: MyPack) =>
   (data.value?.commands ?? []).filter((c) => !p.commands.some((m) => m.name === c)).map((c) => ({ value: c, label: c }))
 async function add(p: MyPack) {
   const a = addFor(p)
   if (!a.command) return
-  if (await act(`add:${p.name}`, () => admin.addToPack(p.name, a.command, a.internal), `${a.command} added to ${p.name}`)) a.command = ''
+  if (await act(`add:${p.name}`, () => admin.addToPack(p.name, a.command, { internal: a.internal, role: a.role }), `${a.command} added to ${p.name}`)) a.command = ''
 }
 const where = (p: MyPack) => p.published.map((c) => (c === 'global' ? 'everywhere' : `#${c}`))
 const deleting = ref<MyPack | null>(null)
@@ -46,8 +53,9 @@ const deleting = ref<MyPack | null>(null)
     <div v-else-if="!data" class="loading" aria-busy="true"><VxSkeleton v-for="i in 3" :key="i" h="38px" /></div>
     <template v-else>
       <p class="vx-muted intro">
-        A pack is a set of your commands published as one module, which a channel turns on and off as a whole. Its
-        triggers run on their own wherever it is published. Publish one from a channel's Published tab. Sharing it lets
+        A pack is a set of your commands published as one module, which a channel turns on and off as a whole. Each
+        command's rank is the least a channel can require of it: a channel can raise it, not lower it. Its triggers run
+        on their own wherever it is published. Publish one from a channel's Published tab. Sharing it lets
         others publish it too, once every command in it is shared.
       </p>
       <VxEmptyState v-if="!data.packs.length" title="No packs yet" text="Create one below." />
@@ -80,7 +88,19 @@ const deleting = ref<MyPack | null>(null)
                   :model-value="c.internal"
                   :disabled="busy.has(`in:${p.name}:${c.name}`)"
                   label="Internal"
-                  @update:model-value="(on: boolean) => act(`in:${p.name}:${c.name}`, () => admin.addToPack(p.name, c.name, on), on ? `${c.name} is internal: only ${p.name}'s commands can call it` : `${c.name} is public again`)"
+                  @update:model-value="(on: boolean) => act(`in:${p.name}:${c.name}`, () => admin.addToPack(p.name, c.name, { internal: on }), on ? `${c.name} is internal: only ${p.name}'s commands can call it` : `${c.name} is public again`)"
+                />
+              </td>
+              <td>
+                <VxSelect
+                  v-if="c.role"
+                  :model-value="c.role"
+                  :options="RANKS"
+                  size="sm"
+                  width="170px"
+                  :aria-label="`Who may run ${c.name}`"
+                  :disabled="busy.has(`rk:${p.name}:${c.name}`)"
+                  @update:model-value="(r?: string) => r && act(`rk:${p.name}:${c.name}`, () => admin.addToPack(p.name, c.name, { role: r }), ranked(r, c.name, p.name))"
                 />
               </td>
               <td class="end">
@@ -98,6 +118,7 @@ const deleting = ref<MyPack | null>(null)
         <p v-else class="vx-muted small">No commands in it yet.</p>
         <form class="add-cmd" @submit.prevent="add(p)">
           <VxSelect v-model="addFor(p).command" :options="choices(p)" placeholder="Add one of your commands" :disabled="!choices(p).length" />
+          <VxSelect v-model="addFor(p).role" :options="RANKS" width="170px" aria-label="Who may run it" />
           <VxCheckbox v-model="addFor(p).internal" label="Internal" />
           <VxButton type="submit" size="sm" :loading="busy.has(`add:${p.name}`)" :disabled="!addFor(p).command">Add</VxButton>
         </form>
