@@ -294,6 +294,14 @@ function roleSource(name: string): string {
           the event's user: the raider, the subscriber.
         </li>
         <li>
+          <strong>The bot's own events</strong> have no chatter. <code>bot_online</code> fires when it is in chat again,
+          with <code>{event.reason}</code> (<code>start</code>, <code>update</code> or <code>reconnect</code>) and
+          <code>{event.down_s}</code>, at most once every 15 minutes. After an update, <code>bot_updated</code> fires
+          first, with <code>{event.version}</code> and <code>{event.previous}</code>. <code>bot_joined</code>,
+          <code>bot_modded</code> and <code>bot_unmodded</code> fire when it joins and when it is given or loses
+          moderator, which it notices within the hour.
+        </li>
+        <li>
           <strong>Listeners</strong> run on ordinary chat lines matching a regular expression, with captures in
           <code>{match.1}</code> and <code>{match.name}</code>.
         </li>
