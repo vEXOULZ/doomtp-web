@@ -141,9 +141,11 @@ async function save() {
       The rules every channel starts from; a channel's own rule for a command wins over the one here.
     </p>
     <p v-else class="vx-muted intro">
-      Every command chat can run here, and who may. The same as
+      Every built-in command chat can run here, and who may. The same as
       <ChatLine :lines="`${sign}cmd disable <name>`" :sign="sign" /> in chat; a command whose module is off stays off
-      whatever it says here.
+      whatever it says here. Custom commands are on the
+      <RouterLink :to="{ query: { tab: 'commands' } }">Published</RouterLink> tab, and your own unpublished ones on
+      <RouterLink :to="{ path: '/manage/me', query: { tab: 'commands' } }">My commands</RouterLink>.
     </p>
     <CommandTable :rows="rows" :sign="sign" actions-label="On">
       <template #note="{ row }">

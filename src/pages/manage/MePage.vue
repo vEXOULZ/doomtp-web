@@ -61,7 +61,8 @@ const moderated = computed(() =>
       <section>
         <h2 class="vx-eyebrow sec">Channels</h2>
         <p v-if="!session.user" class="vx-muted">
-          Signed in with the admin password: you manage every channel, and have no Twitch account here.
+          Signed in with the admin password: you manage every channel, and have no Twitch account here. Your own
+          commands, packs and variables need a Twitch sign-in.
         </p>
         <div v-else class="chips">
           <RouterLink v-if="own" :to="`/manage/channels/${own}`" class="vx-btn is-sm">#{{ own }} <VxChip tone="ok">yours</VxChip></RouterLink>

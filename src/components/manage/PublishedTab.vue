@@ -38,7 +38,7 @@ const hasUser = computed(() => !!session.user)
 
 const grants = useResource(async () => (await admin.grants(props.login)).grants, { source: () => props.login })
 const reloadAll = async () => {
-  await Promise.all([props.reload(), grants.reload()])
+  await Promise.all([props.reload(), grants.reload(), mine.reload()])
 }
 const { busy, act } = useAct(reloadAll)
 
@@ -53,16 +53,20 @@ const packOwner = (p: Pack) => {
 
 // ── publishing: one of your commands (or aliases), your pack, or a pack someone shared ──
 const mine = useResource(async () => {
-  if (!session.user) return { commands: [], packs: [] }
+  if (!session.user) return { commands: [], packs: [], notHere: [] }
   const [commands, packs] = await Promise.all([admin.myCommands(), admin.myPacks()])
   return {
     commands: [...commands.commands.map((c) => c.name), ...commands.linked.map((l) => l.alias)].sort(),
     packs: packs.packs.filter((p) => !p.system).map((p) => p.name),
+    /** Your own commands chat here can't run yet: published neither here nor everywhere. */
+    notHere: commands.commands
+      .filter((c) => !(c.publications ?? []).some((p) => p.channel === props.login || p.channel === 'global'))
+      .sort((a, b) => a.name.localeCompare(b.name)),
   }
-})
+}, { source: () => props.login })
 const pub = reactive({ open: false, what: 'command', command: '', as: '', pack: '', owner: '' })
-function openPublish() {
-  Object.assign(pub, { open: true, what: 'command', command: '', as: '', pack: '', owner: '' })
+function openPublish(command = '') {
+  Object.assign(pub, { open: true, what: 'command', command, as: '', pack: '', owner: '' })
   void mine.reload()
 }
 const WHAT = [
@@ -108,7 +112,10 @@ const errText = errorText
   <section class="mtab">
     <div class="head">
       <h2 class="vx-eyebrow sub">Published here</h2>
-      <VxButton v-if="mayPublish && hasUser" size="sm" variant="primary" @click="openPublish">Publish</VxButton>
+      <div class="actions">
+        <RouterLink v-if="hasUser" :to="{ path: '/manage/me', query: { tab: 'commands', new: login } }" class="vx-btn is-sm">New command</RouterLink>
+        <VxButton v-if="mayPublish && hasUser" size="sm" variant="primary" @click="openPublish()">Publish</VxButton>
+      </div>
     </div>
     <p v-if="mayPublish && !hasUser" class="vx-muted small intro">Publishing names the publisher: sign in with Twitch to publish here.</p>
     <VxEmptyState v-if="!published.length" title="Nothing published here" text="Custom commands and packs published to this channel show up here." />
@@ -154,6 +161,28 @@ const errText = errorText
                   @click="unpublishing = { kind: 'command', name: p.name }"
                 >Unpublish</VxButton>
               </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </template>
+
+    <template v-if="mayPublish && mine.data.value?.notHere.length">
+      <h2 class="vx-eyebrow sub">Yours, not published here</h2>
+      <p class="vx-muted intro">
+        Your commands chat here can't run yet. Publishing one is
+        <ChatLine :lines="`${sign}cc publish <name>`" :sign="sign" /> typed here.
+      </p>
+      <div class="table-scroll vx-panel">
+        <table class="vx-table">
+          <tbody>
+            <tr v-for="c in mine.data.value.notHere" :key="c.id">
+              <td class="nowrap">
+                <span class="vx-mono">{{ c.name }}</span>
+                <div v-if="c.summary" class="vx-muted small">{{ c.summary }}</div>
+              </td>
+              <td class="wrap body"><ChatLine :lines="c.body" :sign="sign" context="body" /></td>
+              <td class="end"><VxButton size="sm" variant="ghost" @click="openPublish(c.name)">Publish</VxButton></td>
             </tr>
           </tbody>
         </table>
@@ -266,5 +295,7 @@ const errText = errorText
 <style scoped>
 .head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
 .head .sub { margin: 0; }
+.head .actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.body { max-width: 26rem; }
 .vars { display: flex; flex-wrap: wrap; gap: 4px 14px; }
 </style>
