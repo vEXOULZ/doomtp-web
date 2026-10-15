@@ -160,9 +160,12 @@ export interface Trigger {
   pack_key?: string | null
 }
 /** Triggers with nobody behind them: they take only the channel-wide cooldown (ADR-0031). */
-export const NO_CHATTER: readonly string[] = ['timer', 'cron', 'stream_online', 'stream_offline']
+/** The bot's own events (ADR-0034): online at start or after a reconnect, updated, joined, modded or unmodded. */
+export const BOT_EVENTS = ['bot_online', 'bot_updated', 'bot_joined', 'bot_modded', 'bot_unmodded'] as const
+export const NO_CHATTER: readonly string[] = ['timer', 'cron', 'stream_online', 'stream_offline', ...BOT_EVENTS]
 export const TRIGGER_EVENTS = [
   'redemption', 'raid', 'sub', 'resub', 'gift_sub', 'cheer', 'follow', 'stream_online', 'stream_offline', 'pyramid',
+  ...BOT_EVENTS,
 ] as const
 export interface TriggerBody {
   type: string
