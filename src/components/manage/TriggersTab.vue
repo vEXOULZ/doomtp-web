@@ -11,24 +11,11 @@ import { admin, NO_CHATTER, TRIGGER_EVENTS, type Trigger, type TriggerBody } fro
 import { errorText } from '@vexoulz/platform-web'
 import { LOG_LEVELS } from '@/lib/modules'
 import { onOff, useAct } from '@/lib/useAct'
+import { conditions, cooldowns, matches, NEEDS } from '@/lib/triggers'
 
 const props = defineProps<{ login: string; sign: string; triggers: Trigger[]; capabilities: string[]; reload: () => Promise<void> }>()
 const { busy, act } = useAct(props.reload)
 
-function matches(t: Trigger) {
-  if (typeof t.match.regex === 'string') return t.match.regex
-  if (typeof t.schedule.cron === 'string') return t.schedule.cron
-  if (typeof t.schedule.every_s === 'number') return `every ${every(t.schedule.every_s)}`
-  const rest = { ...t.match, ...t.schedule }
-  return Object.keys(rest).length ? JSON.stringify(rest) : ''
-}
-const every = (s: number) => (s % 3600 === 0 ? `${s / 3600}h` : s % 60 === 0 ? `${s / 60}m` : `${s}s`)
-const conditions = (t: Trigger) =>
-  [t.schedule.only_live && 'only live', t.schedule.min_chat_lines && `${t.schedule.min_chat_lines}+ lines`, t.schedule.jitter_s && `±${t.schedule.jitter_s}s`]
-    .filter(Boolean)
-    .join(' · ')
-const cooldowns = (t: Trigger) =>
-  [t.cooldown_s && `${every(t.cooldown_s)} cooldown`, t.user_cooldown_s && `${every(t.user_cooldown_s)} per chatter`].filter(Boolean).join(' · ')
 const deleting = ref<number | null>(null)
 
 // ── the new-trigger form: its fields follow the kind picked ──
@@ -39,8 +26,6 @@ const KINDS = [
   { value: 'cron', label: 'Cron', hint: 'at set times, in the channel’s time zone' },
 ] as const
 type Kind = (typeof KINDS)[number]['value']
-// Events that need something the channel granted the bot (ADR-0007).
-const NEEDS: Record<string, string> = { follow: 'followers', redemption: 'redemptions', cheer: 'bits' }
 const maxRank = computed(() => rankIn(props.login))
 const blank = () => ({
   kind: 'listener' as Kind,
@@ -169,7 +154,7 @@ const toast = useToast()
     </div>
     <VxEmptyState v-if="!triggers.length" title="No triggers or timers">
       <template #default>
-        Add one here, or in chat with <ChatLine :lines="`${sign}trigger listen <regex> => <expression>`" :sign="sign" /> or
+        Add one here, or in chat with <ChatLine :lines="`${sign}listen add <name> /<regex>/ <expression>`" :sign="sign" /> or
         <ChatLine :lines="`${sign}timer add 15m <expression>`" :sign="sign" />.
       </template>
     </VxEmptyState>
@@ -178,7 +163,10 @@ const toast = useToast()
         <thead><tr><th>Type</th><th>Matches</th><th>Expression</th><th>Runs as</th><th>Log</th><th>On</th><th></th></tr></thead>
         <tbody>
           <tr v-for="t in triggers" :key="t.id">
-            <td><VxChip :tone="t.type === 'timer' || t.type === 'cron' ? 'default' : 'accent'">{{ t.type }}</VxChip></td>
+            <td>
+              <VxChip :tone="t.type === 'timer' || t.type === 'cron' ? 'default' : 'accent'">{{ t.type }}</VxChip>
+              <div v-if="t.pack" class="small vx-muted">{{ t.pack }} pack</div>
+            </td>
             <td class="vx-mono vx-muted wrap">
               {{ matches(t) }}
               <div v-if="t.match.name" class="small">named {{ t.match.name }}</div>
@@ -188,14 +176,18 @@ const toast = useToast()
             <td class="wrap"><ChatLine :lines="t.expr" :sign="sign" context="body" /></td>
             <td class="vx-muted nowrap">rank {{ t.run_as_rank }}</td>
             <td class="vx-muted">{{ t.log_level ?? '' }}</td>
-            <td>
+            <td v-if="t.pack" colspan="2" class="vx-muted small pack-note">
+              From the {{ t.pack }} pack{{ t.enabled ? '' : ', which its owner turned off' }}. Turn it off here with the
+              {{ t.pack }} module on the Modules tab.
+            </td>
+            <td v-if="!t.pack">
               <VxSwitch
                 :model-value="t.enabled"
                 :disabled="!can('triggers.edit', login) || busy.has(`t:${t.id}`)"
                 @update:model-value="(on: boolean) => act(`t:${t.id}`, () => admin.setTrigger(login, t.id, on), `${t.type} turned ${onOff(on)}`)"
               ><span class="sr-only">{{ t.type }} {{ t.id }}</span></VxSwitch>
             </td>
-            <td class="end">
+            <td v-if="!t.pack" class="end">
               <template v-if="can('triggers.edit', login)">
                 <VxButton size="sm" variant="ghost" @click="openEdit(t)">Edit</VxButton>
                 <VxButton size="sm" variant="ghost" @click="deleting = t.id">Delete</VxButton>
@@ -298,6 +290,7 @@ const toast = useToast()
 
 <style scoped>
 .every { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.pack-note { max-width: 18rem; }
 .cooldowns { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
 .test .result { flex-basis: 100%; display: grid; gap: 4px; overflow-wrap: anywhere; }
 </style>

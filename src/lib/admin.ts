@@ -154,11 +154,15 @@ export interface Trigger {
   cooldown_s?: number
   user_cooldown_s?: number
   created_by?: string | null
+  /** Set on a pack's trigger (ADR-0029): the pack's name and the trigger's key in it. A channel can't change it; its
+   * pack's owner does (ADR-0032), and the channel turns it off with the pack's module. */
+  pack?: string | null
+  pack_key?: string | null
 }
 /** Triggers with nobody behind them: they take only the channel-wide cooldown (ADR-0031). */
 export const NO_CHATTER: readonly string[] = ['timer', 'cron', 'stream_online', 'stream_offline']
 export const TRIGGER_EVENTS = [
-  'redemption', 'raid', 'sub', 'resub', 'gift_sub', 'cheer', 'follow', 'stream_online', 'stream_offline',
+  'redemption', 'raid', 'sub', 'resub', 'gift_sub', 'cheer', 'follow', 'stream_online', 'stream_offline', 'pyramid',
 ] as const
 export interface TriggerBody {
   type: string
@@ -171,6 +175,29 @@ export interface TriggerBody {
   cooldown_s?: number
   user_cooldown_s?: number
 }
+
+/** A pack's own trigger (ADR-0032), by its key in the pack. It runs at everyone's rank wherever the pack is. */
+export interface PackTrigger {
+  key: string
+  type: string
+  expr: string
+  match: Record<string, unknown>
+  schedule: Record<string, unknown>
+  enabled: boolean
+  cooldown_s: number
+  user_cooldown_s: number
+}
+export interface PackTriggerBody {
+  type: string
+  expr: string
+  match?: Record<string, unknown>
+  schedule?: Record<string, unknown>
+  /** Left out, a replaced trigger keeps its own. */
+  cooldown_s?: number
+  user_cooldown_s?: number
+}
+/** A pack's clock fires at most every 15 minutes (ADR-0032). */
+export const PACK_MIN_EVERY_S = 900
 
 export interface Variable {
   name: string
@@ -390,7 +417,7 @@ export const admin = {
   unpublish: (login: string, name: string) =>
     request<unknown>(`${at(login)}/publications/${encodeURIComponent(name)}`, json('DELETE')),
   publishPack: (login: string, pack: string, owner?: string) =>
-    request<unknown>(`${at(login)}/packs`, json('POST', { pack, owner: owner || undefined })),
+    request<{ triggers?: string[]; needs_grants?: Record<string, string[]> }>(`${at(login)}/packs`, json('POST', { pack, owner: owner || undefined })),
   unpublishPack: (login: string, name: string, owner?: string) =>
     request<unknown>(`${at(login)}/packs/${encodeURIComponent(name)}${owner ? `?owner=${encodeURIComponent(owner)}` : ''}`, json('DELETE')),
   grants: (login: string) => request<{ grants: Grant[] }>(`${at(login)}/grants`),
@@ -442,6 +469,12 @@ export const admin = {
     request<unknown>(`/me/packs/${encodeURIComponent(pack)}/commands/${encodeURIComponent(command)}`, json('PUT', { internal })),
   removeFromPack: (pack: string, command: string) =>
     request<unknown>(`/me/packs/${encodeURIComponent(pack)}/commands/${encodeURIComponent(command)}`, json('DELETE')),
+  setPackTrigger: (pack: string, key: string, body: PackTriggerBody) =>
+    request<PackTrigger & { created: boolean }>(`/me/packs/${encodeURIComponent(pack)}/triggers/${encodeURIComponent(key)}`, json('PUT', body)),
+  editPackTrigger: (pack: string, key: string, patch: { enabled?: boolean; cooldown_s?: number; user_cooldown_s?: number }) =>
+    request<PackTrigger>(`/me/packs/${encodeURIComponent(pack)}/triggers/${encodeURIComponent(key)}`, json('PATCH', patch)),
+  deletePackTrigger: (pack: string, key: string) =>
+    request<unknown>(`/me/packs/${encodeURIComponent(pack)}/triggers/${encodeURIComponent(key)}`, json('DELETE')),
   myVariables: () => request<{ variables: MyVariable[] }>('/me/variables'),
   myRuns: (limit = 50) => request<{ runs: MyRun[] }>(`/me/runs?limit=${limit}`),
 
@@ -569,6 +602,8 @@ export interface MyPack {
   shareable: boolean
   /** Channel logins, or `global`. */
   published: string[]
+  /** Its own triggers (ADR-0032); left out by bots before them. */
+  triggers?: PackTrigger[]
 }
 export interface MyVariable {
   namespace: string
