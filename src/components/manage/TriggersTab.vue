@@ -38,6 +38,7 @@ const blank = () => ({
   cron: '',
   onlyLive: false,
   minLines: 0,
+  jitter: 0,
   runAs: Math.min(maxRank.value, 1000),
   log: 'output',
   cooldown: 0,
@@ -66,6 +67,7 @@ function openEdit(t: Trigger) {
     cron: typeof t.schedule.cron === 'string' ? t.schedule.cron : '',
     onlyLive: !!t.schedule.only_live,
     minLines: typeof t.schedule.min_chat_lines === 'number' ? t.schedule.min_chat_lines : 0,
+    jitter: typeof t.schedule.jitter_s === 'number' ? Math.round(t.schedule.jitter_s / 60) : 0,
     runAs: Math.min(t.run_as_rank, maxRank.value),
     log: t.log_level ?? 'output',
     cooldown: t.cooldown_s ?? 0,
@@ -105,7 +107,11 @@ const body = computed<TriggerBody | null>(() => {
     case 'event':
       return { ...base, type: form.event }
     case 'timer':
-      return { ...base, type: 'timer', schedule: { every_s: form.every * { s: 1, m: 60, h: 3600 }[form.unit as 's' | 'm' | 'h'], ...timing } }
+      return {
+        ...base,
+        type: 'timer',
+        schedule: { every_s: form.every * { s: 1, m: 60, h: 3600 }[form.unit as 's' | 'm' | 'h'], ...timing, ...(form.jitter ? { jitter_s: form.jitter * 60 } : {}) },
+      }
     case 'cron':
       if (!form.cron.trim()) return null
       return { ...base, type: 'cron', schedule: { cron: form.cron.trim(), ...timing } }
@@ -116,12 +122,11 @@ async function create() {
   if (!body.value) return
   const made = body.value.type
   const t = editing.value
-  // A trigger keeps its type; the rest is sent whole. The jitter isn't on the form, so an edit keeps it.
+  // A trigger keeps its type; the rest is sent whole.
   const done = t
     ? await act('t-add', () => {
         const { type: _type, ...patch } = body.value!
-        const schedule = patch.schedule && t.schedule.jitter_s ? { ...patch.schedule, jitter_s: t.schedule.jitter_s } : patch.schedule
-        return admin.editTrigger(props.login, t.id, { ...patch, schedule })
+        return admin.editTrigger(props.login, t.id, patch)
       }, `${made} ${t.id} saved`)
     : await act('t-add', () => admin.createTrigger(props.login, body.value!), `Added a ${made}`)
   if (done) creating.value = false
@@ -231,14 +236,19 @@ const toast = useToast()
           <template #default="{ id }"><VxSelect :id="id" v-model="form.event" :options="eventOptions" width="100%" :disabled="!!editing" /></template>
         </VxField>
         <template v-else>
-          <VxField v-if="form.kind === 'timer'" label="Every" help="Between a minute and a day.">
-            <template #default="{ id }">
-              <span class="every">
-                <VxStepper :id="id" v-model="form.every" :min="1" :max="form.unit === 'h' ? 24 : form.unit === 'm' ? 1440 : 86400" />
-                <VxSelect v-model="form.unit" :options="UNITS" width="140px" />
-              </span>
-            </template>
-          </VxField>
+          <template v-if="form.kind === 'timer'">
+            <VxField label="Every" help="Between a minute and a day.">
+              <template #default="{ id }">
+                <span class="every">
+                  <VxStepper :id="id" v-model="form.every" :min="1" :max="form.unit === 'h' ? 24 : form.unit === 'm' ? 1440 : 86400" />
+                  <VxSelect v-model="form.unit" :options="UNITS" width="140px" />
+                </span>
+              </template>
+            </VxField>
+            <VxField label="Jitter, in minutes" help="Waits up to this much longer each time, so timers don't line up. 0 is none.">
+              <template #default="{ id }"><VxStepper :id="id" v-model="form.jitter" :min="0" :max="1440" /></template>
+            </VxField>
+          </template>
           <VxField v-else label="When" help="Five fields: minute hour day month weekday. 0 18 * * fri is 18:00 on Fridays.">
             <template #default="{ id }"><VxInput :id="id" v-model="form.cron" mono placeholder="0 18 * * fri" /></template>
           </VxField>

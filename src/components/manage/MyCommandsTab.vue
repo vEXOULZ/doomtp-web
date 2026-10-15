@@ -34,6 +34,11 @@ const homeChannel = computed(() => {
   return Object.keys(session.channelRoles ?? {}).sort()[0] ?? ''
 })
 const NAME = /^[a-z0-9_]{1,32}$/
+/** Explain with `@name`, your own command whatever is published under its name, in a channel it is published in. */
+const tryIt = (c: MyCommand) => ({
+  path: '/manage/explain',
+  query: { channel: (c.publications ?? []).find((p) => p.channel !== 'global')?.channel || homeChannel.value || undefined, text: `@${c.name}` },
+})
 const clean = (s: string) => s.trim().toLowerCase().replace(/^[^\w]+/, '')
 const where = (c: MyCommand) =>
   (c.publications ?? []).map((p) => (p.channel === 'global' ? `everywhere as ${p.name}` : `#${p.channel}${p.name !== c.name ? ` as ${p.name}` : ''}`))
@@ -204,6 +209,7 @@ async function saveLink() {
               </td>
               <td class="end">
                 <VxButton size="sm" variant="ghost" :disabled="!channels.length" @click="openPublish(c.name)">Publish</VxButton>
+                <RouterLink class="vx-btn is-sm is-ghost" :to="tryIt(c)">Try</RouterLink>
                 <VxButton size="sm" variant="ghost" @click="openEdit(c)">Edit</VxButton>
                 <VxButton size="sm" variant="ghost" @click="history = c.name">History</VxButton>
                 <VxButton size="sm" variant="ghost" @click="deleting = c">Delete</VxButton>

@@ -19,7 +19,8 @@ const { data: channels, error: loadError, reload } = useResource(async () => (aw
 
 const form = reactive({
   channel: typeof route.query.channel === 'string' ? route.query.channel : '',
-  text: '',
+  // A "Try" link (My commands) fills in the line to check.
+  text: typeof route.query.text === 'string' ? route.query.text : '',
   as_user: '',
   badges: [] as string[],
   run: false,

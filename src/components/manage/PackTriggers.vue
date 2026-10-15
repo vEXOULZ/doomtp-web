@@ -36,6 +36,7 @@ const blank = () => ({
   cron: '',
   onlyLive: false,
   minLines: 0,
+  jitter: 0,
   cooldown: 0,
   userCooldown: 0,
 })
@@ -62,6 +63,7 @@ function openEdit(t: PackTrigger) {
     cron: typeof t.schedule.cron === 'string' ? t.schedule.cron : '',
     onlyLive: !!t.schedule.only_live,
     minLines: typeof t.schedule.min_chat_lines === 'number' ? t.schedule.min_chat_lines : 0,
+    jitter: typeof t.schedule.jitter_s === 'number' ? Math.round(t.schedule.jitter_s / 60) : 0,
     cooldown: t.cooldown_s,
     userCooldown: t.user_cooldown_s,
   })
@@ -78,8 +80,7 @@ const body = computed<PackTriggerBody | null>(() => {
   if (!expr || !KEY.test(key.value)) return null
   const base = { expr, cooldown_s: form.cooldown, user_cooldown_s: hasChatter.value ? form.userCooldown : 0 }
   const timing = { ...(form.onlyLive ? { only_live: true } : {}), ...(form.minLines ? { min_chat_lines: form.minLines } : {}) }
-  // The jitter isn't on the form, so an edit keeps it.
-  const jitter = editing.value?.schedule.jitter_s ? { jitter_s: editing.value.schedule.jitter_s } : {}
+  const jitter = form.jitter ? { jitter_s: form.jitter * 60 } : {}
   switch (form.kind) {
     case 'listener':
       return form.regex.trim() ? { ...base, type: 'listener', match: { regex: form.regex.trim() } } : null
@@ -157,14 +158,19 @@ const where = computed(() => (props.pack.published.length ? 'wherever the pack i
           <template #default="{ id }"><VxSelect :id="id" v-model="form.event" :options="eventOptions" width="100%" /></template>
         </VxField>
         <template v-else>
-          <VxField v-if="form.kind === 'timer'" label="Every" help="Between 15 minutes and a day.">
-            <template #default="{ id }">
-              <span class="every">
-                <VxStepper :id="id" v-model="form.every" :min="form.unit === 'h' ? 1 : 15" :max="form.unit === 'h' ? 24 : 1440" />
-                <VxSelect v-model="form.unit" :options="UNITS" width="140px" />
-              </span>
-            </template>
-          </VxField>
+          <template v-if="form.kind === 'timer'">
+            <VxField label="Every" help="Between 15 minutes and a day.">
+              <template #default="{ id }">
+                <span class="every">
+                  <VxStepper :id="id" v-model="form.every" :min="form.unit === 'h' ? 1 : 15" :max="form.unit === 'h' ? 24 : 1440" />
+                  <VxSelect v-model="form.unit" :options="UNITS" width="140px" />
+                </span>
+              </template>
+            </VxField>
+            <VxField label="Jitter, in minutes" help="Waits up to this much longer each time, so timers don't line up. 0 is none.">
+              <template #default="{ id }"><VxStepper :id="id" v-model="form.jitter" :min="0" :max="1440" /></template>
+            </VxField>
+          </template>
           <VxField v-else label="When" help="minute hour day month weekday, at most every 15 minutes. 0 18 * * fri is 18:00 on Fridays.">
             <template #default="{ id }"><VxInput :id="id" v-model="form.cron" mono placeholder="0 18 * * fri" /></template>
           </VxField>

@@ -67,13 +67,21 @@ const deleting = ref<MyPack | null>(null)
         <p class="small published">
           <span class="vx-muted">Published:</span> {{ where(p).join(', ') || 'nowhere yet' }}
         </p>
-        <table v-if="p.commands.length" class="vx-table">
+        <div v-if="p.commands.length" class="table-scroll">
+        <table class="vx-table">
           <tbody>
             <tr v-for="c in p.commands" :key="c.name">
               <td class="vx-mono">{{ c.name }}</td>
               <td>
-                <VxChip v-if="c.internal">internal</VxChip>
                 <VxChip v-if="!c.shareable" tone="warn">not shared</VxChip>
+              </td>
+              <td>
+                <VxSwitch
+                  :model-value="c.internal"
+                  :disabled="busy.has(`in:${p.name}:${c.name}`)"
+                  label="Internal"
+                  @update:model-value="(on: boolean) => act(`in:${p.name}:${c.name}`, () => admin.addToPack(p.name, c.name, on), on ? `${c.name} is internal: only ${p.name}'s commands can call it` : `${c.name} is public again`)"
+                />
               </td>
               <td class="end">
                 <VxButton
@@ -86,6 +94,7 @@ const deleting = ref<MyPack | null>(null)
             </tr>
           </tbody>
         </table>
+        </div>
         <p v-else class="vx-muted small">No commands in it yet.</p>
         <form class="add-cmd" @submit.prevent="add(p)">
           <VxSelect v-model="addFor(p).command" :options="choices(p)" placeholder="Add one of your commands" :disabled="!choices(p).length" />
