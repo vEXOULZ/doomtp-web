@@ -54,4 +54,13 @@ describe('command rows', () => {
     // An older bot sends no flag: nothing is marked.
     expect(channelRows([], [{ ...packs[0]!, commands: [custom('quote_add')] }])[0]!.internal).toBe(false)
   })
+
+  it('shows the rank a pack sets on each member, and everyone from a bot that sends none', () => {
+    const packs: Pack[] = [{
+      name: 'quotes', summary: null, scope: 'global',
+      commands: [{ ...custom('quote_add'), internal: true, role: 'moderator' }, custom('quote')],
+    }]
+    expect(channelRows([], packs).map((r) => [r.name, r.role])).toEqual([['quote', 'everyone'], ['quote_add', 'moderator']])
+    expect(referenceRows([], [], packs, '!').map((r) => r.role)).toEqual(['everyone', 'moderator'])
+  })
 })
