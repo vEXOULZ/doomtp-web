@@ -180,6 +180,32 @@ export interface Variable {
   /** Filled in by bots after 0.4.0: the login of `updated_by`, when known. */
   updated_by_login?: string | null
 }
+/** The namespaces a channel keeps variables in. A bot before step 4 of the Manage plan ignores `ns` and answers `channel`. */
+export const CHANNEL_NAMESPACES = ['channel', 'channel.chatter', 'publisher.channel', 'publisher.channel.chatter'] as const
+export type ChannelNamespace = (typeof CHANNEL_NAMESPACES)[number]
+/** A row of one of them: per-chatter rows name the chatter, command rows the command's owner. */
+export interface NamespacedVariable extends Variable {
+  chatter_id?: string
+  chatter_login?: string | null
+  publisher_id?: string
+  publisher_login?: string | null
+}
+export interface VariableQuery {
+  ns: ChannelNamespace
+  name?: string
+  /** A chatter's login. */
+  user?: string
+  /** A command owner's login. */
+  publisher?: string
+  limit?: number
+  offset?: number
+}
+export interface TopRow {
+  rank: number
+  chatter_id: string
+  chatter_login: string | null
+  value: unknown
+}
 /** A variable owner's limits: its quota, the largest value, list length and names per namespace. */
 export interface Limits {
   quota_bytes: number
@@ -307,6 +333,18 @@ export const admin = {
     ),
   variables: (login: string) => request<{ variables: Variable[] }>(`${at(login)}/variables`),
   storage: (login: string) => request<Storage>(`${at(login)}/storage`),
+  /** `!var list` over one namespace kept in the channel. */
+  variablesIn: (login: string, q: VariableQuery) => {
+    const params = new URLSearchParams()
+    for (const [k, v] of Object.entries(q)) if (v !== undefined && v !== '') params.set(k, String(v))
+    return request<{ variables: NamespacedVariable[]; has_more: boolean }>(`${at(login)}/variables?${params}`)
+  },
+  /** `!var top channel.chatter.<name> [count]`. */
+  variableTop: (login: string, name: string, count = 10) =>
+    request<{ name: string; top: TopRow[] }>(`${at(login)}/variables/top?name=${encodeURIComponent(name)}&count=${count}`),
+  /** `!var del channel.chatter.<name> @user`: your own, or anyone's from the channel's var_admin role. */
+  deleteChatterVariable: (login: string, userId: string, name: string) =>
+    request<unknown>(`${at(login)}/chatters/${encodeURIComponent(userId)}/variables/${encodeURIComponent(name)}`, json('DELETE')),
   runs: (login: string, limit = 50) => request<{ runs: Run[] }>(`${at(login)}/runs?limit=${limit}`),
   /** The channel's log as one timeline (/api/v2), newest first unless `order` says; pass `next_cursor` back as
    *  `cursor`, with the same filters, for the page after. */
@@ -443,6 +481,12 @@ export const admin = {
   removeFromPack: (pack: string, command: string) =>
     request<unknown>(`/me/packs/${encodeURIComponent(pack)}/commands/${encodeURIComponent(command)}`, json('DELETE')),
   myVariables: () => request<{ variables: MyVariable[] }>('/me/variables'),
+  /** `!var set|del chatter.<name>`. */
+  setMyVariable: (name: string, value: unknown) =>
+    request<unknown>(`/me/variables/chatter/${encodeURIComponent(name)}`, json('PUT', { value })),
+  deleteMyVariable: (name: string) => request<unknown>(`/me/variables/chatter/${encodeURIComponent(name)}`, json('DELETE')),
+  /** `!var usage chatter` and `!var usage publisher`. */
+  myStorage: () => request<{ chatter: Storage; publisher: Storage }>('/me/storage'),
   myRuns: (limit = 50) => request<{ runs: MyRun[] }>(`/me/runs?limit=${limit}`),
 
   // the bot itself
