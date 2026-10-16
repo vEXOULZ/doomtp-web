@@ -4,6 +4,7 @@ import '@vexoulz/platform-web/style.css'
 import './styles.css'
 import '@vexoulz/ui/platform.css'
 
+import { twitchUserLookup } from '@vexoulz/platform-web/chat'
 import { createPlatformUi } from '@vexoulz/platform-web/vue'
 import { VxBuild, useToast } from '@vexoulz/ui'
 import { createApp } from 'vue'
@@ -85,6 +86,8 @@ createApp(App)
       },
       notify: (msg, kind) => useToast().show(msg, { kind, duration: kind === 'error' ? 5000 : 3000 }),
       appName: 'bot',
+      // Chat user cards: the bot looks the chatter up on Twitch (same origin, ADR-0035).
+      userLookup: twitchUserLookup('/api/v2/twitch/users'),
     }),
   )
   .mount('#app')

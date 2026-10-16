@@ -5,9 +5,10 @@
 // a cursor, so the pages go older and back. A removed message shows as its reason, marked red, until it is clicked or
 // "Removed: text" is picked. A hovered or clicked line can open the row the bot stored (EventSub's event or the IRC line),
 // or the whole page shows that way. Moderation names a moderator only when a moderator ticks "Show moderators". On the
-// public channel page (`public`) it has no moderation, which the bot leaves out for the public, and no coverage.
-import { loadBadges, loadChannelEmotes, removalNote, toChatLine, type EmoteSet, type LogEntry, type RawBadges } from '@vexoulz/platform-web/chat'
-import { ChatLine } from '@vexoulz/platform-web/vue'
+// public channel page (`public`) it has no moderation, which the bot leaves out for the public, and no coverage. A
+// chatter's name opens their user card.
+import { loadBadges, loadChannelEmotes, removalNote, toChatLine, type ChatLine as Line, type EmoteSet, type LogEntry, type RawBadges } from '@vexoulz/platform-web/chat'
+import { ChatLine, UserCard } from '@vexoulz/platform-web/vue'
 import { VxButton, VxCallout, VxCheckbox, VxEmptyState, VxField, VxInput, VxSelect, VxSkeleton } from '@vexoulz/ui'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, shallowRef, watch } from 'vue'
 import { useResource } from '@vexoulz/ui/utils'
@@ -172,6 +173,15 @@ const lines = computed(() =>
   }),
 )
 
+// The user card a name opens, one at a time; it can narrow the log to that chatter.
+const card = shallowRef<{ line: Line; anchor: HTMLElement } | null>(null)
+const toggleCard = (line: Line, anchor: HTMLElement) => (card.value = card.value?.anchor === anchor ? null : { line, anchor })
+function showUser(login: string) {
+  card.value = null
+  form.user = login
+  search()
+}
+
 // ── raw rows: one line's on demand, or the whole page ──
 const allRaw = ref(false)
 const opened = ref(new Set<string>())
@@ -261,6 +271,9 @@ const paging = computed(() => (asked.value.order === 'asc' ? { back: 'Earlier', 
               class="line"
               :class="{ selected: selected === l.line.id, hidden: l.hidden, open: opened.has(l.line.id) }"
               :line="l.line"
+              user-cards
+              :user-open="card?.line.id === l.line.id"
+              @user="toggleCard"
               tabindex="0"
               :title="l.hidden ? 'Click to see what it said' : undefined"
               @click="select(l.line.id, !!l.line.removed, $event)"
@@ -276,6 +289,11 @@ const paging = computed(() => (asked.value.order === 'asc' ? { back: 'Earlier', 
           </template>
         </template>
       </div>
+      <UserCard v-if="card" :line="card.line" :anchor="card.anchor" @close="card = null">
+        <template #actions="{ user, line }">
+          <VxButton v-if="user?.login ?? line.login" size="sm" @click="showUser((user?.login ?? line.login)!)">Their messages</VxButton>
+        </template>
+      </UserCard>
     </template>
     <div v-if="data && (page > 0 || data.next_cursor)" class="pager">
       <VxButton size="sm" :disabled="page === 0 || loading" @click="newer">{{ paging.back }}</VxButton>
