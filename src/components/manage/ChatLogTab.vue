@@ -2,10 +2,11 @@
 // A channel's chat log as one timeline (/api/v2/channels/{login}/log), newest first unless asked otherwise:
 // messages as Twitch shows them (badges, colours, Twitch and 7TV/BTTV/FFZ emotes), notifications (subs, raids...)
 // and moderation as notices. Searched as `logsearch` does in chat, over a time range if given; the bot pages it with
-// a cursor, so the pages go older and back. Removed messages show to everyone, struck through and marked red. Each
-// line can open the row the bot stored (EventSub's event or the IRC line), or the whole page shows that way. On the
+// a cursor, so the pages go older and back. A removed message shows as its reason, marked red, until it is clicked or
+// "Reveal removed" is on. A hovered or clicked line can open the row the bot stored (EventSub's event or the IRC line),
+// or the whole page shows that way. Moderation names a moderator only when a moderator ticks "Show moderators". On the
 // public channel page (`public`) it has no moderation, which the bot leaves out for the public, and no coverage.
-import { loadBadges, loadChannelEmotes, toChatLine, type EmoteSet, type LogEntry, type RawBadges } from '@vexoulz/platform-web/chat'
+import { loadBadges, loadChannelEmotes, removalNote, toChatLine, type EmoteSet, type LogEntry, type RawBadges } from '@vexoulz/platform-web/chat'
 import { ChatLine } from '@vexoulz/platform-web/vue'
 import { VxButton, VxCallout, VxCheckbox, VxEmptyState, VxField, VxInput, VxSelect, VxSkeleton } from '@vexoulz/ui'
 import { computed, reactive, ref, shallowRef, watch } from 'vue'
@@ -120,20 +121,45 @@ watch(
   },
   { immediate: true },
 )
+// ── what a line shows: removed text behind its reason, moderators unnamed ──
+const revealAll = ref(false)
+const showMods = ref(false)
+/** Lines clicked: their raw button stays, and a removed one shows what was said. */
+const selected = ref(new Set<string>())
+const toggle = (set: typeof selected, id: string) => {
+  const next = new Set(set.value)
+  if (!next.delete(id)) next.add(id)
+  set.value = next
+}
+function select(id: string, ev: Event) {
+  if ((ev.target as Element | null)?.closest('button, a')) return // the raw button, an emote's menu
+  toggle(selected, id)
+}
+const A_MODERATOR = { id: '', login: null, display_name: 'A moderator' }
+const unnamed = (e: RawEntry): RawEntry => (e.kind === 'moderation' && e.moderator ? { ...e, moderator: A_MODERATOR } : e)
 const lines = computed(() =>
-  ((data.value?.items ?? []) as RawEntry[]).map((e) => ({ at: e.at, line: toChatLine(e, emotes.value, badges.value), raw: e.raw })),
+  ((data.value?.items ?? []) as RawEntry[]).map((e) => {
+    const hideMod = e.kind === 'moderation' && !showMods.value
+    const line = toChatLine(hideMod ? unnamed(e) : e, emotes.value, badges.value)
+    const hidden = !!line.removed && !revealAll.value && !selected.value.has(line.id)
+    return {
+      at: e.at,
+      line: hidden && line.removed ? { ...line, tokens: [{ kind: 'text' as const, text: removalNote(line.removed) }] } : line,
+      hidden,
+      raw: hideMod ? MOD_HIDDEN : e.raw,
+    }
+  }),
 )
 
 // ── raw rows: one line's on demand, or the whole page ──
 const allRaw = ref(false)
 const opened = ref(new Set<string>())
-const toggleRaw = (id: string) => {
-  const next = new Set(opened.value)
-  if (!next.delete(id)) next.add(id)
-  opened.value = next
-}
+const toggleRaw = (id: string) => toggle(opened, id)
+/** A moderation row names its moderator, so it stays shut while moderators are hidden. */
+const MOD_HIDDEN = 'moderator-hidden' as const
 /** The row as the bot stored it: the IRC line as it came, anything else as JSON (one line, or indented). */
-function rawText(raw: RawRow | null | undefined, pretty: boolean): string {
+function rawText(raw: RawRow | typeof MOD_HIDDEN | null | undefined, pretty: boolean): string {
+  if (raw === MOD_HIDDEN) return '(tick "Show moderators" to see this row: it names the moderator)'
   if (!raw?.data) return '(the bot kept no raw row for this line)'
   if (raw.format === 'irc' && typeof raw.data.line === 'string') return raw.data.line
   return JSON.stringify(raw.data, null, pretty ? 2 : undefined)
@@ -147,7 +173,7 @@ const paging = computed(() => (asked.value.order === 'asc' ? { back: 'Earlier', 
       The broadcaster turns it on in Settings → Logging. What was logged before stays searchable.
     </VxCallout>
     <p v-else-if="public" class="vx-muted intro">
-      What was said in #{{ login }}, and its subs, raids and the like. Messages moderators removed are struck through.
+      What was said in #{{ login }}, and its subs, raids and the like. Click a removed message to see what it said.
     </p>
     <p v-else class="vx-muted intro">
       <template v-if="publicLog">Anyone can search this log's messages on the public channel page; moderation stays here.</template>
@@ -199,6 +225,8 @@ const paging = computed(() => (asked.value.order === 'asc' ? { back: 'Earlier', 
     <VxEmptyState v-else-if="!data.items.length" title="Nothing found" :text="page ? 'No more lines this way.' : 'Nothing in the log matches.'" />
     <template v-else>
       <div class="view">
+        <VxCheckbox v-model="revealAll" label="Reveal removed" />
+        <VxCheckbox v-if="!public" v-model="showMods" label="Show moderators" />
         <VxCheckbox v-model="allRaw" label="Show raw" />
       </div>
       <div class="chat vx-panel" :class="{ 'all-raw': allRaw }" role="log" :aria-busy="loading">
@@ -208,7 +236,15 @@ const paging = computed(() => (asked.value.order === 'asc' ? { back: 'Earlier', 
             <code>{{ rawText(l.raw, false) }}</code>
           </div>
           <template v-else>
-            <ChatLine class="line" :line="l.line">
+            <ChatLine
+              class="line"
+              :class="{ selected: selected.has(l.line.id), hidden: l.hidden, open: opened.has(l.line.id) }"
+              :line="l.line"
+              tabindex="0"
+              :title="l.hidden ? 'Click to see what it said' : undefined"
+              @click="select(l.line.id, $event)"
+              @keydown.enter.self="select(l.line.id, $event)"
+            >
               <template #before><time class="when" :datetime="l.at" :title="new Date(l.at).toLocaleString()">{{ stamp(l.at) }}</time></template>
               <template #after>
                 <VxButton class="raw-btn" size="sm" variant="ghost" icon :label="opened.has(l.line.id) ? 'Hide raw' : 'Show raw'" :pressed="opened.has(l.line.id)" @click="toggleRaw(l.line.id)">{}</VxButton>
@@ -236,8 +272,16 @@ const paging = computed(() => (asked.value.order === 'asc' ? { back: 'Earlier', 
 /* A removed message: struck through and faded by ChatLine, and marked red here so it stands out at a glance. */
 .line.removed { border-left: 3px solid var(--vx-bad); padding-left: 6px; margin-left: -9px; }
 .line.removed :deep(.why) { color: var(--vx-bad); font-style: normal; }
-.view { display: flex; justify-content: flex-end; margin-bottom: 6px; }
-.raw-btn { margin-left: 6px; vertical-align: middle; font-family: var(--vx-mono); }
+.view { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px 14px; margin-bottom: 6px; }
+.line { cursor: pointer; border-radius: 4px; }
+.line:focus-visible { outline: 1px solid var(--vx-accent); }
+.line.selected { background: color-mix(in srgb, var(--vx-accent) 8%, transparent); }
+/* Hidden until the line is hovered, focused or clicked, so the log isn't a column of buttons. */
+.raw-btn { margin-left: 6px; vertical-align: middle; font-family: var(--vx-mono); visibility: hidden; }
+.line:hover .raw-btn, .line:focus-within .raw-btn, .line.selected .raw-btn, .line.open .raw-btn { visibility: visible; }
+/* A removed message not yet revealed: its reason in place of the text, which ChatLine would strike through. */
+.line.hidden :deep(.text) { text-decoration: none; opacity: 1; font-style: italic; color: var(--vx-bad); }
+.line.hidden :deep(.why) { display: none; }
 .raw { margin: 2px 0 6px; font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 320px; overflow: auto; }
 .raw-line { display: flex; gap: 0; align-items: baseline; }
 .raw-line code { font-family: var(--vx-mono); font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; min-width: 0; }
