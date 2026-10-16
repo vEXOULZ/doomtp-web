@@ -280,12 +280,14 @@ const paging = computed(() => (asked.value.order === 'asc' ? { back: 'Earlier', 
 .filters { display: grid; gap: 4px; margin-bottom: 14px; }
 .kinds { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; align-self: center; flex: 1; }
 .actions { display: flex; gap: 8px; align-self: end; }
-.chat { background: var(--vxp-chat-bg); padding: 8px 12px; font-size: 13px; line-height: 1.6; }
-.line { padding: 2px 0; }
+.chat { background: var(--vxp-chat-bg); padding: 8px 12px 8px 2px; font-size: 13px; line-height: 1.6; }
+/* Every line keeps room for a 2px bar and its 8px inset, so the timestamps line up with or without one. */
+.line { padding: 2px 0 2px 10px; }
 /* A removed message: struck through and faded by ChatLine, and marked red here so it stands out at a glance. */
 /* The same bar as ChatLine's notices, in red, with the same inset for both. */
 .view { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px 14px; margin-bottom: 6px; }
 .line.notice, .line.removed { padding-left: 8px; padding-right: 8px; }
+.line.raw-line:not(.removed) { padding-left: 10px; }
 .line.removed { border-left: 2px solid var(--vx-bad); }
 .line.removed :deep(.why) { color: var(--vx-bad); font-style: normal; }
 .line { cursor: pointer; border-radius: 4px; }
