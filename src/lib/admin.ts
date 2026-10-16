@@ -270,6 +270,14 @@ export interface Run {
 // The log's shapes (/api/v2/channels/{login}/log, ADR-0027) are the shared chat library's.
 export type { LogCoverage, LogEntry, LogQuery, LogUser } from '@vexoulz/platform-web/chat'
 
+/** A log entry's row as the bot stored it (`raw=true`): EventSub's event, the IRC line as `{ line }`, or a rebuild of
+ *  a row from before raw events were kept. Older bots leave it out. */
+export interface RawRow {
+  format: 'eventsub' | 'irc' | 'legacy' | null
+  data: Record<string, unknown> | null
+}
+export type RawEntry = LogEntry & { raw?: RawRow | null }
+
 /** A host `http get` may fetch; the secret shows its kind and name, never its value. */
 export interface HttpHost {
   pattern: string
@@ -378,7 +386,7 @@ export const admin = {
   runs: (login: string, limit = 50) => request<{ runs: Run[] }>(`${at(login)}/runs?limit=${limit}`),
   /** The channel's log as one timeline (/api/v2), newest first unless `order` says; pass `next_cursor` back as
    *  `cursor`, with the same filters, for the page after. */
-  log: (login: string, query: LogQuery = {}) => {
+  log: (login: string, query: LogQuery & { raw?: boolean } = {}) => {
     const params = new URLSearchParams()
     for (const [k, v] of Object.entries(query)) {
       if (Array.isArray(v)) for (const one of v) params.append(k, one)
