@@ -9,7 +9,7 @@
 import { loadBadges, loadChannelEmotes, removalNote, toChatLine, type EmoteSet, type LogEntry, type RawBadges } from '@vexoulz/platform-web/chat'
 import { ChatLine } from '@vexoulz/platform-web/vue'
 import { VxButton, VxCallout, VxCheckbox, VxEmptyState, VxField, VxInput, VxSelect, VxSkeleton } from '@vexoulz/ui'
-import { computed, reactive, ref, shallowRef, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, shallowRef, watch } from 'vue'
 import { useResource } from '@vexoulz/ui/utils'
 import { errorText } from '@vexoulz/platform-web'
 import { statusOf } from '@/lib/api'
@@ -137,24 +137,32 @@ function setRemoved(value: Removed) {
   if (refetch) cursors.value = [undefined]
 }
 const showMods = ref(false)
-/** Lines clicked: their raw button stays, and a removed one shows what was said. */
-const selected = ref(new Set<string>())
-const toggle = (set: typeof selected, id: string) => {
+/** The line clicked last, which keeps its raw button; one at a time, and a click elsewhere clears it. */
+const selected = ref<string | null>(null)
+/** Removed messages clicked open, which stay open until clicked again. */
+const revealed = ref(new Set<string>())
+const toggle = (set: typeof revealed, id: string) => {
   const next = new Set(set.value)
   if (!next.delete(id)) next.add(id)
   set.value = next
 }
-function select(id: string, ev: Event) {
+function select(id: string, removed: boolean, ev: Event) {
   if ((ev.target as Element | null)?.closest('button, a')) return // the raw button, an emote's menu
-  toggle(selected, id)
+  selected.value = selected.value === id ? null : id
+  if (removed) toggle(revealed, id)
 }
+function clearOutside(ev: PointerEvent) {
+  if (!(ev.target as Element | null)?.closest('.line, .raw')) selected.value = null
+}
+onMounted(() => document.addEventListener('pointerdown', clearOutside))
+onBeforeUnmount(() => document.removeEventListener('pointerdown', clearOutside))
 const A_MODERATOR = { id: '', login: null, display_name: 'A moderator' }
 const unnamed = (e: RawEntry): RawEntry => (e.kind === 'moderation' && e.moderator ? { ...e, moderator: A_MODERATOR } : e)
 const lines = computed(() =>
   ((data.value?.items ?? []) as RawEntry[]).map((e) => {
     const hideMod = e.kind === 'moderation' && !showMods.value
     const line = toChatLine(hideMod ? unnamed(e) : e, emotes.value, badges.value)
-    const hidden = !!line.removed && asked.value.removed !== 'text' && !selected.value.has(line.id)
+    const hidden = !!line.removed && asked.value.removed !== 'text' && !revealed.value.has(line.id)
     return {
       at: e.at,
       line: hidden && line.removed ? { ...line, tokens: [{ kind: 'text' as const, text: removalNote(line.removed) }] } : line,
@@ -251,16 +259,17 @@ const paging = computed(() => (asked.value.order === 'asc' ? { back: 'Earlier', 
           <template v-else>
             <ChatLine
               class="line"
-              :class="{ selected: selected.has(l.line.id), hidden: l.hidden, open: opened.has(l.line.id) }"
+              :class="{ selected: selected === l.line.id, hidden: l.hidden, open: opened.has(l.line.id) }"
               :line="l.line"
               tabindex="0"
               :title="l.hidden ? 'Click to see what it said' : undefined"
-              @click="select(l.line.id, $event)"
-              @keydown.enter.self="select(l.line.id, $event)"
+              @click="select(l.line.id, !!l.line.removed, $event)"
+              @keydown.enter.self="select(l.line.id, !!l.line.removed, $event)"
             >
               <template #before><time class="when" :datetime="l.at" :title="new Date(l.at).toLocaleString()">{{ stamp(l.at) }}</time></template>
               <template #after>
-                <VxButton class="raw-btn" size="sm" variant="ghost" icon :label="opened.has(l.line.id) ? 'Hide raw' : 'Show raw'" :pressed="opened.has(l.line.id)" @click="toggleRaw(l.line.id)">{}</VxButton>
+                <!-- Text-sized, not a 26px control: it sits over the line's end and never moves the log. -->
+                <button type="button" class="raw-btn" :aria-label="opened.has(l.line.id) ? 'Hide raw' : 'Show raw'" :title="opened.has(l.line.id) ? 'Hide raw' : 'Show raw'" :aria-pressed="opened.has(l.line.id)" @click="toggleRaw(l.line.id)">{}</button>
               </template>
             </ChatLine>
             <pre v-if="opened.has(l.line.id)" class="vx-code raw">{{ rawText(l.raw, true) }}</pre>
@@ -292,10 +301,17 @@ const paging = computed(() => (asked.value.order === 'asc' ? { back: 'Earlier', 
 .line.removed :deep(.why) { color: var(--vx-bad); font-style: normal; }
 .line { cursor: pointer; border-radius: 4px; }
 .line:focus-visible { outline: 1px solid var(--vx-accent); }
-.line.selected { background: color-mix(in srgb, var(--vx-accent) 8%, transparent); }
+/* Neutral, so a selected line never reads as a notice. */
+.line.selected { background: color-mix(in srgb, var(--vx-ink) 8%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--vx-ink) 18%, transparent); }
 /* Hidden until the line is hovered, focused or clicked, so the log isn't a column of buttons. */
-.raw-btn { margin-left: 6px; vertical-align: middle; font-family: var(--vx-mono); display: none; }
-.line:hover .raw-btn, .line:focus-within .raw-btn, .line.selected .raw-btn, .line.open .raw-btn { display: inline-flex; }
+.line { position: relative; }
+.raw-btn {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%); visibility: hidden;
+  padding: 0 5px; font: 11px/1.4 var(--vx-mono); color: var(--vx-muted); cursor: pointer;
+  background: var(--vxp-chat-bg); border: 1px solid var(--vx-line); border-radius: 4px;
+}
+.raw-btn:hover, .raw-btn[aria-pressed='true'] { color: var(--vx-ink); }
+.line:hover .raw-btn, .line:focus-within .raw-btn, .line.selected .raw-btn, .line.open .raw-btn { visibility: visible; }
 /* A removed message not yet revealed: its reason in place of the text, which ChatLine would strike through. */
 .line.hidden :deep(.text) { text-decoration: none; opacity: 1; font-style: italic; color: var(--vx-bad); }
 .line.hidden :deep(.why) { display: none; }
