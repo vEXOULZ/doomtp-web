@@ -295,11 +295,14 @@ function roleSource(name: string): string {
         </li>
         <li>
           <strong>The bot's own events</strong> have no chatter. <code>bot_online</code> fires when it is in chat again,
-          with <code>{event.reason}</code> (<code>start</code>, <code>update</code> or <code>reconnect</code>) and
-          <code>{event.down_s}</code>, at most once every 15 minutes. After an update, <code>bot_updated</code> fires
+          with <code>{event.reason}</code> (<code>start</code>, <code>update</code> or <code>reconnect</code>),
+          <code>{event.down_s}</code> and, after a reconnect, <code>{event.cause}</code>, at most once every 15
+          minutes. A reconnect is the bot starting its Twitch connection again, not the program restarting, so
+          <code>$bot.uptime</code> keeps counting. After an update, <code>bot_updated</code> fires
           first, with <code>{event.version}</code> and <code>{event.previous}</code>. <code>bot_joined</code>,
           <code>bot_modded</code> and <code>bot_unmodded</code> fire when it joins and when it is given or loses
-          moderator, which it notices within the hour.
+          moderator, which it notices within the hour. Every event and what it carries is listed on the
+          <RouterLink to="/docs/language#events">language page</RouterLink>.
         </li>
         <li>
           <strong>Listeners</strong> run on ordinary chat lines matching a regular expression, with captures in
