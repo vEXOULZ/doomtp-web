@@ -145,6 +145,19 @@ export interface Language {
   types: string[]
   variable_namespaces: string[]
   limits: Record<string, number>
+  /** `{$root.field}` → what it holds; every field the bot supplies has a line. */
+  bot_field_docs: Record<string, Record<string, string>>
+  bot_root_docs: Record<string, string>
+  /** One entry per trigger type: what sets it off and the `{event.*}` it carries. */
+  events: LanguageEvent[]
+}
+export interface LanguageEvent {
+  type: string
+  fires: string
+  variables: { name: string; meaning: string }[]
+  chatter: string
+  needs: string
+  match: string
 }
 export interface Grammar {
   syntax_version: string

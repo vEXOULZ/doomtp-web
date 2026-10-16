@@ -137,6 +137,55 @@ const limits = computed(() => {
           </table>
         </div>
 
+        <h3 id="bot-fields">Fields the bot supplies</h3>
+        <p>
+          Read-only, and always written with a <code>$</code>, so they never clash with a variable. A field with
+          nothing to show, like <code>$channel.title</code> while offline, counts as missing: give it a
+          <code>??</code> fallback.
+        </p>
+        <div class="table-scroll">
+          <table class="vx-table">
+            <thead><tr><th>Reference</th><th>What it holds</th></tr></thead>
+            <tbody>
+              <template v-for="(fields, root) in data.language.bot_field_docs" :key="root">
+                <tr class="root"><td colspan="2"><code>${{ root }}</code> · {{ data.language.bot_root_docs[root] }}</td></tr>
+                <tr v-for="(what, field) in fields" :key="`${root}.${field}`">
+                  <td><code>{${{ root }}.{{ field }}}</code></td>
+                  <td>{{ what }}</td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+
+        <h2 id="events" class="vx-display">Events</h2>
+        <p>
+          A trigger runs when its event happens and reads what came with it from <code>{event.*}</code>
+          (<code>{event.type}</code> is always the trigger's type). Add one with
+          <Cmd t="event add raid echo welcome {event.user.name}!" :sign="p" />. The chatter,
+          <code>{$chatter.*}</code>, is the person named below; events with none leave it missing.
+        </p>
+        <section v-for="e in data.language.events" :key="e.type" class="event">
+          <h3 :id="`event-${e.type}`"><code>{{ e.type }}</code></h3>
+          <p>
+            Fires when {{ e.fires }}.
+            <template v-if="e.chatter"> The chatter is {{ e.chatter }}.</template>
+            <template v-if="e.needs"> Needs: {{ e.needs }}.</template>
+            <template v-if="e.match"> Narrow it with <code>{{ e.match }}</code>.</template>
+          </p>
+          <div v-if="e.variables.length" class="table-scroll">
+            <table class="vx-table">
+              <thead><tr><th>Variable</th><th>What it holds</th></tr></thead>
+              <tbody>
+                <tr v-for="v in e.variables" :key="v.name">
+                  <td class="names"><code v-for="n in v.name.split(', ')" :key="n">{event.{{ n }}}</code></td>
+                  <td>{{ v.meaning }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
         <h2 class="vx-display">Types</h2>
         <p>
           A placeholder can demand a type, and a bad value fails with usage text instead of running:
@@ -203,6 +252,10 @@ const limits = computed(() => {
 <style scoped>
 .small { font-size: 13px; }
 .list { line-height: 2; }
+.root td { background: var(--vx-surface-2); }
+.event h3 { margin-bottom: 4px; }
+/* One name a line, so the meaning stays beside it at phone width instead of scrolling away. */
+.names code { display: block; width: max-content; max-width: 100%; margin: 2px 0; }
 .loading { display: flex; flex-direction: column; gap: 8px; margin: 12px 0; }
 
 /* The bot's editor, themed through its --dtb-* properties (doomtp-bot web-editor/README.md, "Theming"). */
