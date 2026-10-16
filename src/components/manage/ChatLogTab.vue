@@ -3,9 +3,9 @@
 // messages as Twitch shows them (badges, colours, Twitch and 7TV/BTTV/FFZ emotes), notifications (subs, raids...)
 // and moderation as notices. Searched as `logsearch` does in chat, over a time range if given; the bot pages it with
 // a cursor, so the pages go older and back. On the public channel page (`public`) it has no moderation and no removed
-// messages, which the bot leaves out for the public, and no coverage.
-import { loadBadges, loadChannelEmotes, toChatLine, type EmoteSet, type LogEntry, type RawBadges } from '@vexoulz/platform-web/chat'
-import { ChatLine } from '@vexoulz/platform-web/vue'
+// messages, which the bot leaves out for the public, and no coverage. A chatter's name opens their user card.
+import { loadBadges, loadChannelEmotes, toChatLine, type ChatLine as Line, type EmoteSet, type LogEntry, type RawBadges } from '@vexoulz/platform-web/chat'
+import { ChatLine, UserCard } from '@vexoulz/platform-web/vue'
 import { VxButton, VxCallout, VxCheckbox, VxEmptyState, VxField, VxInput, VxSelect, VxSkeleton } from '@vexoulz/ui'
 import { computed, reactive, ref, shallowRef, watch } from 'vue'
 import { useResource } from '@vexoulz/ui/utils'
@@ -118,6 +118,14 @@ watch(
   { immediate: true },
 )
 const lines = computed(() => (data.value?.items ?? []).map((e) => ({ at: e.at, line: toChatLine(e, emotes.value, badges.value) })))
+// The user card a name opens, one at a time; it can narrow the log to that chatter.
+const card = shallowRef<{ line: Line; anchor: HTMLElement } | null>(null)
+const toggleCard = (line: Line, anchor: HTMLElement) => (card.value = card.value?.anchor === anchor ? null : { line, anchor })
+function showUser(login: string) {
+  card.value = null
+  form.user = login
+  search()
+}
 const paging = computed(() => (asked.value.order === 'asc' ? { back: 'Earlier', on: 'Later' } : { back: 'Newer', on: 'Older' }))
 </script>
 
@@ -178,10 +186,15 @@ const paging = computed(() => (asked.value.order === 'asc' ? { back: 'Earlier', 
     <div v-else-if="!data" class="loading" aria-busy="true"><VxSkeleton v-for="i in 8" :key="i" h="24px" /></div>
     <VxEmptyState v-else-if="!data.items.length" title="Nothing found" :text="page ? 'No more lines this way.' : 'Nothing in the log matches.'" />
     <div v-else class="chat vx-panel" role="log" :aria-busy="loading">
-      <ChatLine v-for="l in lines" :key="l.line.id" class="line" :line="l.line">
+      <ChatLine v-for="l in lines" :key="l.line.id" class="line" :line="l.line" user-cards :user-open="card?.line === l.line" @user="toggleCard">
         <template #before><time class="when" :datetime="l.at" :title="new Date(l.at).toLocaleString()">{{ stamp(l.at) }}</time></template>
       </ChatLine>
     </div>
+    <UserCard v-if="card" :line="card.line" :anchor="card.anchor" @close="card = null">
+      <template #actions="{ user, line }">
+        <VxButton v-if="user?.login ?? line.login" size="sm" @click="showUser((user?.login ?? line.login)!)">Their messages</VxButton>
+      </template>
+    </UserCard>
     <div v-if="data && (page > 0 || data.next_cursor)" class="pager">
       <VxButton size="sm" :disabled="page === 0 || loading" @click="newer">{{ paging.back }}</VxButton>
       <span class="vx-muted small">Page {{ page + 1 }}</span>
