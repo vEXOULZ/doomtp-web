@@ -3,7 +3,7 @@
 // messages as Twitch shows them (badges, colours, Twitch and 7TV/BTTV/FFZ emotes), notifications (subs, raids...)
 // and moderation as notices. Searched as `logsearch` does in chat, over a time range if given; the bot pages it with
 // a cursor, so the pages go older and back. A removed message shows as its reason, marked red, until it is clicked or
-// "Reveal removed" is on. A hovered or clicked line can open the row the bot stored (EventSub's event or the IRC line),
+// "Removed: text" is picked. A hovered or clicked line can open the row the bot stored (EventSub's event or the IRC line),
 // or the whole page shows that way. Moderation names a moderator only when a moderator ticks "Show moderators". On the
 // public channel page (`public`) it has no moderation, which the bot leaves out for the public, and no coverage.
 import { loadBadges, loadChannelEmotes, removalNote, toChatLine, type EmoteSet, type LogEntry, type RawBadges } from '@vexoulz/platform-web/chat'
@@ -33,6 +33,13 @@ const KINDS: { value: Kind; label: string }[] = [
   { value: 'notification', label: 'Notifications' },
   ...(props.public ? [] : [{ value: 'moderation' as Kind, label: 'Moderation' }]),
 ]
+/** How removed messages show: their reason (click one for its text), their text, or not at all (the bot leaves them out). */
+type Removed = 'reason' | 'text' | 'out'
+const REMOVED: { value: Removed; label: string }[] = [
+  { value: 'reason', label: 'Removed: reason' },
+  { value: 'text', label: 'Removed: text' },
+  { value: 'out', label: 'Removed: leave out' },
+]
 const ORDERS = [
   { value: 'desc', label: 'Newest first' },
   { value: 'asc', label: 'Oldest first' },
@@ -43,7 +50,7 @@ const iso = (v: string) => (v ? new Date(v).toISOString() : undefined)
 const stamp = (at: string) => new Date(at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 
 // What the form holds, and what the pages were asked with (the form applies on submit).
-const blank = () => ({ q: '', user: '', since: '', until: '', order: 'desc' as 'asc' | 'desc', kinds: KINDS.map((k) => k.value), hideRemoved: false })
+const blank = () => ({ q: '', user: '', since: '', until: '', order: 'desc' as 'asc' | 'desc', kinds: KINDS.map((k) => k.value), removed: 'reason' as Removed })
 const form = reactive(blank())
 const asked = ref({ ...form, kinds: [...form.kinds] })
 /** The cursor of each page shown so far: the first page has none. */
@@ -60,7 +67,7 @@ const { data, error, loading, reload } = useResource(
       until: iso(asked.value.until),
       order: asked.value.order === 'asc' ? 'asc' : undefined,
       kind: asked.value.kinds.length === KINDS.length ? undefined : asked.value.kinds,
-      hide_removed: asked.value.hideRemoved,
+      hide_removed: asked.value.removed === 'out',
       raw: true,
       cursor: cursors.value[page.value],
       limit: PAGE,
@@ -122,7 +129,13 @@ watch(
   { immediate: true },
 )
 // ── what a line shows: removed text behind its reason, moderators unnamed ──
-const revealAll = ref(false)
+/** Applies at once, like the view boxes beside it; only leaving them out asks the bot again. */
+function setRemoved(value: Removed) {
+  form.removed = value
+  const refetch = (value === 'out') !== (asked.value.removed === 'out')
+  asked.value = { ...asked.value, removed: value }
+  if (refetch) cursors.value = [undefined]
+}
 const showMods = ref(false)
 /** Lines clicked: their raw button stays, and a removed one shows what was said. */
 const selected = ref(new Set<string>())
@@ -141,7 +154,7 @@ const lines = computed(() =>
   ((data.value?.items ?? []) as RawEntry[]).map((e) => {
     const hideMod = e.kind === 'moderation' && !showMods.value
     const line = toChatLine(hideMod ? unnamed(e) : e, emotes.value, badges.value)
-    const hidden = !!line.removed && !revealAll.value && !selected.value.has(line.id)
+    const hidden = !!line.removed && asked.value.removed !== 'text' && !selected.value.has(line.id)
     return {
       at: e.at,
       line: hidden && line.removed ? { ...line, tokens: [{ kind: 'text' as const, text: removalNote(line.removed) }] } : line,
@@ -205,7 +218,9 @@ const paging = computed(() => (asked.value.order === 'asc' ? { back: 'Earlier', 
       <div class="vx-form-row">
         <div class="kinds">
           <VxCheckbox v-for="k in KINDS" :key="k.value" :model-value="form.kinds.includes(k.value)" :label="k.label" @update:model-value="(on: boolean) => toggleKind(k.value, on)" />
-          <VxCheckbox v-model="form.hideRemoved" label="Hide removed" />
+          <VxSelect :model-value="form.removed" :options="REMOVED" width="170px" aria-label="Removed messages" @update:model-value="(v) => v && setRemoved(v)" />
+          <VxCheckbox v-if="!public" v-model="showMods" label="Show moderators" />
+          <VxCheckbox v-model="allRaw" label="Show raw" />
         </div>
         <span class="actions">
           <VxButton type="button" variant="ghost" @click="reset">Reset</VxButton>
@@ -224,11 +239,6 @@ const paging = computed(() => (asked.value.order === 'asc' ? { back: 'Earlier', 
     <div v-else-if="!data" class="loading" aria-busy="true"><VxSkeleton v-for="i in 8" :key="i" h="24px" /></div>
     <VxEmptyState v-else-if="!data.items.length" title="Nothing found" :text="page ? 'No more lines this way.' : 'Nothing in the log matches.'" />
     <template v-else>
-      <div class="view">
-        <VxCheckbox v-model="revealAll" label="Reveal removed" />
-        <VxCheckbox v-if="!public" v-model="showMods" label="Show moderators" />
-        <VxCheckbox v-model="allRaw" label="Show raw" />
-      </div>
       <div class="chat vx-panel" :class="{ 'all-raw': allRaw }" role="log" :aria-busy="loading">
         <template v-for="l in lines" :key="l.line.id">
           <div v-if="allRaw" class="line raw-line" :class="{ removed: l.line.removed }">
@@ -265,20 +275,21 @@ const paging = computed(() => (asked.value.order === 'asc' ? { back: 'Earlier', 
 
 <style scoped>
 .filters { display: grid; gap: 4px; margin-bottom: 14px; }
-.kinds { display: flex; flex-wrap: wrap; gap: 6px 14px; align-self: center; flex: 1; }
+.kinds { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; align-self: center; flex: 1; }
 .actions { display: flex; gap: 8px; align-self: end; }
 .chat { background: var(--vxp-chat-bg); padding: 8px 12px; font-size: 13px; line-height: 1.6; }
 .line { padding: 2px 0; }
 /* A removed message: struck through and faded by ChatLine, and marked red here so it stands out at a glance. */
-.line.removed { border-left: 3px solid var(--vx-bad); padding-left: 6px; margin-left: -9px; }
+/* The same bar as ChatLine's notices, in red, with the same inset for both. */
+.line.notice, .line.removed { padding-left: 8px; padding-right: 8px; }
+.line.removed { border-left: 2px solid var(--vx-bad); }
 .line.removed :deep(.why) { color: var(--vx-bad); font-style: normal; }
-.view { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px 14px; margin-bottom: 6px; }
 .line { cursor: pointer; border-radius: 4px; }
 .line:focus-visible { outline: 1px solid var(--vx-accent); }
 .line.selected { background: color-mix(in srgb, var(--vx-accent) 8%, transparent); }
 /* Hidden until the line is hovered, focused or clicked, so the log isn't a column of buttons. */
-.raw-btn { margin-left: 6px; vertical-align: middle; font-family: var(--vx-mono); visibility: hidden; }
-.line:hover .raw-btn, .line:focus-within .raw-btn, .line.selected .raw-btn, .line.open .raw-btn { visibility: visible; }
+.raw-btn { margin-left: 6px; vertical-align: middle; font-family: var(--vx-mono); display: none; }
+.line:hover .raw-btn, .line:focus-within .raw-btn, .line.selected .raw-btn, .line.open .raw-btn { display: inline-flex; }
 /* A removed message not yet revealed: its reason in place of the text, which ChatLine would strike through. */
 .line.hidden :deep(.text) { text-decoration: none; opacity: 1; font-style: italic; color: var(--vx-bad); }
 .line.hidden :deep(.why) { display: none; }
