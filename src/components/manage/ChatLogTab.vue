@@ -2,8 +2,9 @@
 // A channel's chat log as one timeline (/api/v2/channels/{login}/log), newest first unless asked otherwise:
 // messages as Twitch shows them (badges, colours, Twitch and 7TV/BTTV/FFZ emotes), notifications (subs, raids...)
 // and moderation as notices. Searched as `logsearch` does in chat, over a time range if given; the bot pages it with
-// a cursor, so the pages go older and back. On the public channel page (`public`) it has no moderation and no removed
-// messages, which the bot leaves out for the public, and no coverage.
+// a cursor, so the pages go older and back. Removed messages show to everyone, struck through and marked red. Each
+// line can open the row the bot stored (EventSub's event or the IRC line), or the whole page shows that way. On the
+// public channel page (`public`) it has no moderation, which the bot leaves out for the public, and no coverage.
 import { loadBadges, loadChannelEmotes, toChatLine, type EmoteSet, type LogEntry, type RawBadges } from '@vexoulz/platform-web/chat'
 import { ChatLine } from '@vexoulz/platform-web/vue'
 import { VxButton, VxCallout, VxCheckbox, VxEmptyState, VxField, VxInput, VxSelect, VxSkeleton } from '@vexoulz/ui'
@@ -14,6 +15,7 @@ import { statusOf } from '@/lib/api'
 import { admin } from '@/lib/admin'
 import LogCoverage from './LogCoverage.vue'
 import { localInput, loginOf } from '@/lib/format'
+import type { RawEntry, RawRow } from '@/lib/admin'
 
 const props = defineProps<{
   login: string
@@ -57,7 +59,8 @@ const { data, error, loading, reload } = useResource(
       until: iso(asked.value.until),
       order: asked.value.order === 'asc' ? 'asc' : undefined,
       kind: asked.value.kinds.length === KINDS.length ? undefined : asked.value.kinds,
-      hide_removed: props.public || asked.value.hideRemoved,
+      hide_removed: asked.value.hideRemoved,
+      raw: true,
       cursor: cursors.value[page.value],
       limit: PAGE,
     }),
@@ -117,7 +120,24 @@ watch(
   },
   { immediate: true },
 )
-const lines = computed(() => (data.value?.items ?? []).map((e) => ({ at: e.at, line: toChatLine(e, emotes.value, badges.value) })))
+const lines = computed(() =>
+  ((data.value?.items ?? []) as RawEntry[]).map((e) => ({ at: e.at, line: toChatLine(e, emotes.value, badges.value), raw: e.raw })),
+)
+
+// ── raw rows: one line's on demand, or the whole page ──
+const allRaw = ref(false)
+const opened = ref(new Set<string>())
+const toggleRaw = (id: string) => {
+  const next = new Set(opened.value)
+  if (!next.delete(id)) next.add(id)
+  opened.value = next
+}
+/** The row as the bot stored it: the IRC line as it came, anything else as JSON (one line, or indented). */
+function rawText(raw: RawRow | null | undefined, pretty: boolean): string {
+  if (!raw?.data) return '(the bot kept no raw row for this line)'
+  if (raw.format === 'irc' && typeof raw.data.line === 'string') return raw.data.line
+  return JSON.stringify(raw.data, null, pretty ? 2 : undefined)
+}
 const paging = computed(() => (asked.value.order === 'asc' ? { back: 'Earlier', on: 'Later' } : { back: 'Newer', on: 'Older' }))
 </script>
 
@@ -127,7 +147,7 @@ const paging = computed(() => (asked.value.order === 'asc' ? { back: 'Earlier', 
       The broadcaster turns it on in Settings → Logging. What was logged before stays searchable.
     </VxCallout>
     <p v-else-if="public" class="vx-muted intro">
-      What was said in #{{ login }}, and its subs, raids and the like. Removed messages aren't shown here.
+      What was said in #{{ login }}, and its subs, raids and the like. Messages moderators removed are struck through.
     </p>
     <p v-else class="vx-muted intro">
       <template v-if="publicLog">Anyone can search this log's messages on the public channel page; moderation stays here.</template>
@@ -159,7 +179,7 @@ const paging = computed(() => (asked.value.order === 'asc' ? { back: 'Earlier', 
       <div class="vx-form-row">
         <div class="kinds">
           <VxCheckbox v-for="k in KINDS" :key="k.value" :model-value="form.kinds.includes(k.value)" :label="k.label" @update:model-value="(on: boolean) => toggleKind(k.value, on)" />
-          <VxCheckbox v-if="!public" v-model="form.hideRemoved" label="Hide removed" />
+          <VxCheckbox v-model="form.hideRemoved" label="Hide removed" />
         </div>
         <span class="actions">
           <VxButton type="button" variant="ghost" @click="reset">Reset</VxButton>
@@ -177,11 +197,28 @@ const paging = computed(() => (asked.value.order === 'asc' ? { back: 'Earlier', 
     </VxCallout>
     <div v-else-if="!data" class="loading" aria-busy="true"><VxSkeleton v-for="i in 8" :key="i" h="24px" /></div>
     <VxEmptyState v-else-if="!data.items.length" title="Nothing found" :text="page ? 'No more lines this way.' : 'Nothing in the log matches.'" />
-    <div v-else class="chat vx-panel" role="log" :aria-busy="loading">
-      <ChatLine v-for="l in lines" :key="l.line.id" class="line" :line="l.line">
-        <template #before><time class="when" :datetime="l.at" :title="new Date(l.at).toLocaleString()">{{ stamp(l.at) }}</time></template>
-      </ChatLine>
-    </div>
+    <template v-else>
+      <div class="view">
+        <VxCheckbox v-model="allRaw" label="Show raw" />
+      </div>
+      <div class="chat vx-panel" :class="{ 'all-raw': allRaw }" role="log" :aria-busy="loading">
+        <template v-for="l in lines" :key="l.line.id">
+          <div v-if="allRaw" class="line raw-line" :class="{ removed: l.line.removed }">
+            <time class="when" :datetime="l.at" :title="new Date(l.at).toLocaleString()">{{ stamp(l.at) }}</time>
+            <code>{{ rawText(l.raw, false) }}</code>
+          </div>
+          <template v-else>
+            <ChatLine class="line" :line="l.line">
+              <template #before><time class="when" :datetime="l.at" :title="new Date(l.at).toLocaleString()">{{ stamp(l.at) }}</time></template>
+              <template #after>
+                <VxButton class="raw-btn" size="sm" variant="ghost" icon :label="opened.has(l.line.id) ? 'Hide raw' : 'Show raw'" :pressed="opened.has(l.line.id)" @click="toggleRaw(l.line.id)">{}</VxButton>
+              </template>
+            </ChatLine>
+            <pre v-if="opened.has(l.line.id)" class="vx-code raw">{{ rawText(l.raw, true) }}</pre>
+          </template>
+        </template>
+      </div>
+    </template>
     <div v-if="data && (page > 0 || data.next_cursor)" class="pager">
       <VxButton size="sm" :disabled="page === 0 || loading" @click="newer">{{ paging.back }}</VxButton>
       <span class="vx-muted small">Page {{ page + 1 }}</span>
@@ -196,5 +233,13 @@ const paging = computed(() => (asked.value.order === 'asc' ? { back: 'Earlier', 
 .actions { display: flex; gap: 8px; align-self: end; }
 .chat { background: var(--vxp-chat-bg); padding: 8px 12px; font-size: 13px; line-height: 1.6; }
 .line { padding: 2px 0; }
+/* A removed message: struck through and faded by ChatLine, and marked red here so it stands out at a glance. */
+.line.removed { border-left: 3px solid var(--vx-bad); padding-left: 6px; margin-left: -9px; }
+.line.removed :deep(.why) { color: var(--vx-bad); font-style: normal; }
+.view { display: flex; justify-content: flex-end; margin-bottom: 6px; }
+.raw-btn { margin-left: 6px; vertical-align: middle; font-family: var(--vx-mono); }
+.raw { margin: 2px 0 6px; font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 320px; overflow: auto; }
+.raw-line { display: flex; gap: 0; align-items: baseline; }
+.raw-line code { font-family: var(--vx-mono); font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; min-width: 0; }
 .when { color: var(--vx-muted); font-family: var(--vx-mono); font-size: 11px; margin-right: 8px; white-space: nowrap; }
 </style>
