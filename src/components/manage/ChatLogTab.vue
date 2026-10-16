@@ -218,9 +218,6 @@ const paging = computed(() => (asked.value.order === 'asc' ? { back: 'Earlier', 
       <div class="vx-form-row">
         <div class="kinds">
           <VxCheckbox v-for="k in KINDS" :key="k.value" :model-value="form.kinds.includes(k.value)" :label="k.label" @update:model-value="(on: boolean) => toggleKind(k.value, on)" />
-          <VxSelect :model-value="form.removed" :options="REMOVED" width="170px" aria-label="Removed messages" @update:model-value="(v) => v && setRemoved(v)" />
-          <VxCheckbox v-if="!public" v-model="showMods" label="Show moderators" />
-          <VxCheckbox v-model="allRaw" label="Show raw" />
         </div>
         <span class="actions">
           <VxButton type="button" variant="ghost" @click="reset">Reset</VxButton>
@@ -239,6 +236,12 @@ const paging = computed(() => (asked.value.order === 'asc' ? { back: 'Earlier', 
     <div v-else-if="!data" class="loading" aria-busy="true"><VxSkeleton v-for="i in 8" :key="i" h="24px" /></div>
     <VxEmptyState v-else-if="!data.items.length" title="Nothing found" :text="page ? 'No more lines this way.' : 'Nothing in the log matches.'" />
     <template v-else>
+      <!-- These change only how the page shows, at once; the boxes above wait for Search. -->
+      <div class="view">
+        <VxSelect :model-value="form.removed" :options="REMOVED" width="170px" aria-label="Removed messages" @update:model-value="(v) => v && setRemoved(v)" />
+        <VxCheckbox v-if="!public" v-model="showMods" label="Show moderators" />
+        <VxCheckbox v-model="allRaw" label="Show raw" />
+      </div>
       <div class="chat vx-panel" :class="{ 'all-raw': allRaw }" role="log" :aria-busy="loading">
         <template v-for="l in lines" :key="l.line.id">
           <div v-if="allRaw" class="line raw-line" :class="{ removed: l.line.removed }">
@@ -281,6 +284,7 @@ const paging = computed(() => (asked.value.order === 'asc' ? { back: 'Earlier', 
 .line { padding: 2px 0; }
 /* A removed message: struck through and faded by ChatLine, and marked red here so it stands out at a glance. */
 /* The same bar as ChatLine's notices, in red, with the same inset for both. */
+.view { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px 14px; margin-bottom: 6px; }
 .line.notice, .line.removed { padding-left: 8px; padding-right: 8px; }
 .line.removed { border-left: 2px solid var(--vx-bad); }
 .line.removed :deep(.why) { color: var(--vx-bad); font-style: normal; }
