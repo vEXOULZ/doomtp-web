@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // The header's way into Manage for anyone signed in, in Twitch purple with a Twitch mark so it stands out.
-import { VxButton, VxTwitchGlyph } from '@vexoulz/ui'
+import { VxButton, VxTwitchGlyph } from '@vex/ui'
 import { useRoute } from 'vue-router'
 
 const route = useRoute()

@@ -1,11 +1,11 @@
 <script setup lang="ts">
 // A word filter: a channel's own (with the bot-wide list it can't change, and a box to try a message on both), or,
 // without a channel, the bot-wide list itself on the Bot page. The same entries `filter` adds and edits in chat.
-import { VxButton, VxChip, VxDialog, VxEmptyState, VxField, VxInput, VxSelect, VxSwitch, useToast } from '@vexoulz/ui'
+import { VxButton, VxChip, VxDialog, VxEmptyState, VxField, VxInput, VxSelect, VxSwitch, useToast } from '@vex/ui'
 import { computed, reactive, ref } from 'vue'
 import { can } from '@/lib/access'
 import { admin, type FilterBody, type FilterEntry, type FilterPatch, type FilterTest } from '@/lib/admin'
-import { errorText } from '@vexoulz/platform-web'
+import { errorText } from '@vex/platform-web'
 import { onOff, useAct } from '@/lib/useAct'
 
 const props = defineProps<{

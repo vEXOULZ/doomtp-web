@@ -1,12 +1,12 @@
-import '@vexoulz/ui/fonts.css'
-import '@vexoulz/ui/style.css'
-import '@vexoulz/platform-web/style.css'
+import '@vex/ui/fonts.css'
+import '@vex/ui/style.css'
+import '@vex/platform-web/style.css'
 import './styles.css'
-import '@vexoulz/ui/platform.css'
+import '@vex/ui/platform.css'
 
-import { twitchUserLookup } from '@vexoulz/platform-web/chat'
-import { createPlatformUi } from '@vexoulz/platform-web/vue'
-import { VxBuild, useToast } from '@vexoulz/ui'
+import { twitchUserLookup } from '@vex/platform-web/chat'
+import { createPlatformUi } from '@vex/platform-web/vue'
+import { VxBuild, useToast } from '@vex/ui'
 import { createApp } from 'vue'
 import { createRouter, createWebHistory, RouterLink } from 'vue-router'
 
@@ -56,7 +56,7 @@ setExpiredHandler(() => {
   if (here.path.startsWith('/manage')) router.push({ path: '/admin/login', query: { next: here.fullPath } })
 })
 
-// Manage pages need a session. Signed out, the visitor goes through the bot's Twitch sign-in (which, with the vexoulz
+// Manage pages need a session. Signed out, the visitor goes through the bot's Twitch sign-in (which, with the vexoul.net
 // account as its provider, is the account sign-in) and comes back to the page; without it, to the password page.
 router.beforeEach(async (to) => {
   if (!to.path.startsWith('/manage')) return true

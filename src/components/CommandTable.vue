@@ -3,7 +3,7 @@
 // clicking it opens the details underneath (arguments, cooldowns, examples, a custom command's body).
 // On a phone the columns stack inside each row instead of being dropped. The Manage pages add their controls to each
 // line (the `actions` slot), a note under the summary (`note`) and more details (`detail`).
-import { VxChip, VxInput } from '@vexoulz/ui'
+import { VxChip, VxInput } from '@vex/ui'
 import { computed, ref, useSlots } from 'vue'
 import { type CommandRow, filterRows } from '@/lib/commands'
 import ChatLine from './ChatLine.vue'

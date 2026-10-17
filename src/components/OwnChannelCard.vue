@@ -2,11 +2,11 @@
 // The user's own channel: add the bot to it (at once: signing in with Twitch proved it's theirs), or, once it's
 // there on less than the full tier, reconnect to grant the bot the rest; or why it can't, when the channel banned
 // it. Shows nothing otherwise.
-import { VxButton, VxCallout, useToast } from '@vexoulz/ui'
+import { VxButton, VxCallout, useToast } from '@vex/ui'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { mayAddOwn, mayUpgrade, ownBanned } from '@/lib/access'
-import { errorText } from '@vexoulz/platform-web'
+import { errorText } from '@vex/platform-web'
 import { CONNECT_URL, joinOwnChannel, session } from '@/lib/session'
 
 const toast = useToast()

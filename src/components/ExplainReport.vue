@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // The full explain report (spec §9): how a line parsed, what each command resolved to, whether the caller may run
 // it, and what it would do. Shared by the public report page and, later, the admin explain page.
-import { VxCallout, VxChip } from '@vexoulz/ui'
+import { VxCallout, VxChip } from '@vex/ui'
 import { computed } from 'vue'
 import type { ExplainInvocation, ExplainReport } from '@/lib/api'
 import { leadingSign } from '@/lib/lexer'

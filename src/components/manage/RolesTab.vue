@@ -2,10 +2,10 @@
 // A channel's custom roles and who holds them, as `role` manages them in chat: a role ranks between the built-in
 // ones, commands can require it, and a member can hold it for a while or until removed. The bot decides what the
 // session may touch (`manageable`): roles ranked below its own, any of them for the broadcaster.
-import { VxButton, VxCallout, VxChip, VxDialog, VxEmptyState, VxField, VxInput, VxSelect, VxSkeleton, VxStepper, timeAgo } from '@vexoulz/ui'
+import { VxButton, VxCallout, VxChip, VxDialog, VxEmptyState, VxField, VxInput, VxSelect, VxSkeleton, VxStepper, timeAgo } from '@vex/ui'
 import { computed, reactive, ref } from 'vue'
-import { useResource } from '@vexoulz/ui/utils'
-import { errorText } from '@vexoulz/platform-web'
+import { useResource } from '@vex/ui/utils'
+import { errorText } from '@vex/platform-web'
 import { can } from '@/lib/access'
 import { admin } from '@/lib/admin'
 import { api } from '@/lib/api'

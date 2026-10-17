@@ -2,9 +2,9 @@
 // /manage/jobs?state=&kind=&subject=: the bot's job runs (/api/v2/jobs: chat backfills), refreshed every few seconds,
 // for its admins. Filters live in the URL. A backfill is queued from a channel's Chat log tab, not here: the bot
 // doesn't take new runs through /api/v2/jobs.
-import type { JobKindOut } from '@vexoulz/platform-web'
-import { JobsBrowser, type JobFilters } from '@vexoulz/platform-web/vue'
-import { VxCallout } from '@vexoulz/ui'
+import type { JobKindOut } from '@vex/platform-web'
+import { JobsBrowser, type JobFilters } from '@vex/platform-web/vue'
+import { VxCallout } from '@vex/ui'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import ManageShell from '@/components/ManageShell.vue'

@@ -1,7 +1,7 @@
 // The bot's JSON API (doomtp-bot, /api/v1, and /api/v2 for the audit), served on this site's origin. Only the parts these pages read.
 // Fields are added on the bot's side, never renamed (ADR-0016), so optional ones here are the newer ones.
 
-import { ProblemError } from '@vexoulz/platform-web'
+import { ProblemError } from '@vex/platform-web'
 
 /** A request whose answer doesn't change while the page is open (the bot's built-in catalogues): made once, and
  *  again only after a failure. */

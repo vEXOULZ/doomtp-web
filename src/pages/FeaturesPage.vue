@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { VxSkeleton } from '@vexoulz/ui'
+import { VxSkeleton } from '@vex/ui'
 import { computed } from 'vue'
-import { useResource } from '@vexoulz/ui/utils'
+import { useResource } from '@vex/ui/utils'
 import ChatLine from '@/components/ChatLine.vue'
 import Cmd from '@/components/Cmd.vue'
 import DtpShell from '@/components/DtpShell.vue'

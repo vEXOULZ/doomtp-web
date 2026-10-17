@@ -2,10 +2,10 @@
 // What the bot says instead of staying quiet: a reply when a command is on cooldown or someone may not run it
 // (`callback`), and the channel's own wording for the readout commands (`customecho`). A reply is an expression,
 // set for the whole channel, one module or one command; a readout is a template.
-import { VxButton, VxCallout, VxDialog, VxEmptyState, VxField, VxInput, VxSegmented, VxSelect, VxSkeleton } from '@vexoulz/ui'
+import { VxButton, VxCallout, VxDialog, VxEmptyState, VxField, VxInput, VxSegmented, VxSelect, VxSkeleton } from '@vex/ui'
 import { computed, reactive, ref } from 'vue'
-import { useResource } from '@vexoulz/ui/utils'
-import { errorText } from '@vexoulz/platform-web'
+import { useResource } from '@vex/ui/utils'
+import { errorText } from '@vex/platform-web'
 import ChatLine from '@/components/ChatLine.vue'
 import { can } from '@/lib/access'
 import { admin, CALLBACK_KINDS, type Callback } from '@/lib/admin'

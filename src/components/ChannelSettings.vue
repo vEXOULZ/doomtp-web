@@ -1,10 +1,10 @@
 <script setup lang="ts">
 // A channel's settings as a form: only what changed is sent, as one PATCH, the same change `config` makes in chat.
-import { VxButton, VxField, VxInput, VxSegmented, VxSelect, VxStepper, VxSwitch, useToast } from '@vexoulz/ui'
+import { VxButton, VxField, VxInput, VxSegmented, VxSelect, VxStepper, VxSwitch, useToast } from '@vex/ui'
 import { computed, reactive, shallowRef, watch } from 'vue'
 import { can } from '@/lib/access'
 import { admin, type Channel, type ChannelPatch } from '@/lib/admin'
-import { errorText } from '@vexoulz/platform-web'
+import { errorText } from '@vex/platform-web'
 
 const props = defineProps<{ channel: Channel; roles: string[] }>()
 const emit = defineEmits<{ saved: [channel: Channel] }>()

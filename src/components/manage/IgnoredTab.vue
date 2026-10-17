@@ -2,7 +2,7 @@
 // The users the bot ignores in a channel (and everywhere): their messages are logged but never run commands. With
 // `everywhere`, the bot-wide list alone, for bot admins: `login` is then any joined channel (the bot-wide routes go
 // through one), or null when the bot is in none and the list can only be read.
-import { VxButton, VxCheckbox, VxChip, VxDialog, VxField, VxInput, timeAgo } from '@vexoulz/ui'
+import { VxButton, VxCheckbox, VxChip, VxDialog, VxField, VxInput, timeAgo } from '@vex/ui'
 import { reactive, ref } from 'vue'
 import ChatLine from '@/components/ChatLine.vue'
 import { can, isMe } from '@/lib/access'

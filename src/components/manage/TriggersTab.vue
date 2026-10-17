@@ -3,12 +3,12 @@
 // edited and deleted as `trigger` and `timer` do in chat; one runs at its creator's rank at most. A listener's
 // pattern can be tried on a line of chat first. Its cooldowns (ADR-0031) are one for the whole channel and one per
 // chatter, as `listen|event|timer cooldown` sets them; triggers with no chatter take only the first.
-import { VxButton, VxCheckbox, VxChip, VxDialog, VxEmptyState, VxField, VxInput, VxRadioGroup, VxSelect, VxStepper, VxSwitch, useToast } from '@vexoulz/ui'
+import { VxButton, VxCheckbox, VxChip, VxDialog, VxEmptyState, VxField, VxInput, VxRadioGroup, VxSelect, VxStepper, VxSwitch, useToast } from '@vex/ui'
 import { computed, reactive, ref } from 'vue'
 import ChatLine from '@/components/ChatLine.vue'
 import { can, rankIn } from '@/lib/access'
 import { admin, NO_CHATTER, TRIGGER_EVENTS, type Trigger, type TriggerBody } from '@/lib/admin'
-import { errorText } from '@vexoulz/platform-web'
+import { errorText } from '@vex/platform-web'
 import { LOG_LEVELS } from '@/lib/modules'
 import { onOff, useAct } from '@/lib/useAct'
 import { conditions, cooldowns, matches, NEEDS } from '@/lib/triggers'

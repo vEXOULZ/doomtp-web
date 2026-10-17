@@ -1,10 +1,10 @@
 <script setup lang="ts">
 // The bot's HTTP API, read from its own /openapi.json so it can't drift. Swagger UI (/docs, served by the bot) stays
 // linked for trying requests; this page is the one that matches the site.
-import { VxButton, VxCallout, VxSkeleton } from '@vexoulz/ui'
+import { VxButton, VxCallout, VxSkeleton } from '@vex/ui'
 import { computed } from 'vue'
-import { useResource } from '@vexoulz/ui/utils'
-import { errorText } from '@vexoulz/platform-web'
+import { useResource } from '@vex/ui/utils'
+import { errorText } from '@vex/platform-web'
 import DtpShell from '@/components/DtpShell.vue'
 import { codeRuns, readOpenApi } from '@/lib/openapi'
 

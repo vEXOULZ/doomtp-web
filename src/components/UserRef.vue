@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // Someone the bot knows by Twitch user id: `@login` when their login is known, with the id in a tooltip (logins can
 // change, ids don't); the bare id otherwise; and `fallback` when there's no one (the admin password, a key, the bot).
-import { VxTooltip } from '@vexoulz/ui'
+import { VxTooltip } from '@vex/ui'
 
 defineProps<{ id?: string | null; login?: string | null; fallback?: string }>()
 </script>

@@ -2,10 +2,10 @@
 // What the bot keeps about you: your variables (`chatter.*` everywhere, `channel.chatter.*` per channel, and your
 // commands' `publisher.*`) with your storage use, or your runs in every channel, newest first. As in chat, you set
 // and delete your own `chatter.*` (`!var set|del chatter.x`) and clear your own `channel.chatter.*` values.
-import { VxButton, VxCallout, VxChip, VxDialog, VxEmptyState, VxField, VxInput, VxSegmented, VxSkeleton, timeAgo } from '@vexoulz/ui'
+import { VxButton, VxCallout, VxChip, VxDialog, VxEmptyState, VxField, VxInput, VxSegmented, VxSkeleton, timeAgo } from '@vex/ui'
 import { computed, reactive, ref } from 'vue'
-import { useResource } from '@vexoulz/ui/utils'
-import { bytes, errorText } from '@vexoulz/platform-web'
+import { useResource } from '@vex/ui/utils'
+import { bytes, errorText } from '@vex/platform-web'
 import ChatLine from '@/components/ChatLine.vue'
 import { admin, type MyRun, type MyVariable, type Storage } from '@/lib/admin'
 import { shown, typedValue } from '@/lib/format'

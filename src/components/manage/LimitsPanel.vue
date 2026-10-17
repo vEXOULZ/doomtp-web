@@ -1,10 +1,10 @@
 <script setup lang="ts">
 // Variable storage limits (ADR-0019), the same as `admin quota|valuecap|listitems|names` in chat: the defaults for
 // every owner, and overrides for one channel, publisher or chatter.
-import { VxButton, VxCallout, VxField, VxInput, VxSelect, VxSkeleton } from '@vexoulz/ui'
+import { VxButton, VxCallout, VxField, VxInput, VxSelect, VxSkeleton } from '@vex/ui'
 import { computed, reactive, watch } from 'vue'
-import { useResource } from '@vexoulz/ui/utils'
-import { bytes, errorText } from '@vexoulz/platform-web'
+import { useResource } from '@vex/ui/utils'
+import { bytes, errorText } from '@vex/platform-web'
 import { admin, OWNER_KINDS, type Limits, type LimitsPatch } from '@/lib/admin'
 import { count } from '@/lib/format'
 import { useAct } from '@/lib/useAct'

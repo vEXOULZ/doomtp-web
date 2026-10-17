@@ -1,11 +1,11 @@
 <script setup lang="ts">
 // Where the Manage bar starts: the channels this session runs (every one, for an admin), with its rank in each,
 // adding the bot to the user's own channel, and the latest changes it can see.
-import { VxButton, VxCallout, VxChip, VxSkeleton, VxStatusDot } from '@vexoulz/ui'
+import { VxButton, VxCallout, VxChip, VxSkeleton, VxStatusDot } from '@vex/ui'
 import { computed } from 'vue'
-import { AuditTable } from '@vexoulz/platform-web/vue'
-import { useResource } from '@vexoulz/ui/utils'
-import { errorText } from '@vexoulz/platform-web'
+import { AuditTable } from '@vex/platform-web/vue'
+import { useResource } from '@vex/ui/utils'
+import { errorText } from '@vex/platform-web'
 import AuditActor from '@/components/AuditActor.vue'
 import ManageShell from '@/components/ManageShell.vue'
 import OwnChannelCard from '@/components/OwnChannelCard.vue'

@@ -1,8 +1,8 @@
 // The managing half of the bot's JSON API (ADR-0016, ADR-0026): the session, a channel's settings and logs, and
 // the bot's own. Every call needs the session cookie; writes also send its CSRF token (see `auth` in api.ts).
 import type { ChannelCommand, CommandRulePatch } from './modules'
-import type { AuditOut } from '@vexoulz/platform-web'
-import type { LogCoverage, LogEntry, LogQuery } from '@vexoulz/platform-web/chat'
+import type { AuditOut } from '@vex/platform-web'
+import type { LogCoverage, LogEntry, LogQuery } from '@vex/platform-web/chat'
 import { request, type CustomCommand, type ExplainReport, type Publication } from './api'
 
 const json = (method: string, body?: unknown): RequestInit => ({
@@ -268,7 +268,7 @@ export interface Run {
 }
 
 // The log's shapes (/api/v2/channels/{login}/log, ADR-0027) are the shared chat library's.
-export type { LogCoverage, LogEntry, LogQuery, LogUser } from '@vexoulz/platform-web/chat'
+export type { LogCoverage, LogEntry, LogQuery, LogUser } from '@vex/platform-web/chat'
 
 /** A log entry's row as the bot stored it (`raw=true`): EventSub's event, the IRC line as `{ line }`, or a rebuild of
  *  a row from before raw events were kept. Older bots leave it out. */

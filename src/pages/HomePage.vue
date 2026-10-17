@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { VxButton, VxCallout, VxChip, VxSkeleton } from '@vexoulz/ui'
+import { VxButton, VxCallout, VxChip, VxSkeleton } from '@vex/ui'
 import { computed } from 'vue'
-import { usePoll } from '@vexoulz/ui/utils'
+import { usePoll } from '@vex/ui/utils'
 import ChatLine from '@/components/ChatLine.vue'
 import Cmd from '@/components/Cmd.vue'
 import DtpShell from '@/components/DtpShell.vue'

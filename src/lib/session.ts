@@ -153,7 +153,7 @@ export function refresh(): Promise<void> {
 }
 
 /**
- * Where the Twitch sign-in starts: the bot sends the person to Twitch (or through the vexoulz account, ADR-0023) and
+ * Where the Twitch sign-in starts: the bot sends the person to Twitch (or through the vexoul.net account, ADR-0023) and
  * back to its own callback, which sets the session cookie and lands on `next` (a path on this site), or on
  * /admin/login?error=<reason> when it fails.
  */
@@ -166,7 +166,7 @@ export const CONNECT_URL = '/auth/connect'
 
 const BOUNCED = 'dtp:signin-bounced'
 /**
- * Someone signed in to their vexoulz account but without a bot session goes through the bot's sign-in once, which
+ * Someone signed in to their vexoul.net account but without a bot session goes through the bot's sign-in once, which
  * comes straight back signed in. At most once per tab, so a sign-in that fails can't loop. True if it navigated.
  */
 export function bounceOnce(accountSignedIn: boolean, here: string, go = (url: string) => window.location.assign(url)): boolean {

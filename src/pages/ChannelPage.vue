@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { VxButton, VxCallout, VxChip, VxEmptyState, VxSkeleton, VxTabs } from '@vexoulz/ui'
+import { VxButton, VxCallout, VxChip, VxEmptyState, VxSkeleton, VxTabs } from '@vex/ui'
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useResource } from '@vexoulz/ui/utils'
-import { errorText } from '@vexoulz/platform-web'
+import { useResource } from '@vex/ui/utils'
+import { errorText } from '@vex/platform-web'
 import Cmd from '@/components/Cmd.vue'
 import ChatLogTab from '@/components/manage/ChatLogTab.vue'
 import '@/components/manage/tabs.css'

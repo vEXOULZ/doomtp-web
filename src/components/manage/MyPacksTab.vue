@@ -2,10 +2,10 @@
 // Your packs, as `pack` manages them in chat: a named set of your commands that is published and turned on and off
 // as one module. An internal member runs only when another command in the pack calls it. A pack's own triggers
 // (ADR-0032) run wherever it is published. Each member's rank (ADR-0033) is the least a channel can require of it.
-import { VxButton, VxCallout, VxCheckbox, VxChip, VxDialog, VxEmptyState, VxField, VxInput, VxSelect, VxSkeleton, VxSwitch } from '@vexoulz/ui'
+import { VxButton, VxCallout, VxCheckbox, VxChip, VxDialog, VxEmptyState, VxField, VxInput, VxSelect, VxSkeleton, VxSwitch } from '@vex/ui'
 import { computed, reactive, ref } from 'vue'
-import { useResource } from '@vexoulz/ui/utils'
-import { errorText } from '@vexoulz/platform-web'
+import { useResource } from '@vex/ui/utils'
+import { errorText } from '@vex/platform-web'
 import { admin, type MyPack } from '@/lib/admin'
 import { useAct } from '@/lib/useAct'
 import PackTriggers from './PackTriggers.vue'
