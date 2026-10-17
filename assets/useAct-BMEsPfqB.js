@@ -1,0 +1,1 @@
+import{A as u,U as f,W as i}from"./index-B24RnGMn.js";function w(t){const a=i(),n=f(new Set);async function e(o,r,s){n.add(o);try{return await r(),a.show(s),await t(),!0}catch(c){return a.show(u(c),{kind:"error",duration:5e3}),!1}finally{n.delete(o)}}return{busy:n,act:e}}const l=t=>t?"on":"off";export{l as o,w as u};
