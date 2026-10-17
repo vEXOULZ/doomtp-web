@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ProblemError } from '@vexoulz/platform-web'
-import { VxButton, VxCallout, VxField, VxInput, VxTwitchGlyph } from '@vexoulz/ui'
+import { ProblemError } from '@vex/platform-web'
+import { VxButton, VxCallout, VxField, VxInput, VxTwitchGlyph } from '@vex/ui'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import DtpShell from '@/components/DtpShell.vue'

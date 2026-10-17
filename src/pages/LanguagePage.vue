@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { VxButton, VxCallout, VxSkeleton } from '@vexoulz/ui'
+import { VxButton, VxCallout, VxSkeleton } from '@vex/ui'
 import { computed, onMounted } from 'vue'
-import { useResource } from '@vexoulz/ui/utils'
-import { errorText } from '@vexoulz/platform-web'
+import { useResource } from '@vex/ui/utils'
+import { errorText } from '@vex/platform-web'
 import ChatLine from '@/components/ChatLine.vue'
 import Cmd from '@/components/Cmd.vue'
 import DtpShell from '@/components/DtpShell.vue'

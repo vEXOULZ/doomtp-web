@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { admin, readIgnored } from '../src/lib/admin'
-import { ProblemError } from '@vexoulz/platform-web'
+import { ProblemError } from '@vex/platform-web'
 import { auth, request } from '../src/lib/api'
 
 describe('request', () => {
@@ -74,7 +74,7 @@ describe('readIgnored', () => {
 describe('Twitch sign-in', () => {
   it('starts at the bot with the page to come back to, and explains every failure the callback reports', async () => {
     const { SIGNIN_ERRORS, twitchLoginUrl } = await import('../src/lib/session')
-    expect(twitchLoginUrl('/admin/channels/vexoulz')).toBe('/auth/admin/login?next=%2Fadmin%2Fchannels%2Fvexoulz')
+    expect(twitchLoginUrl('/admin/channels/vexouluna')).toBe('/auth/admin/login?next=%2Fadmin%2Fchannels%2Fvexouluna')
     expect(Object.keys(SIGNIN_ERRORS).sort()).toEqual(['denied', 'expired', 'no_channels', 'not_configured', 'twitch'])
   })
 })

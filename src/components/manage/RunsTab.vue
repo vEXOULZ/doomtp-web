@@ -1,9 +1,9 @@
 <script setup lang="ts">
 // The latest command and trigger runs in a channel: what ran, how it ended, and how long it took.
-import { VxButton, VxCallout, VxChip, VxEmptyState, VxInput, VxSegmented, VxSkeleton, timeAgo } from '@vexoulz/ui'
+import { VxButton, VxCallout, VxChip, VxEmptyState, VxInput, VxSegmented, VxSkeleton, timeAgo } from '@vex/ui'
 import { computed, ref } from 'vue'
-import { useResource } from '@vexoulz/ui/utils'
-import { errorText } from '@vexoulz/platform-web'
+import { useResource } from '@vex/ui/utils'
+import { errorText } from '@vex/platform-web'
 import ChatLine from '@/components/ChatLine.vue'
 import { admin, type Run } from '@/lib/admin'
 

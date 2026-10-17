@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // The "By" cell of the shared audit table, the bot's way: a Twitch user as @login with their id in a tooltip, the
 // admin password, a key and the bot itself by name.
-import type { AuditOut } from '@vexoulz/platform-web'
+import type { AuditOut } from '@vex/platform-web'
 import { nobody } from '@/lib/platform'
 import UserRef from './UserRef.vue'
 

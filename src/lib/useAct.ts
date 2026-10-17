@@ -1,8 +1,8 @@
 // One helper for every change on a Manage page: run it, say so in a toast, then reload. A failure is a toast too,
 // and the form that asked keeps what was typed. `busy` holds the keys of the changes still running.
-import { useToast } from '@vexoulz/ui'
+import { useToast } from '@vex/ui'
 import { reactive } from 'vue'
-import { errorText } from '@vexoulz/platform-web'
+import { errorText } from '@vex/platform-web'
 
 export function useAct(reload: () => Promise<unknown> | void) {
   const toast = useToast()

@@ -2,10 +2,10 @@
 // What reaches every channel, for bot admins: the admins themselves (`admin add|remove`, bot owners only), the
 // bot-wide module toggles and command rules every channel inherits, the bot-wide word filter, who is ignored
 // everywhere, and the commands and packs published everywhere.
-import { VxButton, VxCallout, VxChip, VxDialog, VxField, VxInput, VxSegmented, VxSkeleton } from '@vexoulz/ui'
+import { VxButton, VxCallout, VxChip, VxDialog, VxField, VxInput, VxSegmented, VxSkeleton } from '@vex/ui'
 import { computed, reactive, ref } from 'vue'
-import { useResource } from '@vexoulz/ui/utils'
-import { errorText } from '@vexoulz/platform-web'
+import { useResource } from '@vex/ui/utils'
+import { errorText } from '@vex/platform-web'
 import FilterTab from '@/components/manage/FilterTab.vue'
 import IgnoredTab from '@/components/manage/IgnoredTab.vue'
 import RulesTab from '@/components/manage/RulesTab.vue'

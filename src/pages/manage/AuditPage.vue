@@ -1,10 +1,10 @@
 <script setup lang="ts">
 // /manage/audit?action=&target=&actor=&actor_kind=&outcome=: the bot's audit log (GET /api/v2/audit), newest first.
 // Filters live in the URL.
-import { AuditBrowser, type AuditFilters } from '@vexoulz/platform-web/vue'
+import { AuditBrowser, type AuditFilters } from '@vex/platform-web/vue'
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useResource } from '@vexoulz/ui/utils'
+import { useResource } from '@vex/ui/utils'
 import AuditActor from '@/components/AuditActor.vue'
 import ManageShell from '@/components/ManageShell.vue'
 import '@/components/manage/tabs.css'

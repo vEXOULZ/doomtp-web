@@ -1,8 +1,8 @@
 # dtp.vexoul.net
 
-The web pages of [doomtp-bot](https://github.com/vEXOULZ/doomtp-bot), a Twitch chat bot with a composable command
+The web pages of [doomtp-bot](https://github.com/vexouLuna/doomtp-bot), a Twitch chat bot with a composable command
 language: its docs, the command reference, channel pages and chat's explain links. Vue 3 + TypeScript on the shared
-[`@vexoulz/ui`](https://github.com/vEXOULZ/vexoulz-ui) design, over the bot's JSON API. It replaces the bot's own
+[`@vex/ui`](https://github.com/vexouLuna/vex-ui) design, over the bot's JSON API. It replaces the bot's own
 server-rendered pages (doomtp-bot ADR-0016).
 
 ```bash
@@ -40,7 +40,7 @@ Twitch sign-in and come back; if that isn't set up, you land on `/admin/login`. 
 ADR-0017 and ADR-0026):
 
 - **Sign in with Twitch** (`/auth/admin/login` on the bot, offered when the bot's `/api/v1/session` says
-  `twitch_login`). The account menu's "Sign in" uses it too. Someone already signed in to their vexoulz account
+  `twitch_login`). The account menu's "Sign in" uses it too. Someone already signed in to their vexoul.net account
   without a bot session goes through it once per tab, silently.
   - **The bot's owners and admins** see everything.
   - **Everyone else** gets what they may do in chat:
@@ -97,13 +97,13 @@ python scripts/dev_api.py
 ```
 
 It has no Twitch sign-in; for the moderator view, open `http://127.0.0.1:8080/dev/login-as?user=alice` (a
-moderator of `vexoulz`; `newcomer` is a plain user), then this site at `http://127.0.0.1:5176/manage`: the session cookie belongs to the host,
+moderator of `vexouluna`; `newcomer` is a plain user), then this site at `http://127.0.0.1:5176/manage`: the session cookie belongs to the host,
 so use `127.0.0.1` for both, not `localhost`.
 
 ## Publishing
 
 `.github/workflows/publish.yml` builds and pushes `dist/` to the `deploy` branch on every merge to `main`.
-`@vexoulz/ui` is pinned to a git tag in `package.json`, and Renovate opens the bumps.
+`@vex/ui` is pinned to a git tag in `package.json`, and Renovate opens the bumps.
 
 ## Infrastructure
 

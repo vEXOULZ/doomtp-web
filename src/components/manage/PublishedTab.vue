@@ -3,14 +3,14 @@
 // enable|disable` does in chat, and one in a pack follows the pack (the Modules tab). Whoever reaches the channel's
 // "publish" role publishes their own commands and packs here, or a pack someone shared, and takes them down again;
 // whoever reaches its "grant" role lets published commands write the channel's variables.
-import { VxButton, VxCallout, VxCheckbox, VxChip, VxDialog, VxEmptyState, VxField, VxInput, VxSegmented, VxSelect, VxSwitch, useToast } from '@vexoulz/ui'
+import { VxButton, VxCallout, VxCheckbox, VxChip, VxDialog, VxEmptyState, VxField, VxInput, VxSegmented, VxSelect, VxSwitch, useToast } from '@vex/ui'
 import { computed, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { useResource } from '@vexoulz/ui/utils'
+import { useResource } from '@vex/ui/utils'
 import ChatLine from '@/components/ChatLine.vue'
 import { reachesRole } from '@/lib/access'
 import { admin, type Grant } from '@/lib/admin'
-import { errorText } from '@vexoulz/platform-web'
+import { errorText } from '@vex/platform-web'
 import { type Pack, type Role } from '@/lib/api'
 import { CUSTOM_MODULE, type PublishedRow } from '@/lib/modules'
 import { session } from '@/lib/session'

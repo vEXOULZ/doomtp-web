@@ -3,7 +3,7 @@
 // cooldowns and log level, as `cmd` does in chat. Without a channel, the same rules bot-wide (the Bot page).
 // It reads like the public command pages (CommandTable: a line opens its arguments, examples and body), with the
 // rules in force here in place of the defaults and the switch and Edit on each line.
-import { VxButton, VxCheckbox, VxChip, VxDialog, VxField, VxInput, VxSegmented, VxSelect, VxSwitch } from '@vexoulz/ui'
+import { VxButton, VxCheckbox, VxChip, VxDialog, VxField, VxInput, VxSegmented, VxSelect, VxSwitch } from '@vex/ui'
 import { computed, reactive, ref } from 'vue'
 import ChatLine from '@/components/ChatLine.vue'
 import CommandTable from '@/components/CommandTable.vue'

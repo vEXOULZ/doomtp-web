@@ -1,4 +1,4 @@
-/* Site-level additions on top of @vexoulz/ui. Keep this small; shared styles belong in the library. */
+/* Site-level additions on top of @vex/ui. Keep this small; shared styles belong in the library. */
 
 /* The bot's default command sign, 🏜, drawn as Twemoji everywhere text is: pages, inputs and the editor. Some
    platforms draw it as a flat monochrome glyph, a poor thing to hand somebody as "the character you type".

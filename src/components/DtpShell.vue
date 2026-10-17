@@ -2,9 +2,9 @@
 // Every page's frame: the shared shell with dtp's nav, a "Manage" button in the header once someone is signed in
 // (the Manage bar itself is on the Manage pages, ManageShell), an admin's "View as" banner while previewing, and the
 // bot's version and default sign in the footer.
-import { VxSiteFooter, VxSiteShell } from '@vexoulz/ui'
-import type { NavItem } from '@vexoulz/ui'
-import { useAccount } from '@vexoulz/ui/account'
+import { VxSiteFooter, VxSiteShell } from '@vex/ui'
+import type { NavItem } from '@vex/ui'
+import { useAccount } from '@vex/ui/account'
 import { onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { bounceOnce, ensure, session } from '@/lib/session'
@@ -29,7 +29,7 @@ onMounted(() => {
   loadSite()
   ensure()
 })
-// Signed in to the vexoulz account but not to the bot: one trip through the bot's sign-in makes the session.
+// Signed in to the vexoul.net account but not to the bot: one trip through the bot's sign-in makes the session.
 watch(
   () => [account.user.value, session.checked] as const,
   ([user, checked]) => {

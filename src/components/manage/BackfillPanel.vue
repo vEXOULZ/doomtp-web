@@ -2,10 +2,10 @@
 // History backfill jobs for a channel: the queue and the latest finished ones. The broadcaster queues a pass over
 // every gap in the log (as `backfill` does in chat), or any range they pick (from before the bot was listening,
 // say), and cancels a job that hasn't started. Each is a `chat_backfill` job run: an admin follows it to its job page.
-import { VxButton, VxCallout, VxChip, VxEmptyState, VxField, timeAgo } from '@vexoulz/ui'
+import { VxButton, VxCallout, VxChip, VxEmptyState, VxField, timeAgo } from '@vex/ui'
 import { computed, reactive, ref, watch } from 'vue'
-import { useResource } from '@vexoulz/ui/utils'
-import { errorText } from '@vexoulz/platform-web'
+import { useResource } from '@vex/ui/utils'
+import { errorText } from '@vex/platform-web'
 import { can, isAdmin } from '@/lib/access'
 import { admin, type BackfillJob } from '@/lib/admin'
 import { useAct } from '@/lib/useAct'

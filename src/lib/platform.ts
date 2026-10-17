@@ -1,7 +1,7 @@
 // The bot's vex-platform routes (/api/v2: job runs, their events and kinds, the audit log) through the shared client.
 // Same rules as every other call (api.ts `auth`): the session's CSRF token on writes, the preview's X-View-As while an
 // admin views the site as someone else (the bot scopes the answer and refuses changes), and a 401 ends the session.
-import { PlatformClient, type AuditOut } from '@vexoulz/platform-web'
+import { PlatformClient, type AuditOut } from '@vex/platform-web'
 import { auth, previewHeader, sessionEnded } from './api'
 
 async function platformFetch(input: string, init: RequestInit = {}): Promise<Response> {

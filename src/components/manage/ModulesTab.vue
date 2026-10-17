@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // Built-in modules and the packs published in a channel, each turned on or off as `module` does in chat.
-import { VxButton, VxChip, VxSwitch } from '@vexoulz/ui'
+import { VxButton, VxChip, VxSwitch } from '@vex/ui'
 import ChatLine from '@/components/ChatLine.vue'
 import { can } from '@/lib/access'
 import { admin } from '@/lib/admin'

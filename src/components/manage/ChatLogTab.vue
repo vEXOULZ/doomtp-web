@@ -7,12 +7,12 @@
 // or the whole page shows that way. Moderation names a moderator only when a moderator ticks "Show moderators". On the
 // public channel page (`public`) it has no moderation, which the bot leaves out for the public, and no coverage. A
 // chatter's name opens their user card.
-import { loadBadges, loadChannelEmotes, removalNote, toChatLine, type ChatLine as Line, type EmoteSet, type LogEntry, type RawBadges } from '@vexoulz/platform-web/chat'
-import { ChatLine, UserCard } from '@vexoulz/platform-web/vue'
-import { VxButton, VxCallout, VxCheckbox, VxEmptyState, VxField, VxInput, VxSelect, VxSkeleton } from '@vexoulz/ui'
+import { loadBadges, loadChannelEmotes, removalNote, toChatLine, type ChatLine as Line, type EmoteSet, type LogEntry, type RawBadges } from '@vex/platform-web/chat'
+import { ChatLine, UserCard } from '@vex/platform-web/vue'
+import { VxButton, VxCallout, VxCheckbox, VxEmptyState, VxField, VxInput, VxSelect, VxSkeleton } from '@vex/ui'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, shallowRef, watch } from 'vue'
-import { useResource } from '@vexoulz/ui/utils'
-import { errorText } from '@vexoulz/platform-web'
+import { useResource } from '@vex/ui/utils'
+import { errorText } from '@vex/platform-web'
 import { statusOf } from '@/lib/api'
 import { admin } from '@/lib/admin'
 import LogCoverage from './LogCoverage.vue'

@@ -1,11 +1,11 @@
 <script setup lang="ts">
 // "View as", for bot admins (lib/viewAs.ts): the banner under the header while the site is previewed as another
 // role, and the picker that starts or changes a preview (opened here or from the account menu).
-import { VxButton, VxCallout, VxDialog, VxField, VxSelect } from '@vexoulz/ui'
+import { VxButton, VxCallout, VxDialog, VxField, VxSelect } from '@vex/ui'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { admin, type Channel, type ChannelRoles } from '@/lib/admin'
-import { errorText } from '@vexoulz/platform-web'
+import { errorText } from '@vex/platform-web'
 import { customRank } from '@/lib/ranks'
 import { mayViewAs, previewing, viewAs } from '@/lib/session'
 import { describe, picker, type Preview, type PreviewRole } from '@/lib/viewAs'

@@ -4,10 +4,10 @@
 // keep here (`publisher.channel.*`, `publisher.channel.chatter.*`), with how much storage they use. Whoever reaches
 // the channel's "write channel variables" role sets and deletes `channel.*`; a chatter's value is cleared by them or
 // by the "manage variables" role, as `!var del … @user` does. Nobody edits someone else's.
-import { VxButton, VxCallout, VxDialog, VxEmptyState, VxField, VxInput, VxProgress, VxSelect, VxSkeleton, timeAgo } from '@vexoulz/ui'
+import { VxButton, VxCallout, VxDialog, VxEmptyState, VxField, VxInput, VxProgress, VxSelect, VxSkeleton, timeAgo } from '@vex/ui'
 import { computed, reactive, ref, watch } from 'vue'
-import { useResource } from '@vexoulz/ui/utils'
-import { bytes, errorText } from '@vexoulz/platform-web'
+import { useResource } from '@vex/ui/utils'
+import { bytes, errorText } from '@vex/platform-web'
 import { reachesRole } from '@/lib/access'
 import { admin, type ChannelNamespace, type NamespacedVariable, type Variable } from '@/lib/admin'
 import type { Role } from '@/lib/api'

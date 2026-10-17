@@ -3,11 +3,11 @@
 // /api/v2/channels/{login}/log/coverage: the holes it left and what backfill made of each. A hole can be shown in the
 // log, or backfilled by whoever may run backfills; an admin follows the channel's backfills, or the one that filled a
 // hole, to its jobs.
-import type { LogGap } from '@vexoulz/platform-web/chat'
-import { VxButton, VxChip } from '@vexoulz/ui'
+import type { LogGap } from '@vex/platform-web/chat'
+import { VxButton, VxChip } from '@vex/ui'
 import { computed } from 'vue'
-import { useResource } from '@vexoulz/ui/utils'
-import { errorText } from '@vexoulz/platform-web'
+import { useResource } from '@vex/ui/utils'
+import { errorText } from '@vex/platform-web'
 import { can, isAdmin } from '@/lib/access'
 import { admin } from '@/lib/admin'
 import { channelSubject } from '@/lib/platform'

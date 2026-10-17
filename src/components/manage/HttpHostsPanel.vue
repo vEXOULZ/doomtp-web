@@ -1,10 +1,10 @@
 <script setup lang="ts">
 // The hosts `http get` may fetch (ADR-0020), the same as `admin http` in chat: allow and remove them, attach a
 // secret the bot adds to each request (its value goes in and never comes back), and the rate limits.
-import { VxButton, VxCallout, VxCheckbox, VxChip, VxDialog, VxField, VxInput, VxRadioGroup, VxSkeleton, timeAgo } from '@vexoulz/ui'
+import { VxButton, VxCallout, VxCheckbox, VxChip, VxDialog, VxField, VxInput, VxRadioGroup, VxSkeleton, timeAgo } from '@vex/ui'
 import { computed, reactive, ref, watch } from 'vue'
-import { useResource } from '@vexoulz/ui/utils'
-import { errorText } from '@vexoulz/platform-web'
+import { useResource } from '@vex/ui/utils'
+import { errorText } from '@vex/platform-web'
 import { admin, type HttpHost, type HttpLimits } from '@/lib/admin'
 import { count } from '@/lib/format'
 import { useAct } from '@/lib/useAct'

@@ -2,15 +2,15 @@
 // Explain and sandbox for anyone signed in: what an expression would do in any channel, and optionally run it with
 // nothing sent or saved. Checking it as a chatter you name (architecture §11 `as_user`) is for the channel's
 // moderators, as the bot allows it.
-import { VxButton, VxCallout, VxCheckbox, VxField, VxInput, VxSelect, VxSkeleton } from '@vexoulz/ui'
+import { VxButton, VxCallout, VxCheckbox, VxField, VxInput, VxSelect, VxSkeleton } from '@vex/ui'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useResource } from '@vexoulz/ui/utils'
+import { useResource } from '@vex/ui/utils'
 import ManageShell from '@/components/ManageShell.vue'
 import ExplainReport from '@/components/ExplainReport.vue'
 import { can } from '@/lib/access'
 import { admin, EXPLAIN_BADGES } from '@/lib/admin'
-import { errorText } from '@vexoulz/platform-web'
+import { errorText } from '@vex/platform-web'
 import { api, type ExplainReport as Report } from '@/lib/api'
 
 const route = useRoute()

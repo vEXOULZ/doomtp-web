@@ -2,7 +2,7 @@
 // What the bot has been doing: chat lines it logged and sent over the last minute, hour and day, and the day's
 // runs. With `build`, also what it is: its version, the tag or branch and commit it was built from, how long it
 // has been up and how many channels it is in. The bot counts at most every 30 seconds, so this asks no faster.
-import { VxChip } from '@vexoulz/ui'
+import { VxChip } from '@vex/ui'
 import { computed } from 'vue'
 import type { BotStats, Counts } from '@/lib/api'
 import { uptime } from '@/lib/format'
@@ -16,7 +16,7 @@ const ROWS = computed(() => [
 ])
 const runs = computed(() => props.counts.runs_day)
 const commitUrl = computed(() =>
-  props.build?.commit ? `https://github.com/vEXOULZ/doomtp-bot/commit/${props.build.commit}` : null,
+  props.build?.commit ? `https://github.com/vexouLuna/doomtp-bot/commit/${props.build.commit}` : null,
 )
 </script>
 

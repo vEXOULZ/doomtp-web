@@ -2,7 +2,7 @@
 // One of your packs' own triggers (ADR-0032), as `cc pack trigger` manages them in chat. They fire in every channel
 // where the pack is published and its module is on, at everyone's rank, and may call only the pack's public commands
 // and the built-ins. A pack's clock fires at most every 15 minutes, and a pack has at most 10 triggers.
-import { VxButton, VxCheckbox, VxChip, VxDialog, VxField, VxInput, VxRadioGroup, VxSelect, VxStepper, VxSwitch } from '@vexoulz/ui'
+import { VxButton, VxCheckbox, VxChip, VxDialog, VxField, VxInput, VxRadioGroup, VxSelect, VxStepper, VxSwitch } from '@vex/ui'
 import { computed, reactive, ref } from 'vue'
 import ChatLine from '@/components/ChatLine.vue'
 import { admin, NO_CHATTER, PACK_MIN_EVERY_S, TRIGGER_EVENTS, type MyPack, type PackTrigger, type PackTriggerBody } from '@/lib/admin'

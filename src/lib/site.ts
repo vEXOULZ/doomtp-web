@@ -1,6 +1,6 @@
 // What every page's chrome needs from the bot (version, default sign, whether admin exists), loaded once.
 import { reactive } from 'vue'
-import { errorText } from '@vexoulz/platform-web'
+import { errorText } from '@vex/platform-web'
 import { api, type Site } from './api'
 
 export const site = reactive<{ info: Site | null; error: string | null }>({ info: null, error: null })
